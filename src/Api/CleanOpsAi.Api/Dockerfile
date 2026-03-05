@@ -12,13 +12,13 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/CleanOpsAi.Api/CleanOpsAi.Api.csproj", "src/CleanOpsAi.Api/"]
-COPY ["src/CleanOpsAi.Application/CleanOpsAi.Application.csproj", "src/CleanOpsAi.Application/"]
-COPY ["src/CleanOpsAi.Domain/CleanOpsAi.Domain.csproj", "src/CleanOpsAi.Domain/"]
-COPY ["src/CleanOpsAi.Infrastructure/CleanOpsAi.Infrastructure.csproj", "src/CleanOpsAi.Infrastructure/"]
-RUN dotnet restore "./src/CleanOpsAi.Api/CleanOpsAi.Api.csproj"
+COPY ["Api/CleanOpsAi.Api/CleanOpsAi.Api.csproj", "Api/CleanOpsAi.Api/"]
+COPY ["Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Infrastructure/CleanOpsAi.Modules.UserAccess.Infrastructure.csproj", "Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Infrastructure/"]
+COPY ["Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Application/CleanOpsAi.Modules.UserAccess.Application.csproj", "Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Application/"]
+COPY ["Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Domain/CleanOpsAi.Modules.UserAccess.Domain.csproj", "Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Domain/"]
+RUN dotnet restore "./Api/CleanOpsAi.Api/CleanOpsAi.Api.csproj"
 COPY . .
-WORKDIR "/src/src/CleanOpsAi.Api"
+WORKDIR "/src/Api/CleanOpsAi.Api"
 RUN dotnet build "./CleanOpsAi.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage

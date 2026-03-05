@@ -12,11 +12,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+	<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CleanOpsAi.Application\CleanOpsAi.Application.csproj" />
-    <ProjectReference Include="..\CleanOpsAi.Infrastructure\CleanOpsAi.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\UserAccess\CleanOpsAi.Modules.UserAccess.Infrastructure\CleanOpsAi.Modules.UserAccess.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
