@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CleanOpsAi.Modules.ClientManagement.Domain\CleanOpsAi.Modules.ClientManagement.Domain.csproj" />
+    <ProjectReference Include="..\CleanOpsAi.Modules.ClientManagement.IntegrationEvents\CleanOpsAi.Modules.ClientManagement.IntegrationEvents.csproj" />
+  </ItemGroup>
+
+</Project>
