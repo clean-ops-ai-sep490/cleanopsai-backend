@@ -1,0 +1,28 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using System.Reflection;
+
+namespace CleanOpsAi.Modules.Workforce.Infrastructure.Data
+{
+	public class WorkforceDbContext : DbContext
+	{
+		public WorkforceDbContext()
+		{
+
+		}
+
+		public WorkforceDbContext(DbContextOptions<WorkforceDbContext> options)
+			: base(options)
+		{
+		}
+
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
+		{
+			base.OnModelCreating(modelBuilder);
+			 
+			modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+		}
+
+		  
+	}
+}

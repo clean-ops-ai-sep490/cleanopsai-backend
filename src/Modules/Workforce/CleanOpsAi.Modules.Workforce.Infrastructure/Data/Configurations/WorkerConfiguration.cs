@@ -1,0 +1,19 @@
+﻿using CleanOpsAi.Modules.Workforce.Domain.Enitites;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace CleanOpsAi.Modules.Workforce.Infrastructure.Data.Configurations
+{
+	public class WorkerConfiguration : IEntityTypeConfiguration<Worker>
+	{
+		public void Configure(EntityTypeBuilder<Worker> builder)
+		{ 
+			builder.HasKey(w => w.Id);
+
+			builder.Property(w => w.UserId).IsRequired(); 
+			 
+			builder.Property(w => w.Latitude);
+			builder.Property(w => w.Longitude);
+		}
+	}
+}

@@ -4,8 +4,7 @@ using CleanOpsAi.Modules.UserAccess.Infrastructure;
 using CleanOpsAi.Modules.UserAccess.Infrastructure.Auth0;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Hosting;
-using Microsoft.IdentityModel.Tokens;
-using System.Reflection;
+using Microsoft.IdentityModel.Tokens; 
 using System.Security.Claims;
 
 namespace Microsoft.Extensions.DependencyInjection;

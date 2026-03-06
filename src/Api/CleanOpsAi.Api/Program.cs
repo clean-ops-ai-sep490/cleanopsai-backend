@@ -3,8 +3,12 @@ using dotenv.net;
 var builder = WebApplication.CreateBuilder(args);
 
 DotEnv.Load();
+builder.Configuration
+	.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+	.AddEnvironmentVariables();
 
 builder.InfrastructureUserAccessModule();
+builder.InfrastructureWorkforceModule();
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -27,16 +31,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapGet("/api/public", () =>
-	Results.Ok(new { Message = "This endpoint is public" }))
-	.WithName("GetPublic");
-
-// Protected endpoint - requires authentication
-app.MapGet("/api/private", () =>
-	Results.Ok(new { Message = "This endpoint requires authentication" }))
-	.RequireAuthorization()
-	.WithName("GetPrivate");
+ 
 
 app.MapControllers();
 
