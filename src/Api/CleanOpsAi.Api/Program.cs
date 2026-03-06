@@ -27,7 +27,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+// test git
 app.MapGet("/api/public", () =>
 	Results.Ok(new { Message = "This endpoint is public" }))
 	.WithName("GetPublic");
