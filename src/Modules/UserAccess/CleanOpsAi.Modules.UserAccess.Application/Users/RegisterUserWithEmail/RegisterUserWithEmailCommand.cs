@@ -4,8 +4,14 @@
 	{
 		public string Email { get; }
 		public string Password { get; }
-		public string FullName { get; }
-		public string Connection { get; }
+		public string FullName { get; } 
+
+		public RegisterUserWithEmailCommand(string email, string password, string fullName)
+		{
+			Email = email;
+			Password = password;
+			FullName = fullName;
+		}
 	}
 
 	public class RegisterUserResult

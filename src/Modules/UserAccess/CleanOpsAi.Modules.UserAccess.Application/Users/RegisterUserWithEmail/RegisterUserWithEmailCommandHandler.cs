@@ -9,9 +9,11 @@
 			_auth0Service = auth0Service;
 		}
 
-		public Task<RegisterUserResult> Handle(RegisterUserWithEmailCommand request, CancellationToken cancellationToken)
+		public async Task<RegisterUserResult> Handle(RegisterUserWithEmailCommand request, CancellationToken cancellationToken)
 		{
-			throw new NotImplementedException();
+			var result = await _auth0Service.Register(request.Email, request.Password, request.FullName);
+
+			return result;
 		}
 	}
 }

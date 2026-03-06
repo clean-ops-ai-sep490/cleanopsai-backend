@@ -1,4 +1,8 @@
+using dotenv.net;
+
 var builder = WebApplication.CreateBuilder(args);
+
+DotEnv.Load();
 
 builder.InfrastructureUserAccessModule();
 // Add services to the container.
@@ -16,9 +20,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
-	app.UseHttpsRedirection();
 
 }
+app.UseHttpsRedirection();
 
 
 app.UseAuthentication();

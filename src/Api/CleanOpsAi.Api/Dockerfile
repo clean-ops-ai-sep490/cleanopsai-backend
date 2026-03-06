@@ -16,6 +16,7 @@ COPY ["Api/CleanOpsAi.Api/CleanOpsAi.Api.csproj", "Api/CleanOpsAi.Api/"]
 COPY ["Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Infrastructure/CleanOpsAi.Modules.UserAccess.Infrastructure.csproj", "Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Infrastructure/"]
 COPY ["Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Application/CleanOpsAi.Modules.UserAccess.Application.csproj", "Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Application/"]
 COPY ["Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Domain/CleanOpsAi.Modules.UserAccess.Domain.csproj", "Modules/UserAccess/CleanOpsAi.Modules.UserAccess.Domain/"]
+COPY ["BuildingBlocks/CleanOpsAi.BuildingBlocks.Domain/CleanOpsAi.BuildingBlocks.Domain.csproj", "BuildingBlocks/CleanOpsAi.BuildingBlocks.Domain/"]
 RUN dotnet restore "./Api/CleanOpsAi.Api/CleanOpsAi.Api.csproj"
 COPY . .
 WORKDIR "/src/Api/CleanOpsAi.Api"

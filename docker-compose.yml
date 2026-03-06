@@ -9,5 +9,5 @@ services:
     ports:
       - "5000:8080"
       - "5001:8081"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+    env_file:
+      - ./src/Api/CleanOpsAi.Api/.env

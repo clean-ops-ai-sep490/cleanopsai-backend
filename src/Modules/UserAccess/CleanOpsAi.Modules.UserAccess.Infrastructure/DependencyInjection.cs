@@ -1,6 +1,11 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using CleanOpsAi.Modules.UserAccess.Application.Configuration;
+using CleanOpsAi.Modules.UserAccess.Application.Contracts;
+using CleanOpsAi.Modules.UserAccess.Infrastructure;
+using CleanOpsAi.Modules.UserAccess.Infrastructure.Auth0;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 using System.Security.Claims;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -22,7 +27,12 @@ public static class DependencyInjection
 			});
 		builder.Services.AddAuthorization(options =>
 		{ 
-		});
+		}); 
 
+		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
+
+		builder.Services.AddHttpClient<IAuth0Service, Auth0Service>();
+
+		builder.Services.AddScoped<IUserAccessModule, UserAccessModule>();
 	}
 }
