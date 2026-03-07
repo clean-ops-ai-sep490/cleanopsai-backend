@@ -10,8 +10,4 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Domain\CleanOpsAi.BuildingBlocks.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Entities\" />
-  </ItemGroup>
-
 </Project>

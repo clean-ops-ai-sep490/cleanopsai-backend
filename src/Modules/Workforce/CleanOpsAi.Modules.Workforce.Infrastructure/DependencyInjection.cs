@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
+﻿using CleanOpsAi.Modules.Workforce.Application.Configurations;
+using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,11 +15,15 @@ public static class DependencyInjection
 		{
 			options.UseNpgsql(
 				 builder.Configuration["ConnectionStrings:DefaultConnection"]
-			).UseSnakeCaseNamingConvention()
-	   .EnableSensitiveDataLogging()
-	   .EnableDetailedErrors();
+			)
+					.UseSnakeCaseNamingConvention()
+					.EnableSensitiveDataLogging()
+					.EnableDetailedErrors();
 			options.EnableSensitiveDataLogging();
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
+
+		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
+
 	}
 }

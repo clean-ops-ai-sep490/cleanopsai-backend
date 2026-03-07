@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.UserAccess.Application.Configuration;
+﻿using CleanOpsAi.Modules.UserAccess.Application.Configurations;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Infrastructure;
 using CleanOpsAi.Modules.UserAccess.Infrastructure.Auth0;

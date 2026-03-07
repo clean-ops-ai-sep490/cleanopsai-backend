@@ -1,5 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Configurations;
-using CleanOpsAi.Modules.ClientManagement.Infrastructure.Data;
+﻿using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Extensions.DependencyInjection;
 public static class DependencyInjection
 {
-	public static void InfrastructureClientManagementModule(this IHostApplicationBuilder builder)
+	public static void InfrastructureTaskOperationsModule(this IHostApplicationBuilder builder)
 	{
 		builder.Services.AddSingleton(TimeProvider.System);
 
-		builder.Services.AddDbContext<ClientManagementDbContext>(options =>
+		builder.Services.AddDbContext<TaskOperationsDbContext>(options =>
 		{
 			options.UseNpgsql(
 				 builder.Configuration["ConnectionStrings:DefaultConnection"]
@@ -24,6 +24,5 @@ public static class DependencyInjection
 		});
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
-
 	}
 }

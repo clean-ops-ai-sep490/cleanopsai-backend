@@ -10,6 +10,7 @@ builder.Configuration
 builder.InfrastructureUserAccessModule();
 builder.InfrastructureWorkforceModule();
 builder.InfrastructureClientManagementModule();
+builder.InfrastructureServicePlanningModule();
 // Add services to the container.
 
 builder.Services.AddControllers();

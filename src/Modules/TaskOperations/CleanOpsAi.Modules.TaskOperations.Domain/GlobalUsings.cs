@@ -1,0 +1,1 @@
+﻿global using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
