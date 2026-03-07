@@ -1,7 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Domain;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CleanOpsAi.Modules.Workforce.Domain.Enitites
+namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 {
 	[Table("certifications")]
 	public class Certification : BaseAuditableEntity

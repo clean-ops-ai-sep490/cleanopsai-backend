@@ -19,5 +19,11 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 		public double? Latitude { get; set; }
 
 		public double? Longitude { get; set; }
+
+		public Guid ClientId { get; set; }
+
+		public Client Client { get; set; } = null!;
+
+		public virtual ICollection<Zone> Zones { get; set; } = new List<Zone>();
 	}
 }

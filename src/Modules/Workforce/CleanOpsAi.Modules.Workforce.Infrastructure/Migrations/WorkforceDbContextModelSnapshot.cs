@@ -37,6 +37,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
                     b.Property<string>("IssuingOrganization")
                         .IsRequired()
                         .HasColumnType("text")
@@ -79,6 +83,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")
@@ -123,6 +131,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.Property<string>("DisplayAddress")
                         .HasColumnType("text")
                         .HasColumnName("display_address");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")

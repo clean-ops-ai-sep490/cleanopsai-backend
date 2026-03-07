@@ -3,8 +3,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 {
-	[Table("workareas")]
-	public class Workarea : BaseAuditableEntity
+	[Table("work_areas")]
+	public class WorkArea : BaseAuditableEntity
 	{
+		public string Name { get; set; } = null!; 
+
+		public Guid ZoneId { get; set; }
+
+		public virtual Zone Zone { get; set; } = null!;
 	}
 }

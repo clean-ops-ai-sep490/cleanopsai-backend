@@ -7,6 +7,11 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 	public class Client : BaseAuditableEntity
 	{
 		public string Name { get; set; } = null!;
+
 		public string Email { get; set; } = null!;
+
+		public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
+
+		public virtual ICollection<Location> Locations { get; set; } = new List<Location>();
 	}
 }

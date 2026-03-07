@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkforceDbContext))]
-    [Migration("20260306135039_Initial")]
+    [Migration("20260307080745_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -39,6 +39,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
                         .HasColumnName("created_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("IssuingOrganization")
                         .IsRequired()
@@ -83,6 +87,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified");
@@ -126,6 +134,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.Property<string>("DisplayAddress")
                         .HasColumnType("text")
                         .HasColumnName("display_address");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")

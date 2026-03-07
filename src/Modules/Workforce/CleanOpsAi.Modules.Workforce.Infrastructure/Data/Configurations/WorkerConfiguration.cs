@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.Workforce.Domain.Enitites;
+﻿using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

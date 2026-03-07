@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CleanOpsAi.Modules.Workforce.Domain.Enitites
+namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 {
 	[Table("worker_certifications")]
 	public class WorkerCertification
