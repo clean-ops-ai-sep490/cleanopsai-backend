@@ -13,5 +13,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 		public ComplianceCheckType Type { get; set; }
 
 		public string? Feedback { get; set; }
+
+		public TaskStepExecution TaskStepExecution { get; set; } = null!;
 	}
 }

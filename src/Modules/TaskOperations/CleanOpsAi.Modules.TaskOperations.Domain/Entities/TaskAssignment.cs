@@ -25,5 +25,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 		public virtual ICollection<TaskStepExecution> TaskStepExecutions { get; set; } = new List<TaskStepExecution>();
 
 		public virtual ICollection<TaskSwapRequest> TaskSwapRequests { get; set; } = new List<TaskSwapRequest>();
+
+		public virtual ICollection<IssueReport> IssueReports { get; set; } = new List<IssueReport>();
+
+		public virtual ICollection<EmergencyLeaveRequest> EmergencyLeaveRequests { get; set; } = new List<EmergencyLeaveRequest>();
+
+		public virtual ICollection<EquipmentRequest> EquipmentRequests { get; set; } = new List<EquipmentRequest>();
+
+		public virtual ICollection<AdHocRequest> AdHocRequests { get; set; } = new List<AdHocRequest>(); 
 	}
 }

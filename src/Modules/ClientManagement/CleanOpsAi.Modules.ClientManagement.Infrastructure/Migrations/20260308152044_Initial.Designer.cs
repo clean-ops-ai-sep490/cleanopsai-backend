@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ClientManagementDbContext))]
-    [Migration("20260307081731_Initial")]
+    [Migration("20260308152044_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -259,7 +259,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.ToTable("locations", (string)null);
                 });
 
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ServiceLevelAgreement", b =>
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -279,7 +279,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                         .HasColumnName("created_by");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
                     b.Property<int>("EnvironmentType")
@@ -313,15 +314,133 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                         .HasColumnName("work_area_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_service_level_agreements");
+                        .HasName("pk_sla");
 
                     b.HasIndex("ContractId")
-                        .HasDatabaseName("ix_service_level_agreements_contract_id");
+                        .HasDatabaseName("ix_sla_contract_id");
 
                     b.HasIndex("WorkAreaId")
-                        .HasDatabaseName("ix_service_level_agreements_work_area_id");
+                        .HasDatabaseName("ix_sla_work_area_id");
 
-                    b.ToTable("service_level_agreements", (string)null);
+                    b.ToTable("sla", (string)null);
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BreakTime")
+                        .HasColumnType("integer")
+                        .HasColumnName("break_time");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("RequiredWorker")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_worker");
+
+                    b.Property<Guid>("SlaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sla_id");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("start_time");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sla_shifts");
+
+                    b.HasIndex("SlaId")
+                        .HasDatabaseName("ix_sla_shifts_sla_id");
+
+                    b.ToTable("sla_shifts", (string)null);
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("RecurrenceConfig")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("recurrence_config");
+
+                    b.Property<string>("RecurrenceType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("recurrence_type");
+
+                    b.Property<Guid>("SlaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sla_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sla_tasks");
+
+                    b.HasIndex("SlaId")
+                        .HasDatabaseName("ix_sla_tasks_sla_id");
+
+                    b.ToTable("sla_tasks", (string)null);
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
@@ -519,25 +638,49 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.Navigation("Client");
                 });
 
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ServiceLevelAgreement", b =>
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", "Contract")
-                        .WithMany("ServiceLevelAgreements")
+                        .WithMany("Slas")
                         .HasForeignKey("ContractId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_service_level_agreements_contracts_contract_id");
+                        .HasConstraintName("fk_sla_contracts_contract_id");
 
                     b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
-                        .WithMany()
+                        .WithMany("Slas")
                         .HasForeignKey("WorkAreaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_service_level_agreements_work_areas_work_area_id");
+                        .HasConstraintName("fk_sla_work_areas_work_area_id");
 
                     b.Navigation("Contract");
 
                     b.Navigation("WorkArea");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", "Sla")
+                        .WithMany()
+                        .HasForeignKey("SlaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sla_shifts_sla_sla_id");
+
+                    b.Navigation("Sla");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", "Sla")
+                        .WithMany()
+                        .HasForeignKey("SlaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sla_tasks_sla_sla_id");
+
+                    b.Navigation("Sla");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
@@ -545,7 +688,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", "Zone")
                         .WithMany("WorkAreas")
                         .HasForeignKey("ZoneId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_work_areas_zones_zone_id");
 
@@ -587,12 +730,17 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                 {
                     b.Navigation("ContractShifts");
 
-                    b.Navigation("ServiceLevelAgreements");
+                    b.Navigation("Slas");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
                 {
                     b.Navigation("Zones");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
+                {
+                    b.Navigation("Slas");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>

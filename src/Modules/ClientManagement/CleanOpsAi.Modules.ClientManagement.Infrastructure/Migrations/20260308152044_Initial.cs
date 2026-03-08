@@ -130,7 +130,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                         column: x => x.zone_id,
                         principalTable: "zones",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -169,12 +169,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "service_level_agreements",
+                name: "sla",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     environment_type = table.Column<int>(type: "integer", nullable: false),
                     service_type = table.Column<int>(type: "integer", nullable: false),
                     work_area_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -187,15 +187,15 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_service_level_agreements", x => x.id);
+                    table.PrimaryKey("pk_sla", x => x.id);
                     table.ForeignKey(
-                        name: "fk_service_level_agreements_contracts_contract_id",
+                        name: "fk_sla_contracts_contract_id",
                         column: x => x.contract_id,
                         principalTable: "contracts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_service_level_agreements_work_areas_work_area_id",
+                        name: "fk_sla_work_areas_work_area_id",
                         column: x => x.work_area_id,
                         principalTable: "work_areas",
                         principalColumn: "id",
@@ -228,6 +228,60 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "sla_shifts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    sla_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    required_worker = table.Column<int>(type: "integer", nullable: false),
+                    break_time = table.Column<int>(type: "integer", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<string>(type: "text", nullable: true),
+                    last_modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_modified_by = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_sla_shifts", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_sla_shifts_sla_sla_id",
+                        column: x => x.sla_id,
+                        principalTable: "sla",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "sla_tasks",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    sla_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    recurrence_type = table.Column<string>(type: "text", nullable: false),
+                    recurrence_config = table.Column<string>(type: "jsonb", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<string>(type: "text", nullable: true),
+                    last_modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_modified_by = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_sla_tasks", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_sla_tasks_sla_sla_id",
+                        column: x => x.sla_id,
+                        principalTable: "sla",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "ix_contract_shifts_contract_id",
                 table: "contract_shifts",
@@ -249,14 +303,24 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                 column: "client_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_service_level_agreements_contract_id",
-                table: "service_level_agreements",
+                name: "ix_sla_contract_id",
+                table: "sla",
                 column: "contract_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_service_level_agreements_work_area_id",
-                table: "service_level_agreements",
+                name: "ix_sla_work_area_id",
+                table: "sla",
                 column: "work_area_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_sla_shifts_sla_id",
+                table: "sla_shifts",
+                column: "sla_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_sla_tasks_sla_id",
+                table: "sla_tasks",
+                column: "sla_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_work_area_details_work_area_id",
@@ -281,10 +345,16 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                 name: "contract_shifts");
 
             migrationBuilder.DropTable(
-                name: "service_level_agreements");
+                name: "sla_shifts");
+
+            migrationBuilder.DropTable(
+                name: "sla_tasks");
 
             migrationBuilder.DropTable(
                 name: "work_area_details");
+
+            migrationBuilder.DropTable(
+                name: "sla");
 
             migrationBuilder.DropTable(
                 name: "contracts");

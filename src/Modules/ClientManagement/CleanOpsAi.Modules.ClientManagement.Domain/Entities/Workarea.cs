@@ -11,5 +11,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 		public Guid ZoneId { get; set; }
 
 		public virtual Zone Zone { get; set; } = null!;
+
+		public virtual ICollection<Sla> Slas { get; set; } = new List<Sla>();
+
 	}
 }

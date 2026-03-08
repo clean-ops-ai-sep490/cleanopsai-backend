@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 {
-	[Table("service_level_agreements")]
-	public class ServiceLevelAgreement : BaseAuditableEntity
+	[Table("sla")]
+	public class Sla : BaseAuditableEntity
 	{
 		public string Name { get; set; } = null!;
 

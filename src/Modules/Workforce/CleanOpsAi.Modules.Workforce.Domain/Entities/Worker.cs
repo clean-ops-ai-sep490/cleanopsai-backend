@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Domain;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 {
@@ -19,5 +18,7 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 		public virtual ICollection<WorkerCertification> WorkerCertifications { get; set; } = new List<WorkerCertification>();
 
 		public virtual ICollection<WorkerSkill> WorkerSkills { get; set; } = new List<WorkerSkill>();
+
+		public virtual ICollection<WorkerGps> WorkerGps { get; set; } = new List<WorkerGps>();
 	}
 }

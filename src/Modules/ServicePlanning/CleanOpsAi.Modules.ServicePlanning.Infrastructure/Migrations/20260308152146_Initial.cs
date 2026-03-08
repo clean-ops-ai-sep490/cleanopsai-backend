@@ -60,7 +60,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     sop_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    sla_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sla_task_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sla_shift_id = table.Column<Guid>(type: "uuid", nullable: false),
                     work_area_detail_id = table.Column<Guid>(type: "uuid", nullable: true),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),

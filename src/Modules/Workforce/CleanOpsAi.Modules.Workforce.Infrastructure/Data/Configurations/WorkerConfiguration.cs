@@ -14,6 +14,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Data.Configurations
 			 
 			builder.Property(w => w.Latitude);
 			builder.Property(w => w.Longitude);
+
+			builder.HasMany(w => w.WorkerGps)
+				   .WithOne(wg => wg.Worker)
+				   .HasForeignKey(wg => wg.WorkerId);
+
 		}
 	}
 }

@@ -3,6 +3,7 @@ using System;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkforceDbContext))]
-    partial class WorkforceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308151913_Initial")]
+    partial class Initial
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -237,54 +240,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.ToTable("worker_certifications", (string)null);
                 });
 
-            modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerGps", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<double>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
-
-                    b.Property<Guid>("WorkerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("worker_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_worker_gps");
-
-                    b.HasIndex("WorkerId")
-                        .HasDatabaseName("ix_worker_gps_worker_id");
-
-                    b.ToTable("worker_gps", (string)null);
-                });
-
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerSkill", b =>
                 {
                     b.Property<Guid>("WorkerId")
@@ -329,18 +284,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.Navigation("Worker");
                 });
 
-            modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerGps", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.Workforce.Domain.Entities.Worker", "Worker")
-                        .WithMany("WorkerGps")
-                        .HasForeignKey("WorkerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_worker_gps_workers_worker_id");
-
-                    b.Navigation("Worker");
-                });
-
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerSkill", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.Workforce.Domain.Entities.Skill", "Skill")
@@ -375,8 +318,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Worker", b =>
                 {
                     b.Navigation("WorkerCertifications");
-
-                    b.Navigation("WorkerGps");
 
                     b.Navigation("WorkerSkills");
                 });

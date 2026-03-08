@@ -17,6 +17,11 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Data.Configurations
 			builder.HasOne(x => x.Zone)
 				.WithMany(x => x.WorkAreas)
 				.HasForeignKey(x => x.ZoneId);
+
+			builder.HasOne(x => x.Zone)
+				.WithMany(x => x.WorkAreas)
+				.HasForeignKey(x => x.ZoneId)
+				.OnDelete(DeleteBehavior.Restrict);
 		}
 	}
 }

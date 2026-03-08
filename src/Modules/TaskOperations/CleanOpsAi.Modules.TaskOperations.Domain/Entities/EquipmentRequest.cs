@@ -12,7 +12,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public Guid EquipmentId { get; set; }
 
-		public string? ReviewedBy { get; set; }
+		public string? ReviewedByUserId { get; set; }
 
 		public int Quantity { get; set; }
 

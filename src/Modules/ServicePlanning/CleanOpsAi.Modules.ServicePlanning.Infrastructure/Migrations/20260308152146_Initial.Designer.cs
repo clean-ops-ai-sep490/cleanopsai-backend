@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 {
     [DbContext(typeof(ServicePlanningDbContext))]
-    [Migration("20260307154214_Initial")]
+    [Migration("20260308152146_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -258,9 +258,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("recurrence_type");
 
-                    b.Property<Guid>("SlaId")
+                    b.Property<Guid>("SlaShiftId")
                         .HasColumnType("uuid")
-                        .HasColumnName("sla_id");
+                        .HasColumnName("sla_shift_id");
+
+                    b.Property<Guid>("SlaTaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sla_task_id");
 
                     b.Property<Guid>("SopId")
                         .HasColumnType("uuid")

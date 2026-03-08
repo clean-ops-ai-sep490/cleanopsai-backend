@@ -255,9 +255,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("recurrence_type");
 
-                    b.Property<Guid>("SlaId")
+                    b.Property<Guid>("SlaShiftId")
                         .HasColumnType("uuid")
-                        .HasColumnName("sla_id");
+                        .HasColumnName("sla_shift_id");
+
+                    b.Property<Guid>("SlaTaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sla_task_id");
 
                     b.Property<Guid>("SopId")
                         .HasColumnType("uuid")

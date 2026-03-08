@@ -16,6 +16,6 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 
 		public virtual ICollection<ContractShift> ContractShifts { get; set; } = new List<ContractShift>();
 
-		public virtual ICollection<ServiceLevelAgreement> ServiceLevelAgreements { get; set; } = new List<ServiceLevelAgreement>();
+		public virtual ICollection<Sla> Slas { get; set; } = new List<Sla>();
 	}
 }

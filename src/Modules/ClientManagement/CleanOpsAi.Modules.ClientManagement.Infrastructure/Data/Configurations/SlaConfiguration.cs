@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Data.Configurations
 {
-	public class ServiceLevelAgreementConfiguration : IEntityTypeConfiguration<ServiceLevelAgreement>
+	public class SlaConfiguration : IEntityTypeConfiguration<Sla>
 	{
-		public void Configure(EntityTypeBuilder<ServiceLevelAgreement> builder)
+		public void Configure(EntityTypeBuilder<Sla> builder)
 		{
 			builder.HasKey(x => x.Id);
 
@@ -14,12 +14,15 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Data.Configurations
 				.IsRequired()
 				.HasMaxLength(200);
 
+			builder.Property(x => x.Description)
+			.HasMaxLength(1000);
+
 			builder.HasOne(x => x.Contract)
-				.WithMany(x => x.ServiceLevelAgreements)
+				.WithMany(x => x.Slas)
 				.HasForeignKey(x => x.ContractId);
 
 			builder.HasOne(x => x.WorkArea)
-				.WithMany()
+				.WithMany(x => x.Slas)
 				.HasForeignKey(x => x.WorkAreaId)
 				.OnDelete(DeleteBehavior.Restrict);
 		}

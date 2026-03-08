@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using CleanOpsAi.BuildingBlocks.Domain;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 {
@@ -7,7 +8,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 	{
 		public Guid SopId { get; set; }
 
-		public Guid SlaId { get; set; }
+		public Guid SlaTaskId { get; set; }
+
+		public Guid SlaShiftId { get; set; }	
 
 		public Guid? WorkAreaDetailId { get; set; }
 

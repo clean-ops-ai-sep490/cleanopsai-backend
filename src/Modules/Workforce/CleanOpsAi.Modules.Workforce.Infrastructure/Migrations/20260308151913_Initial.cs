@@ -30,6 +30,25 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "equipments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    type = table.Column<int>(type: "integer", nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<string>(type: "text", nullable: true),
+                    last_modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_modified_by = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_equipments", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "skill",
                 columns: table => new
                 {
@@ -133,6 +152,9 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "equipments");
+
             migrationBuilder.DropTable(
                 name: "worker_certifications");
 

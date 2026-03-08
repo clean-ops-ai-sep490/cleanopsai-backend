@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using CleanOpsAi.BuildingBlocks.Domain;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 {

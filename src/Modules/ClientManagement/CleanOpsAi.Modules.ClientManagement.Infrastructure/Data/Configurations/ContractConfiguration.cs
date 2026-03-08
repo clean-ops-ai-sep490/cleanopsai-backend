@@ -24,7 +24,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Data.Configurations
 				.WithOne(x => x.Contract)
 				.HasForeignKey(x => x.ContractId);
 
-			builder.HasMany(x => x.ServiceLevelAgreements)
+			builder.HasMany(x => x.Slas)
 				.WithOne(x => x.Contract)
 				.HasForeignKey(x => x.ContractId);
 		}

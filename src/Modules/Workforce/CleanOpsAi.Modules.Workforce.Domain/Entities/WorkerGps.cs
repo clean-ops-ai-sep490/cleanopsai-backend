@@ -2,17 +2,15 @@
 
 namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 {
-	[Table("worker_skills")]
-	public class WorkerSkill
+	[Table("worker_gps")]
+	public class WorkerGps : BaseAuditableEntity
 	{
 		public Guid WorkerId { get; set; }
 
-		public Guid SkillId { get; set; }
+		public double Latitude { get; set; }
 
-		public SkillLevelType SkillLevel { get; set; }
+		public double Longitude { get; set; } 
 
 		public virtual Worker Worker { get; set; } = null!;
-
-		public virtual Skill Skill { get; set; } = null!;
 	}
 }

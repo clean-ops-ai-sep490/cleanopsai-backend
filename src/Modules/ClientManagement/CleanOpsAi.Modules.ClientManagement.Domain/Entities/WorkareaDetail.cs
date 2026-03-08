@@ -15,5 +15,6 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 		public Guid WorkAreaId { get; set; }
 
 		public virtual WorkArea WorkArea { get; set; } = null!;
+
 	}
 }
