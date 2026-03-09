@@ -11,4 +11,8 @@
     <ProjectReference Include="..\CleanOpsAi.Modules.ClientManagement.IntegrationEvents\CleanOpsAi.Modules.ClientManagement.IntegrationEvents.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Slas\" />
+  </ItemGroup>
+
 </Project>
