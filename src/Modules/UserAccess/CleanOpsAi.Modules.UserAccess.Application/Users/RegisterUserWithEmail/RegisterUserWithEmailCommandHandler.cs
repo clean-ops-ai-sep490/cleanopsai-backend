@@ -2,18 +2,16 @@
 {
 	public class RegisterUserWithEmailCommandHandler : ICommandHandler<RegisterUserWithEmailCommand, RegisterUserResult>
 	{
-		private readonly IAuth0Service _auth0Service;
+		private readonly IAuthService _authService;
 
-		public RegisterUserWithEmailCommandHandler(IAuth0Service auth0Service)
+		public RegisterUserWithEmailCommandHandler(IAuthService authService)
 		{
-			_auth0Service = auth0Service;
+			_authService = authService;
 		}
 
 		public async Task<RegisterUserResult> Handle(RegisterUserWithEmailCommand request, CancellationToken cancellationToken)
 		{
-			var result = await _auth0Service.Register(request.Email, request.Password, request.FullName);
-
-			return result;
+			return await _authService.Register(request.Email, request.Password, request.FullName);
 		}
 	}
 }
