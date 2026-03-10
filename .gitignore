@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /src/Api/CleanOpsAi.Api/.env
+/src/Api/CleanOpsAi.Api/appsettings.json
