@@ -21,7 +21,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // get Client by id
         public async Task<Client> GetByIdAsync(Guid id)
         {
-            var client = _dbContext.Set<Client>().FirstOrDefault(c => c.Id == id);
+            var client = _dbContext.Set<Client>().FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
             return client;
 
         }
@@ -29,14 +29,17 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // get all Clients
         public async Task<List<Client>> GetAllAsync()
         {
-            var clients = _dbContext.Set<Client>().ToList();
+            var clients = await _dbContext.Set<Client>()
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
+
             return clients;
         }
 
         // get all Clients with pagination
         public async Task<(List<Client> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Set<Client>().AsQueryable();
+            var query = _dbContext.Set<Client>().AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Id);
 
             var totalCount = await query.CountAsync();
 

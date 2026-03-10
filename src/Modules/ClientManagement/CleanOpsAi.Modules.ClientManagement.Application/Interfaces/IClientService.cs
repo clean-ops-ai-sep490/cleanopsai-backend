@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using System;
 using System.Collections.Generic;
 using System.Linq;

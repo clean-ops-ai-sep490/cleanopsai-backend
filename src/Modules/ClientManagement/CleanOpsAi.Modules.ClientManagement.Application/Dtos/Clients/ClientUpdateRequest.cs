@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos
+namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients
 {
     public class ClientUpdateRequest
     {

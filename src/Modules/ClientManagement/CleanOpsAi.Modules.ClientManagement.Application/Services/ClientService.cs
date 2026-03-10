@@ -1,6 +1,8 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
+using Medo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,9 +67,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var client = new Client
             {
-                Id = Guid.NewGuid(),
+                Id = Uuid7.NewGuid(),
                 Name = request.Name,
-                Email = request.Email
+                Email = request.Email,
+                Created = DateTime.UtcNow,
+                IsDeleted = false,
+                //CreatedBy = "System" // You can replace this with the actual user who created the client
             };
             return await _clientRepository.CreateAsync(client);
         }
@@ -88,6 +93,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             client.Email = string.IsNullOrWhiteSpace(request.Email)
                 ? client.Email
                 : request.Email;
+            client.LastModified = DateTime.UtcNow;
+            //client.LastModifiedBy = "System"; // You can replace this with the actual user who modified the client
 
             return await _clientRepository.UpdateAsync(client);
         }

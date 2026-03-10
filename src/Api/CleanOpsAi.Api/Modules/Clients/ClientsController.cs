@@ -1,7 +1,9 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.Api.Modules.UserAccess.Dtos;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace CleanOpsAi.Api.Modules.Clients
 {
@@ -16,6 +18,11 @@ namespace CleanOpsAi.Api.Modules.Clients
         }
 
         [HttpGet("clientId/{id}")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+    Summary = "Get client by clientId",
+    Description = "Get a client using clientId.",
+    Tags = new[] { "Clients" })]
         public async Task<IActionResult> GetById(Guid id)
         {
             var client = await _clientService.GetByIdAsync(id);
@@ -27,6 +34,11 @@ namespace CleanOpsAi.Api.Modules.Clients
         }
 
         [HttpGet]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+    Summary = "Get all clients",
+    Description = "Get all clients and pagination",
+    Tags = new[] { "Clients" })]
         public async Task<IActionResult> GetAll(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
@@ -36,6 +48,13 @@ namespace CleanOpsAi.Api.Modules.Clients
         }
 
         [HttpPost]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+    Summary = "Create new user",
+    Description = "Create a new client by name and email.",
+    Tags = new[] { "Clients" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Create successfully")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data")]
         public async Task<IActionResult> Create(ClientCreateRequest request)
         {
             var result = await _clientService.CreateAsync(request);
@@ -47,6 +66,13 @@ namespace CleanOpsAi.Api.Modules.Clients
         }
 
         [HttpPut("{id}")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+    Summary = "Update user",
+    Description = "Update a client throw ClientId and Name, Email (Name and Email can empty if not want to change info",
+    Tags = new[] { "Clients" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Update successfully")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data")]
         public async Task<IActionResult> Update(Guid id, ClientUpdateRequest request)
         {
             var result = await _clientService.UpdateAsync(id, request);
@@ -58,6 +84,13 @@ namespace CleanOpsAi.Api.Modules.Clients
         }
 
         [HttpDelete("{id}")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+    Summary = "Delete user",
+    Description = "Delete a client throw ClientId (soft delete) ",
+    Tags = new[] { "Clients" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Delete successfully")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _clientService.DeleteAsync(id);
