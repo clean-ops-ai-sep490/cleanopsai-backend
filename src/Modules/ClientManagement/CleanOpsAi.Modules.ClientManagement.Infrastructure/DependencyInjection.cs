@@ -1,5 +1,8 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Configurations;
+using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
+using CleanOpsAi.Modules.ClientManagement.Application.Services;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Data;
+using CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,5 +28,11 @@ public static class DependencyInjection
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
-	}
+        // Dependency Injection for Repositories
+		builder.Services.AddScoped<IClientRepository, ClientRepository>();
+
+        // Dependency Injection for Services
+		builder.Services.AddScoped<IClientService, ClientService>();
+
+    }
 }
