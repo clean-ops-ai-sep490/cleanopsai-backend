@@ -24,5 +24,7 @@ public static class DependencyInjection
 		});
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
+
+		//test
 	}
 }
