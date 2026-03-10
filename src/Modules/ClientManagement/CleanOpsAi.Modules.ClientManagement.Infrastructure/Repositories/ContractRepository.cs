@@ -21,7 +21,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // get Constract by id
         public async Task<Contract> GetByIdAsync(Guid id)
         {
-            var contract = _dbContext.Set<Contract>().FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
+            var contract = _dbContext.Set<Contract>().Include(c => c.Client).FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
             return contract;
 
         }
@@ -29,14 +29,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // get all Contracts
         public async Task<List<Contract>> GetAllAsync()
         {
-            var constracts = _dbContext.Set<Contract>().OrderByDescending(c => c.Id).ToList();
+            var constracts = _dbContext.Set<Contract>().Include(c => c.Client).OrderByDescending(c => c.Id).ToList();
             return constracts;
         }
 
         // get all Contracts with pagination
         public async Task<(List<Contract> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Set<Contract>().AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Id);
+            var query = _dbContext.Set<Contract>().Include(c => c.Client).AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Id);
 
             var totalCount = await query.CountAsync();
 

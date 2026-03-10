@@ -63,7 +63,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         }
 
         // add Client and return the number of rows affected
-        public async Task<int> CreateAsync(ClientCreateRequest request)
+        public async Task<ClientResponse> CreateAsync(ClientCreateRequest request)
         {
             var client = new Client
             {
@@ -71,20 +71,26 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Name = request.Name,
                 Email = request.Email,
                 Created = DateTime.UtcNow,
-                IsDeleted = false,
-                //CreatedBy = "System" // You can replace this with the actual user who created the client
+                IsDeleted = false
             };
-            return await _clientRepository.CreateAsync(client);
+
+            await _clientRepository.CreateAsync(client);
+
+            return new ClientResponse
+            {
+                Id = client.Id,
+                Name = client.Name,
+                Email = client.Email
+            };
         }
 
         // update Client and return the number of rows affected
-        public async Task<int> UpdateAsync(Guid id, ClientUpdateRequest request)
+        public async Task<ClientResponse> UpdateAsync(Guid id, ClientUpdateRequest request)
         {
             var client = await _clientRepository.GetByIdAsync(id);
+
             if (client == null)
-            {
-                return 0;
-            }
+                return null;
 
             client.Name = string.IsNullOrWhiteSpace(request.Name)
                 ? client.Name
@@ -93,10 +99,17 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             client.Email = string.IsNullOrWhiteSpace(request.Email)
                 ? client.Email
                 : request.Email;
-            client.LastModified = DateTime.UtcNow;
-            //client.LastModifiedBy = "System"; // You can replace this with the actual user who modified the client
 
-            return await _clientRepository.UpdateAsync(client);
+            client.LastModified = DateTime.UtcNow;
+
+            await _clientRepository.UpdateAsync(client);
+
+            return new ClientResponse
+            {
+                Id = client.Id,
+                Name = client.Name,
+                Email = client.Email
+            };
         }
 
         // delete Client and return the number of rows affected

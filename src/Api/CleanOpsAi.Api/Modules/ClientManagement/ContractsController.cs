@@ -1,0 +1,122 @@
+﻿using CleanOpsAi.Api.Modules.ClientManagement.Dtos;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts;
+using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
+using CleanOpsAi.Modules.ClientManagement.Application.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
+
+namespace CleanOpsAi.Api.Modules.ClientManagement
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ContractsController : ControllerBase
+    {
+        private readonly IContractService _service;
+
+        public ContractsController(IContractService service)
+        {
+            _service = service;
+        }
+
+        [HttpGet("{id:guid}")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get contract by id",
+            Description = "Get a contract using contractId.",
+            Tags = new[] { "Contracts" })]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var contract = await _service.GetByIdAsync(id);
+
+            if (contract == null)
+                return NotFound();
+
+            return Ok(contract);
+        }
+
+        [HttpGet]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get all contracts",
+            Description = "Get all contracts with pagination.",
+            Tags = new[] { "Contracts" })]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var contracts = await _service.GetAllPaginationAsync(pageNumber, pageSize);
+
+            return Ok(contracts);
+        }
+
+        [HttpPost]
+        [Consumes("multipart/form-data")]
+        [SwaggerOperation(
+            Summary = "Create contract",
+            Description = "Create a contract with file upload.",
+            Tags = new[] { "Contracts" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Create successfully")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data")]
+        public async Task<IActionResult> Create([FromForm] CreateContractApiRequest request)
+        {
+            var command = new ContractCreateRequest
+            {
+                Name = request.Name,
+                ClientId = request.ClientId,
+                FileStream = request.File?.OpenReadStream(),
+                FileName = request.File?.FileName
+            };
+
+            var result = await _service.CreateAsync(command);
+
+            if (result !=null)
+                return Ok(result);
+
+            return BadRequest();
+        }
+
+        [HttpPut("{id}")]
+        [Consumes("multipart/form-data")]
+        [SwaggerOperation(
+            Summary = "Update contract",
+            Description = "Update contract name or file.",
+            Tags = new[] { "Contracts" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Update successfully")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "Contract not found")]
+        public async Task<IActionResult> Update(Guid id, [FromForm] UpdateContractApiRequest request)
+        {
+            var command = new ContractUpdateRequest
+            {
+                Name = request.Name,
+                FileStream = request.File?.OpenReadStream(),
+                FileName = request.File?.FileName
+            };
+
+            var result = await _service.UpdateAsync(id, command);
+
+            if (result != null)
+                return Ok(result);
+
+            return NotFound();
+        }
+
+        [HttpDelete("{id}")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Delete contract",
+            Description = "Delete contract by id.",
+            Tags = new[] { "Contracts" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Delete successfully")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "Contract not found")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var result = await _service.DeleteAsync(id);
+
+            if (result > 0)
+                return Ok(result);
+
+            return NotFound();
+        }
+    }
+}
