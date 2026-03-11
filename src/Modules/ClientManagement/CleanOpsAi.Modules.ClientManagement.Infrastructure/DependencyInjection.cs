@@ -4,9 +4,11 @@ using CleanOpsAi.Modules.ClientManagement.Application.Services;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Data;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 
 namespace Microsoft.Extensions.DependencyInjection;
 public static class DependencyInjection
@@ -36,6 +38,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IZoneRepository, ZoneRepository>();
 		builder.Services.AddScoped<IWorkAreaRepository, WorkAreaRepository>();
 		builder.Services.AddScoped<IWorkAreaDetailRepository, WorkAreaDetailRepository>();
+        builder.Services.AddScoped<ISlaRepository, SlaRepository>();
 
         // Dependency Injection for Services
         builder.Services.AddScoped<IClientService, ClientService>();
@@ -44,9 +47,16 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IZoneService, ZoneService>();
 		builder.Services.AddScoped<IWorkAreaService, WorkAreaService>();
 		builder.Services.AddScoped<IWorkAreaDetailService, WorkAreaDetailService>();
+        builder.Services.AddScoped<ISlaService, SlaService>();
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
+        // ENUM -> STRING JSON
+        builder.Services.Configure<JsonOptions>(options =>
+        {
+            options.JsonSerializerOptions.Converters
+                .Add(new JsonStringEnumConverter());
+        });
     }
 }
