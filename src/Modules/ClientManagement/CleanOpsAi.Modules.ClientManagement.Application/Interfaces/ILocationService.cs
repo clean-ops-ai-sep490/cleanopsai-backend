@@ -16,5 +16,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
         Task<LocationResponse> CreateAsync(LocationCreateRequest request);
         Task<LocationResponse> UpdateAsync(Guid id, LocationUpdateRequest request);
         Task<int> DeleteAsync(Guid id);
+        Task<List<LocationResponse>> GetByClientIdAsync(Guid clientId);
+        Task<PagedResponse<LocationResponse>> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize);
     }
 }

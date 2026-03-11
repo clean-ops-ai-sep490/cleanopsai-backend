@@ -175,5 +175,59 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             return await _locationRepository.DeleteAsync(id);
         }
+
+        // Get all locations by clientId
+        public async Task<List<LocationResponse>> GetByClientIdAsync(Guid clientId)
+        {
+            var locations = await _locationRepository.GetByClientIdAsync(clientId);
+
+            return locations.Select(l => new LocationResponse
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Address = l.Address,
+                Street = l.Street,
+                Commune = l.Commune,
+                Province = l.Province,
+                Latitude = l.Latitude,
+                Longitude = l.Longitude,
+                ClientId = l.ClientId,
+                ClientName = l.Client?.Name
+            }).ToList();
+        }
+
+        // Get all locations by clientId with pagination
+        public async Task<PagedResponse<LocationResponse>> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var (items, totalCount) = await _locationRepository
+                .GetByClientIdPaginationAsync(clientId, pageNumber, pageSize);
+
+            var responses = items.Select(l => new LocationResponse
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Address = l.Address,
+                Street = l.Street,
+                Commune = l.Commune,
+                Province = l.Province,
+                Latitude = l.Latitude,
+                Longitude = l.Longitude,
+                ClientId = l.ClientId,
+                ClientName = l.Client?.Name
+            }).ToList();
+
+            return new PagedResponse<LocationResponse>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = responses
+            };
+        }
+
     }
 }

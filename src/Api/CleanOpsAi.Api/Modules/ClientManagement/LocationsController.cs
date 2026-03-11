@@ -110,5 +110,38 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 
             return NotFound();
         }
+
+        //        [HttpGet("client/{clientId:guid}")]
+        //        [SwaggerOperation(
+        //Summary = "Get locations by clientId",
+        //Description = "Get all locations belonging to a specific client",
+        //Tags = new[] { "Locations" })]
+        //        public async Task<IActionResult> GetByClientId(Guid clientId)
+        //        {
+        //            var locations = await _locationService.GetByClientIdAsync(clientId);
+
+        //            if (locations == null || !locations.Any())
+        //            {
+        //                return NotFound();
+        //            }
+
+        //            return Ok(locations);
+        //        }
+
+        [HttpGet("client/{clientId:guid}")]
+        [SwaggerOperation(
+Summary = "Get locations by clientId",
+Description = "Get locations of a client with pagination",
+Tags = new[] { "Locations" })]
+        public async Task<IActionResult> GetByClientId(
+    Guid clientId,
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10)
+        {
+            var result = await _locationService
+                .GetByClientIdPaginationAsync(clientId, pageNumber, pageSize);
+
+            return Ok(result);
+        }
     }
 }

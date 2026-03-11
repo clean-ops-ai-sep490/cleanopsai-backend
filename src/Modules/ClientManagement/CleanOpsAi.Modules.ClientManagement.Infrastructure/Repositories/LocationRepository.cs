@@ -79,5 +79,34 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
 
             return await _dbContext.SaveChangesAsync();
         }
+
+        // Get all locations by clientId
+        public async Task<List<Location>> GetByClientIdAsync(Guid clientId)
+        {
+            return await _dbContext.Set<Location>()
+                .Include(l => l.Client)
+                .Where(l => l.ClientId == clientId && l.IsDeleted == false)
+                .OrderByDescending(l => l.Id)
+                .ToListAsync();
+        }
+
+        // Get all locations by clientId with pagination
+        public async Task<(List<Location> Items, int TotalCount)> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Set<Location>()
+                .Include(l => l.Client)
+                .Where(l => l.ClientId == clientId && l.IsDeleted == false)
+                .OrderByDescending(l => l.Id)
+                .AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }

@@ -171,5 +171,53 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             return await _repository.DeleteAsync(id);
         }
+
+        // get contracts by clientId
+        public async Task<List<ContractResponse>> GetByClientIdAsync(Guid clientId)
+        {
+            var contracts = await _repository.GetByClientIdAsync(clientId);
+
+            return contracts.Select(c => new ContractResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                UrlFile = c.UrlFile,
+                ClientId = c.ClientId,
+                ClientName = c.Client?.Name,
+                Created = c.Created,
+                LastModified = c.LastModified
+            }).ToList();
+        }
+
+        // get contracts by clientId with pagination
+        public async Task<PagedResponse<ContractResponse>> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var (items, totalCount) = await _repository
+                .GetByClientIdPaginationAsync(clientId, pageNumber, pageSize);
+
+            var responses = items.Select(c => new ContractResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                UrlFile = c.UrlFile,
+                ClientId = c.ClientId,
+                ClientName = c.Client?.Name,
+                Created = c.Created,
+                LastModified = c.LastModified
+            }).ToList();
+
+            return new PagedResponse<ContractResponse>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = responses
+            };
+        }
+
     }
 }
