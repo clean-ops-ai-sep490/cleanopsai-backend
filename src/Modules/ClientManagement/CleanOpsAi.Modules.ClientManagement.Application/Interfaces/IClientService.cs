@@ -13,8 +13,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
         Task<List<ClientResponse>> GetByIdAsync(Guid id);
         Task<List<ClientResponse>> GetAllAsync();
         Task<PagedResponse<ClientResponse>> GetAllPaginationAsync(int pageNumber, int pageSize);
-        Task<int> CreateAsync(ClientCreateRequest request);
-        Task<int> UpdateAsync(Guid id, ClientUpdateRequest request);
+        Task<ClientResponse> CreateAsync(ClientCreateRequest request);
+        Task<ClientResponse> UpdateAsync(Guid id, ClientUpdateRequest request);
         Task<int> DeleteAsync(Guid id);
     }
 }
