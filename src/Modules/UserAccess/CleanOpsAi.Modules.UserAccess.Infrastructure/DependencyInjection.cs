@@ -1,7 +1,6 @@
-﻿using CleanOpsAi.Modules.UserAccess.Application.Configurations;
-using CleanOpsAi.Modules.UserAccess.Application.Contracts;
+﻿using CleanOpsAi.Modules.UserAccess.Application.Contracts;
+using CleanOpsAi.Modules.UserAccess.Application.Services;
 using CleanOpsAi.Modules.UserAccess.Domain;
-using CleanOpsAi.Modules.UserAccess.Infrastructure;
 using CleanOpsAi.Modules.UserAccess.Infrastructure.Auth;
 using CleanOpsAi.Modules.UserAccess.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -48,6 +47,7 @@ public static class DependencyInjection
 		})
 		.AddJwtBearer(options =>
 		{
+			options.MapInboundClaims = false;
 			options.TokenValidationParameters = new TokenValidationParameters
 			{
 				ValidateIssuer = true,
@@ -57,15 +57,15 @@ public static class DependencyInjection
 				ValidIssuer = builder.Configuration["Jwt:Issuer"],
 				ValidAudience = builder.Configuration["Jwt:Audience"],
 				IssuerSigningKey = key,
-				ClockSkew = TimeSpan.Zero
+				ClockSkew = TimeSpan.Zero,
+				NameClaimType = "sub",
+				RoleClaimType = "role"
 			};
 		});
 
 		builder.Services.AddAuthorization();
 
-		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
-
+		builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 		builder.Services.AddScoped<IAuthService, AuthService>();
-		builder.Services.AddScoped<IUserAccessModule, UserAccessModule>();
 	}
 }

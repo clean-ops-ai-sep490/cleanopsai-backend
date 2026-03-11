@@ -41,11 +41,11 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Persistence
 
 			// Seed the 5 roles
 			builder.Entity<IdentityRole<Guid>>().HasData(
-				new IdentityRole<Guid> { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = nameof(UserRole.Worker), NormalizedName = nameof(UserRole.Worker).ToUpperInvariant() },
-				new IdentityRole<Guid> { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Name = nameof(UserRole.Admin), NormalizedName = nameof(UserRole.Admin).ToUpperInvariant() },
-				new IdentityRole<Guid> { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = nameof(UserRole.Manager), NormalizedName = nameof(UserRole.Manager).ToUpperInvariant() },
-				new IdentityRole<Guid> { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Name = nameof(UserRole.Supervisor), NormalizedName = nameof(UserRole.Supervisor).ToUpperInvariant() },
-				new IdentityRole<Guid> { Id = Guid.Parse("55555555-5555-5555-5555-555555555555"), Name = nameof(UserRole.Supporter), NormalizedName = nameof(UserRole.Supporter).ToUpperInvariant() }
+				new IdentityRole<Guid> { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = nameof(UserRole.Worker), NormalizedName = nameof(UserRole.Worker).ToUpperInvariant(), ConcurrencyStamp = "11111111-1111-1111-1111-111111111111" },
+				new IdentityRole<Guid> { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Name = nameof(UserRole.Admin), NormalizedName = nameof(UserRole.Admin).ToUpperInvariant(), ConcurrencyStamp = "22222222-2222-2222-2222-222222222222" },
+				new IdentityRole<Guid> { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = nameof(UserRole.Manager), NormalizedName = nameof(UserRole.Manager).ToUpperInvariant(), ConcurrencyStamp = "33333333-3333-3333-3333-333333333333" },
+				new IdentityRole<Guid> { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Name = nameof(UserRole.Supervisor), NormalizedName = nameof(UserRole.Supervisor).ToUpperInvariant(), ConcurrencyStamp = "44444444-4444-4444-4444-444444444444" },
+				new IdentityRole<Guid> { Id = Guid.Parse("55555555-5555-5555-5555-555555555555"), Name = nameof(UserRole.Supporter), NormalizedName = nameof(UserRole.Supporter).ToUpperInvariant(), ConcurrencyStamp = "55555555-5555-5555-5555-555555555555" }
 			);
 		}
 	}

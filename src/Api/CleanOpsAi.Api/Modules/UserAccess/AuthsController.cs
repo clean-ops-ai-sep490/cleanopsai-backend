@@ -1,7 +1,6 @@
 ﻿using CleanOpsAi.Api.Modules.UserAccess.Dtos;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
-using CleanOpsAi.Modules.UserAccess.Application.Users.RefreshToken;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -14,11 +13,11 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 	[ApiController]
 	public class AuthsController : ControllerBase
 	{
-		private readonly IUserAccessModule _userAccessModule;
+		private readonly IAuthService _authService;
 
-		public AuthsController(IUserAccessModule userAccessModule)
+		public AuthsController(IAuthService authService)
 		{
-			_userAccessModule = userAccessModule;
+			_authService = authService;
 		}
 
 		[HttpPost("register")]
@@ -33,7 +32,7 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 		{
 			try
 			{
-				var result = await _userAccessModule.ExecuteCommandAsync(new RegisterUserWithEmailCommand(request.Email, request.Password, request.FullName));
+				var result = await _authService.Register(request.Email, request.Password, request.FullName);
 				return Ok(result);
 			}
 			catch (InvalidOperationException ex)
@@ -54,7 +53,7 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 		{
 			try
 			{
-				var result = await _userAccessModule.ExecuteCommandAsync(new LoginUserCommand(request.Email, request.Password));
+				var result = await _authService.Login(request.Email, request.Password);
 				return Ok(result);
 			}
 			catch (UnauthorizedAccessException)
@@ -75,7 +74,7 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 		{
 			try
 			{
-				var result = await _userAccessModule.ExecuteCommandAsync(new RefreshTokenCommand(request.RefreshToken));
+				var result = await _authService.RefreshToken(request.RefreshToken);
 				return Ok(result);
 			}
 			catch (UnauthorizedAccessException)
@@ -94,10 +93,8 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 		[SwaggerResponse(StatusCodes.Status401Unauthorized, "Not authenticated")]
 		public IActionResult Me()
 		{
-			var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-				?? User.FindFirst("sub")?.Value;
-			var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-				?? User.FindFirst("email")?.Value;
+			var userId = User.FindFirst("sub")?.Value;
+			var email = User.FindFirst("email")?.Value;
 			var fullName = User.FindFirst("fullName")?.Value;
 			var role = User.FindFirst("role")?.Value;
 			return Ok(new { userId, email, fullName, role });

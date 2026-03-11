@@ -14,13 +14,13 @@ using System.Text;
 
 namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 {
-	public class AuthService : IAuthService
+	public class AuthRepository : IAuthRepository
 	{
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly UserAccessDbContext _dbContext;
 		private readonly IConfiguration _configuration;
 
-		public AuthService(
+		public AuthRepository(
 			UserManager<ApplicationUser> userManager,
 			UserAccessDbContext dbContext,
 			IConfiguration configuration)
@@ -71,7 +71,9 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 
 			var roles = await _userManager.GetRolesAsync(user);
 			var accessToken = GenerateAccessToken(user, roles);
-			var refreshToken = await CreateRefreshTokenAsync(user.Id);
+			var refreshToken = CreateRefreshToken(user.Id);
+
+			await _dbContext.SaveChangesAsync();
 
 			return new AuthTokenResult
 			{
@@ -98,7 +100,7 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			// Generate new tokens
 			var roles = await _userManager.GetRolesAsync(storedToken.User);
 			var accessToken = GenerateAccessToken(storedToken.User, roles);
-			var newRefreshToken = await CreateRefreshTokenAsync(storedToken.UserId);
+			var newRefreshToken = CreateRefreshToken(storedToken.UserId);
 
 			await _dbContext.SaveChangesAsync();
 
@@ -143,7 +145,7 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			return new JwtSecurityTokenHandler().WriteToken(token);
 		}
 
-		private async Task<string> CreateRefreshTokenAsync(Guid userId)
+		private string CreateRefreshToken(Guid userId)
 		{
 			var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
@@ -158,7 +160,6 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			};
 
 			_dbContext.RefreshTokens.Add(refreshToken);
-			await _dbContext.SaveChangesAsync();
 
 			return token;
 		}

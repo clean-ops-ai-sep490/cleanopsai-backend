@@ -1,6 +1,6 @@
 ﻿namespace CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail
 {
-	public class RegisterUserWithEmailCommand : CommandBase<RegisterUserResult>
+	public class RegisterUserWithEmailCommand
 	{
 		public string Email { get; }
 		public string Password { get; }

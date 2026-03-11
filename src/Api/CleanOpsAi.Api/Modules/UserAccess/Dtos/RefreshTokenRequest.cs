@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace CleanOpsAi.Api.Modules.UserAccess.Dtos
 {
 	public class RefreshTokenRequest
 	{
-		public string RefreshToken { get; set; }
+		[Required]
+		public string RefreshToken { get; set; } = string.Empty;
 	}
 }

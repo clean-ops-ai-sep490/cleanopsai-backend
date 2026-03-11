@@ -1,6 +1,6 @@
 namespace CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser
 {
-	public class LoginUserCommand : CommandBase<AuthTokenResult>
+	public class LoginUserCommand
 	{
 		public string Email { get; }
 		public string Password { get; }

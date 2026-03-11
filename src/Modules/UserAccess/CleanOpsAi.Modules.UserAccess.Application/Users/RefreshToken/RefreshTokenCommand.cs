@@ -2,7 +2,7 @@ using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 
 namespace CleanOpsAi.Modules.UserAccess.Application.Users.RefreshToken
 {
-	public class RefreshTokenCommand : CommandBase<AuthTokenResult>
+	public class RefreshTokenCommand
 	{
 		public string Token { get; }
 
