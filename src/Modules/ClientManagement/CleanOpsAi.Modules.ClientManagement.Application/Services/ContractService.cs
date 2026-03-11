@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts;
+﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
 using Medo;
@@ -15,6 +16,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IContractRepository _repository;
         private readonly IFileStorageService _fileStorage;
 
+        private const string CONTAINER = "contracts";
+
         public ContractService(
             IContractRepository repository,
             IFileStorageService fileStorage)
@@ -23,7 +26,74 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             _fileStorage = fileStorage;
         }
 
-        public async Task<int> CreateAsync(ContractCreateRequest request)
+        // get by id
+        public async Task<ContractResponse?> GetByIdAsync(Guid id)
+        {
+            var contract = await _repository.GetByIdAsync(id);
+
+            if (contract == null)
+                return null;
+
+            return new ContractResponse
+            {
+                Id = contract.Id,
+                Name = contract.Name,
+                UrlFile = contract.UrlFile,
+                ClientId = contract.ClientId,
+                ClientName = contract.Client?.Name,
+                Created = contract.Created,
+                LastModified = contract.LastModified
+            };
+        }
+
+        // get all
+        public async Task<List<ContractResponse>> GetAllAsync()
+        {
+            var contracts = await _repository.GetAllAsync();
+
+            return contracts.Select(c => new ContractResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                UrlFile = c.UrlFile,
+                ClientId = c.ClientId,
+                ClientName = c.Client?.Name,
+                Created = c.Created,
+                LastModified = c.LastModified
+            }).ToList();
+        }
+
+        // pagination
+        public async Task<PagedResponse<ContractResponse>> GetAllPaginationAsync(int pageNumber, int pageSize)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var (items, totalCount) = await _repository.GetAllPaginationAsync(pageNumber, pageSize);
+
+            var responses = items.Select(c => new ContractResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                UrlFile = c.UrlFile,
+                ClientId = c.ClientId,
+                ClientName = c.Client?.Name,
+                Created = c.Created,
+                LastModified = c.LastModified
+            }).ToList();
+
+            return new PagedResponse<ContractResponse>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = responses
+            };
+        }
+
+        // create
+        public async Task<ContractResponse> CreateAsync(ContractCreateRequest request)
         {
             string fileUrl = "";
 
@@ -32,7 +102,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 fileUrl = await _fileStorage.UploadFileAsync(
                     request.FileStream,
                     request.FileName!,
-                    "contracts"
+                    CONTAINER
                 );
             }
 
@@ -41,18 +111,30 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = Uuid7.NewGuid(),
                 Name = request.Name,
                 ClientId = request.ClientId,
-                UrlFile = fileUrl
+                UrlFile = fileUrl,
+                Created = DateTime.UtcNow,
+                //CreatedBy = "System",
+                IsDeleted = false
             };
 
-            return await _repository.CreateAsync(contract);
+            await _repository.CreateAsync(contract);
+
+            return new ContractResponse
+            {
+                Id = contract.Id,
+                Name = contract.Name,
+                UrlFile = contract.UrlFile,
+                ClientId = contract.ClientId
+            };
         }
 
-        public async Task<int> UpdateAsync(Guid id, ContractUpdateRequest request)
+        // update
+        public async Task<ContractResponse?> UpdateAsync(Guid id, ContractUpdateRequest request)
         {
             var contract = await _repository.GetByIdAsync(id);
 
             if (contract == null)
-                return 0;
+                throw new KeyNotFoundException($"Contract with id {id} not found.");
 
             if (!string.IsNullOrWhiteSpace(request.Name))
             {
@@ -64,28 +146,82 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 var fileUrl = await _fileStorage.UploadFileAsync(
                     request.FileStream,
                     request.FileName!,
-                    "contracts"
+                    CONTAINER
                 );
 
                 contract.UrlFile = fileUrl;
             }
 
-            return await _repository.UpdateAsync(contract);
+            contract.LastModified = DateTime.UtcNow;
+            //contract.LastModifiedBy = "System";
+
+            await _repository.UpdateAsync(contract);
+
+            return new ContractResponse
+            {
+                Id = contract.Id,
+                Name = contract.Name,
+                UrlFile = contract.UrlFile,
+                ClientId = contract.ClientId
+            };
         }
 
+        // delete
         public async Task<int> DeleteAsync(Guid id)
         {
+            var contract = await _repository.GetByIdAsync(id);
+
+            if (contract == null)
+                throw new KeyNotFoundException($"Contract with id {id} not found.");
             return await _repository.DeleteAsync(id);
         }
 
-        public async Task<Contract?> GetByIdAsync(Guid id)
+        // get contracts by clientId
+        public async Task<List<ContractResponse>> GetByClientIdAsync(Guid clientId)
         {
-            return await _repository.GetByIdAsync(id);
+            var contracts = await _repository.GetByClientIdAsync(clientId);
+
+            return contracts.Select(c => new ContractResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                UrlFile = c.UrlFile,
+                ClientId = c.ClientId,
+                ClientName = c.Client?.Name,
+                Created = c.Created,
+                LastModified = c.LastModified
+            }).ToList();
         }
 
-        public async Task<List<Contract>> GetAllAsync()
+        // get contracts by clientId with pagination
+        public async Task<PagedResponse<ContractResponse>> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize)
         {
-            return await _repository.GetAllAsync();
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var (items, totalCount) = await _repository
+                .GetByClientIdPaginationAsync(clientId, pageNumber, pageSize);
+
+            var responses = items.Select(c => new ContractResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                UrlFile = c.UrlFile,
+                ClientId = c.ClientId,
+                ClientName = c.Client?.Name,
+                Created = c.Created,
+                LastModified = c.LastModified
+            }).ToList();
+
+            return new PagedResponse<ContractResponse>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = responses
+            };
         }
+
     }
 }

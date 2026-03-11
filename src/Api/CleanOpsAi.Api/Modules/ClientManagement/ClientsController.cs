@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace CleanOpsAi.Api.Modules.Clients
+namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -17,7 +17,7 @@ namespace CleanOpsAi.Api.Modules.Clients
             _clientService = clientService;
         }
 
-        [HttpGet("clientId/{id}")]
+        [HttpGet("{id:guid}")]
         [Consumes("application/json")]
         [SwaggerOperation(
     Summary = "Get client by clientId",
@@ -58,7 +58,7 @@ namespace CleanOpsAi.Api.Modules.Clients
         public async Task<IActionResult> Create(ClientCreateRequest request)
         {
             var result = await _clientService.CreateAsync(request);
-            if (result > 0)
+            if (result != null)
             {
                 return Ok(result);
             }
@@ -76,7 +76,7 @@ namespace CleanOpsAi.Api.Modules.Clients
         public async Task<IActionResult> Update(Guid id, ClientUpdateRequest request)
         {
             var result = await _clientService.UpdateAsync(id, request);
-            if (result > 0)
+            if (result != null)
             {
                 return Ok(result);
             }

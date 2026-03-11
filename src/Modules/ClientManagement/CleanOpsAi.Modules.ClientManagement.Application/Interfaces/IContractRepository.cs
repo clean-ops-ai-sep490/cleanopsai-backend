@@ -15,5 +15,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
         Task<int> CreateAsync(Contract contract);
         Task<int> UpdateAsync(Contract contract);
         Task<int> DeleteAsync(Guid id);
+        Task<List<Contract>> GetByClientIdAsync(Guid clientId);
+        Task<(List<Contract> Items, int TotalCount)> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize);
     }
 }

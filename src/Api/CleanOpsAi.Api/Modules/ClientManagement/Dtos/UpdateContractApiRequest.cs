@@ -1,4 +1,4 @@
-﻿namespace CleanOpsAi.Api.Modules.Contracts.Dtos
+﻿namespace CleanOpsAi.Api.Modules.ClientManagement.Dtos
 {
     public class UpdateContractApiRequest
     {
