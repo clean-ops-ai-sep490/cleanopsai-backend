@@ -143,7 +143,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var zone = await _repository.GetByIdAsync(id);
 
             if (zone == null)
-                return null;
+                throw new KeyNotFoundException($"Zone with id {id} not found.");
 
             zone.Name = string.IsNullOrWhiteSpace(request.Name) ? zone.Name : request.Name;
             zone.Description = request.Description ?? zone.Description;
@@ -164,6 +164,10 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         // delete zone (soft delete)
         public async Task<int> DeleteAsync(Guid id)
         {
+            var zone = await _repository.GetByIdAsync(id);
+
+            if (zone == null)
+                throw new KeyNotFoundException($"Zone with id {id} not found.");
             return await _repository.DeleteAsync(id);
         }
     }

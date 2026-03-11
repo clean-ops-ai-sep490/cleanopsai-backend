@@ -134,7 +134,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var contract = await _repository.GetByIdAsync(id);
 
             if (contract == null)
-                return null;
+                throw new KeyNotFoundException($"Contract with id {id} not found.");
 
             if (!string.IsNullOrWhiteSpace(request.Name))
             {
@@ -169,6 +169,10 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         // delete
         public async Task<int> DeleteAsync(Guid id)
         {
+            var contract = await _repository.GetByIdAsync(id);
+
+            if (contract == null)
+                throw new KeyNotFoundException($"Contract with id {id} not found.");
             return await _repository.DeleteAsync(id);
         }
 

@@ -90,7 +90,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var client = await _clientRepository.GetByIdAsync(id);
 
             if (client == null)
-                return null;
+                throw new KeyNotFoundException($"Client with id {id} not found.");
 
             client.Name = string.IsNullOrWhiteSpace(request.Name)
                 ? client.Name
@@ -115,6 +115,10 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         // delete Client and return the number of rows affected
         public async Task<int> DeleteAsync(Guid id)
         {
+            var client = await _clientRepository.GetByIdAsync(id);
+
+            if (client == null)
+                throw new KeyNotFoundException($"Client with id {id} not found.");
             return await _clientRepository.DeleteAsync(id);
         }
     }

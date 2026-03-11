@@ -139,7 +139,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var location = await _locationRepository.GetByIdAsync(id);
 
             if (location == null)
-                return null;
+                throw new KeyNotFoundException($"Location with id {id} not found.");
 
             location.Name = string.IsNullOrWhiteSpace(request.Name) ? location.Name : request.Name;
             location.Address = string.IsNullOrWhiteSpace(request.Address) ? location.Address : request.Address;
@@ -173,6 +173,10 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         // Delete
         public async Task<int> DeleteAsync(Guid id)
         {
+            var location = await _locationRepository.GetByIdAsync(id);
+
+            if (location == null)
+                throw new KeyNotFoundException($"Location with id {id} not found.");
             return await _locationRepository.DeleteAsync(id);
         }
 

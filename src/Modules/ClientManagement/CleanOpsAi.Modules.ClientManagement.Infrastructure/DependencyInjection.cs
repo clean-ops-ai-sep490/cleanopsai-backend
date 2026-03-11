@@ -34,12 +34,14 @@ public static class DependencyInjection
         builder.Services.AddScoped<IContractRepository, ContractRepository>();
 		builder.Services.AddScoped<ILocationRepository, LocationRepository>();
 		builder.Services.AddScoped<IZoneRepository, ZoneRepository>();
+		builder.Services.AddScoped<IWorkAreaRepository, WorkAreaRepository>();
 
         // Dependency Injection for Services
         builder.Services.AddScoped<IClientService, ClientService>();
         builder.Services.AddScoped<IContractService, ContractService>();
 		builder.Services.AddScoped<ILocationService, LocationService>();
 		builder.Services.AddScoped<IZoneService, ZoneService>();
+		builder.Services.AddScoped<IWorkAreaService, WorkAreaService>();
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
