@@ -24,6 +24,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		//json
 		public string RecurrenceConfig { get; set; } = null!;
+
+		public virtual Sop Sop { get; set; } = null!;
 	}
 }
 

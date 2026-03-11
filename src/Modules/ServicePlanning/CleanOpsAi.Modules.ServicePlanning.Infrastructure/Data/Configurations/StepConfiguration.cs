@@ -26,7 +26,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 				.HasColumnType("jsonb");  
 
 			builder.HasIndex(x => x.ActionKey)
-				.IsUnique();
+				.IsUnique().HasFilter("is_deleted = false"); ;
 		}
 	}
 }

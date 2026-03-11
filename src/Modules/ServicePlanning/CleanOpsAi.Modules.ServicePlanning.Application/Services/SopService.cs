@@ -84,6 +84,104 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(sop);
 		}
 
+		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto)
+		{
+			var sop = await _sopRepository.GetByIdWithStepsAsync(id);
+			if (sop == null) return null;
+
+			if (dto.Steps != null)
+			{
+				if (dto.Steps.Count == 0)
+					throw new ValidationException("SOP must have at least one step");
+
+				var orders = dto.Steps.Select(s => s.StepOrder).ToList();
+				if (orders.Distinct().Count() != orders.Count)
+					throw new ValidationException("StepOrder must be unique");
+
+				if (orders.Min() != 1 || orders.Max() != orders.Count)
+					throw new ValidationException("StepOrder must be sequential starting from 1");
+
+				var stepIds = dto.Steps.Select(x => x.StepId).Distinct().ToList();
+				var steps = await _stepRepository.GetByIdsAsync(stepIds);
+
+				if (steps.Count != stepIds.Count)
+				{
+					var missingIds = stepIds.Except(steps.Select(s => s.Id));
+					throw new ValidationException($"Steps not found: {string.Join(", ", missingIds)}");
+				}
+
+				var stepDict = steps.ToDictionary(x => x.Id);
+				foreach (var sopStep in dto.Steps)
+				{
+					var step = stepDict[sopStep.StepId];
+					ValidateConfigDetail(sopStep.ConfigDetail, step.ConfigSchema, step.Name);
+				}
+
+				MergeSopSteps(sop, dto.Steps); // thay Replace bằng Merge
+			}
+
+			_mapper.Map(dto, sop);
+			sop.Version += 1;
+			sop.LastModified = DateTime.UtcNow;
+			sop.LastModifiedBy = "admin-123";
+
+			await _sopRepository.UpdateAsync(sop.Id,sop);
+			await _sopRepository.SaveChangesAsync();
+
+			var updated = await _sopRepository.GetByIdWithStepsAsync(sop.Id);
+			return _mapper.Map<SopDto>(updated);
+		}
+
+		public async Task<bool> DeleteSopAsync(Guid id)
+		{
+			var sop = await _sopRepository.GetByIdWithStepsAsync(id);
+			if (sop == null) return false;
+
+			sop.IsDeleted = true;
+			await _sopRepository.SaveChangesAsync();
+			return true;
+		}
+
+		private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps)
+		{
+			var now = DateTime.UtcNow;
+			var existingSteps = sop.SopSteps.Where(s => !s.IsDeleted).ToList();
+			var newStepIds = newSteps.Select(s => s.StepId).ToHashSet();
+			var existingStepIds = existingSteps.Select(s => s.StepId).ToHashSet();
+
+			// 1. Soft delete step không còn trong danh sách mới
+			foreach (var step in existingSteps.Where(s => !newStepIds.Contains(s.StepId)))
+			{
+				step.IsDeleted = true;
+				step.LastModified = now;
+				step.LastModifiedBy = "admin-123";
+			}
+
+			// 2. Update step còn tồn tại
+			foreach (var existing in existingSteps.Where(s => newStepIds.Contains(s.StepId)))
+			{
+				var newStep = newSteps.First(s => s.StepId == existing.StepId);
+				existing.StepOrder = newStep.StepOrder;
+				existing.ConfigDetail = newStep.ConfigDetail.GetRawText();
+				existing.LastModified = now;
+				existing.LastModifiedBy = "admin-123";
+			}
+			 
+			foreach (var newStep in newSteps.Where(s => !existingStepIds.Contains(s.StepId)))
+			{
+				sop.SopSteps.Add(new SopStep
+				{
+					Id = Uuid7.NewGuid(),
+					SopId = sop.Id,
+					StepId = newStep.StepId,
+					StepOrder = newStep.StepOrder,
+					ConfigDetail = newStep.ConfigDetail.GetRawText(),
+					CreatedBy = "admin-123",
+					Created = now
+				});
+			}
+		}
+
 		private void ValidateConfigDetail(JsonElement configDetail, string configSchema, string stepName)
 		{
 			try

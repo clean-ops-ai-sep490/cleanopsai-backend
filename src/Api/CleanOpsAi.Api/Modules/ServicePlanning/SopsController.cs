@@ -55,5 +55,36 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 				result
 			);
 		}
+
+		[HttpPut("{id:guid}")]
+		[SwaggerOperation(
+			Summary = "Update a SOP",
+			Description = "Updates an existing SOP. If Steps are provided, they will fully replace the existing steps. Each step must reference an existing Step definition and include valid configuration details.",
+			Tags = new[] { "SOP" }
+		)]
+		[ProducesResponseType(typeof(SopDto), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> Update(Guid id, [FromBody] SopUpdateDto dto)
+		{
+			var result = await _sopService.UpdateSopAsync(id, dto);
+			if (result == null) return NotFound();
+			return Ok(result);
+		}
+
+		[HttpDelete("{id:guid}")]
+		[SwaggerOperation(
+			Summary = "Delete a SOP",
+			Description = "Soft Deletes a Standard Operating Procedure (SOP) and all its associated steps.",
+			Tags = new[] { "SOP" }
+		)]
+		[ProducesResponseType(StatusCodes.Status204NoContent)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> Delete(Guid id)
+		{
+			var result = await _sopService.DeleteSopAsync(id);
+			if (!result) return NotFound();
+			return NoContent();
+		}
 	}
 }
