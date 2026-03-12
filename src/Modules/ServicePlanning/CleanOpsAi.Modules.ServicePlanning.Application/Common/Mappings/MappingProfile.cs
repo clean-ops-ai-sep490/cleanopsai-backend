@@ -26,8 +26,27 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 			);
 
 			CreateMap<Step, StepDto>()
-	.ForMember(dest => dest.ConfigSchema, opt => opt.MapFrom(src =>
-		JsonSerializer.Deserialize<JsonElement>(src.ConfigSchema, (JsonSerializerOptions?)null)));
+				.ForMember(
+					dest => dest.ConfigSchema, 
+					opt => opt.MapFrom(src =>
+					JsonSerializer.Deserialize<JsonElement>(src.ConfigSchema, (JsonSerializerOptions?)null)));
+
+
+
+			CreateMap<SopCreateDto, Sop>()
+				.ForMember(dest => dest.SopSteps, opt => opt.Ignore());
+
+			CreateMap<Sop, SopDto>();
+
+			CreateMap<SopStep, SopStepDto>()
+				.ForMember(dest => dest.ConfigDetail, opt => opt.MapFrom(src =>
+					JsonSerializer.Deserialize<JsonElement>(src.ConfigDetail, (JsonSerializerOptions?)null)));
+
+
+			CreateMap<SopUpdateDto, Sop>()
+				.ForMember(dest => dest.SopSteps, opt => opt.Ignore())
+				.ForMember(dest => dest.Version, opt => opt.Ignore())
+				.ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 		}
 	}
 }

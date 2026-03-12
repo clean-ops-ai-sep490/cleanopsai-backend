@@ -1,44 +1,26 @@
-using dotenv.net;
+using CleanOpsAi.Api.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
-DotEnv.Load();
-builder.Configuration
-	.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-	.AddEnvironmentVariables();
 
 builder.InfrastructureUserAccessModule();
 builder.InfrastructureWorkforceModule();
 builder.InfrastructureClientManagementModule();
 builder.InfrastructureServicePlanningModule();
-builder.InfrastructureTaskOperationsModule();
-// Add services to the container.
+builder.InfrastructureTaskOperationsModule(); 
 
-builder.Services.AddCors(options =>
-{
-	options.AddPolicy("AllowFrontend", policy =>
-	{
-		policy.WithOrigins(
-				"http://localhost:3000",
-				"https://localhost:3000")
-			.AllowAnyHeader()
-			.AllowAnyMethod()
-			.AllowCredentials();
-	});
-});
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.AddWebAPIServices();  
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<PerformanceMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(); 
 }
 
 app.UseCors("AllowFrontend");

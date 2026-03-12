@@ -7,7 +7,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 {
 	public class BaseRepo<T, Tkey> : IBaseRepo<T, Tkey> where T : class
 	{
-		private readonly ServicePlanningDbContext _context;
+		protected readonly ServicePlanningDbContext _context;
 
 		public BaseRepo()
 		{

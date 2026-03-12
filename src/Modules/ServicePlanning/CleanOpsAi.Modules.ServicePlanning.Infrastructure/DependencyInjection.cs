@@ -33,9 +33,11 @@ public static class DependencyInjection
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
 		builder.Services.AddScoped<IStepRepository, StepRepository>();
+		builder.Services.AddScoped<ISopRepository, SopRepository>();
 
 
 		//Services
 		builder.Services.AddScoped<IStepService, StepService>();
+		builder.Services.AddScoped<ISopService, SopService>();
 	}
 }

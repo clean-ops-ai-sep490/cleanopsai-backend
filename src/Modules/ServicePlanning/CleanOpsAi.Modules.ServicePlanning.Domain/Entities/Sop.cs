@@ -21,5 +21,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 		public int Version { get; set; }
 
 		public virtual ICollection<SopStep> SopSteps { get; set; } = new List<SopStep>();
+
+		public virtual ICollection<TaskSchedule> TaskSchedules { get; set; } = new List<TaskSchedule>();
 	}
 }
