@@ -39,6 +39,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkAreaRepository, WorkAreaRepository>();
 		builder.Services.AddScoped<IWorkAreaDetailRepository, WorkAreaDetailRepository>();
         builder.Services.AddScoped<ISlaRepository, SlaRepository>();
+        builder.Services.AddScoped<ISlaTaskRepository, SlaTaskRepository>();
 
         // Dependency Injection for Services
         builder.Services.AddScoped<IClientService, ClientService>();
@@ -48,6 +49,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkAreaService, WorkAreaService>();
 		builder.Services.AddScoped<IWorkAreaDetailService, WorkAreaDetailService>();
         builder.Services.AddScoped<ISlaService, SlaService>();
+        builder.Services.AddScoped<ISlaTaskService, SlaTaskService>();
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
