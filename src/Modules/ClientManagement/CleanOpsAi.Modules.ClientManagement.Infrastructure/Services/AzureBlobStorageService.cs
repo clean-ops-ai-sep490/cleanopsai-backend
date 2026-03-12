@@ -34,7 +34,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Services
 
             await blobClient.UploadAsync(fileStream, overwrite: true);
 
-            return newFileName;
+            return GenerateSasUrl(newFileName, containerName);
         }
 
         public string GenerateSasUrl(string fileName, string containerName)

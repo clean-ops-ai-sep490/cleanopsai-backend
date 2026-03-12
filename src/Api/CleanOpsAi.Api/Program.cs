@@ -9,7 +9,7 @@ builder.InfrastructureClientManagementModule();
 builder.InfrastructureServicePlanningModule();
 builder.InfrastructureTaskOperationsModule(); 
 
-builder.AddWebAPIServices(); 
+builder.AddWebAPIServices();  
 
 var app = builder.Build();
 
@@ -22,8 +22,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(); 
 }
-app.UseHttpsRedirection();
 
+app.UseCors("AllowFrontend");
+app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
