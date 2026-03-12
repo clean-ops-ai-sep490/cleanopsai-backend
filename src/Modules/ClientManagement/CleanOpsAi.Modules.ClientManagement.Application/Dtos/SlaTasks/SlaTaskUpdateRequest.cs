@@ -1,0 +1,17 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks
+{
+    public class SlaTaskUpdateRequest
+    {
+        public string? Name { get; set; }
+
+        public string? RecurrenceType { get; set; }
+
+        public string? RecurrenceConfig { get; set; }
+    }
+}
