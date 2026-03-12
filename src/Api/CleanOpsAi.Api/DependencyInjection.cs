@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Api.Middlewares;
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
@@ -20,7 +21,7 @@ public static class DependencyInjection
 		{
 			c.SwaggerDoc("v1", new OpenApiInfo { Title = "cleanopsai_api", Version = "v1" }); 
 			c.CustomSchemaIds(type => type.FullName);
-
+			
 			c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 			{
 				In = ParameterLocation.Header,

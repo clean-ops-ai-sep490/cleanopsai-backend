@@ -8,10 +8,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 	{
 		public MappingProfile()
 		{
-			CreateMap<StepCreateDto, Step>().ForMember(
-				dest => dest.ConfigSchema, 
-				opt => opt.MapFrom(src => src.ConfigSchema.GetRawText()
-			));
+			//Step mapping
+			CreateMap<StepCreateDto, Step>()
+				.ForMember(
+					dest => dest.ConfigSchema, 
+					opt => opt.MapFrom(src => src.ConfigSchema.GetRawText()
+				));
 
 			CreateMap<StepUpdateDto, Step>()
 				.ForMember(
@@ -32,7 +34,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 					JsonSerializer.Deserialize<JsonElement>(src.ConfigSchema, (JsonSerializerOptions?)null)));
 
 
-
+			//Sop mapping
 			CreateMap<SopCreateDto, Sop>()
 				.ForMember(dest => dest.SopSteps, opt => opt.Ignore());
 
@@ -47,6 +49,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 				.ForMember(dest => dest.SopSteps, opt => opt.Ignore())
 				.ForMember(dest => dest.Version, opt => opt.Ignore())
 				.ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
+
+			//Schedule mapping
+			CreateMap<TaskScheduleCreateDto, TaskSchedule>()
+				.ForMember(
+					dest => dest.RecurrenceConfig,
+					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
+				);
 		}
 	}
 }
