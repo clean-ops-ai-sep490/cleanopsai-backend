@@ -1,4 +1,6 @@
 ﻿using CleanOpsAi.Api.Middlewares;
+using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Infrastructure;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
@@ -58,6 +60,9 @@ public static class DependencyInjection
 			.AllowCredentials();
 			});
 		}); 
+
+		builder.Services.AddHttpContextAccessor();
+		builder.Services.AddScoped<IUserContext, UserContext>();
 
 		builder.Services.AddScoped<GlobalExceptionMiddleware>();
 		builder.Services.AddScoped<PerformanceMiddleware>();
