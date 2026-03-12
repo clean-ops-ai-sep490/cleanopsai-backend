@@ -4,6 +4,7 @@ using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CleanOpsAi.Api.Modules.ServicePlanning
 {
@@ -28,7 +29,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> GetById(Guid id)
 		{
-			var result = await _sopService.GetSopByIdAsync(id);
+			var result = await _sopService.GetByIdWithStepsAsync(id);
 
 			if (result == null)
 				return NotFound();

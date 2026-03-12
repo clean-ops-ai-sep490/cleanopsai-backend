@@ -13,7 +13,7 @@ builder.AddWebAPIServices();
 
 var app = builder.Build();
 
-app.UseMiddleware<GlobalExceptionMiddleware>(); 
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<PerformanceMiddleware>();
 
 // Configure the HTTP request pipeline.

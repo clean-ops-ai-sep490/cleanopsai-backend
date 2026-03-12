@@ -9,5 +9,7 @@
 		Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto);
 
 		Task<bool> DeleteSopAsync(Guid id);
+
+		Task<SopDto?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default);
 	}
 }

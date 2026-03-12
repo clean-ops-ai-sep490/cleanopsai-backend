@@ -45,6 +45,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 
 			CreateMap<SopUpdateDto, Sop>()
 				.ForMember(dest => dest.SopSteps, opt => opt.Ignore())
+				.ForMember(dest => dest.Version, opt => opt.Ignore())
 				.ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 		}
 	}

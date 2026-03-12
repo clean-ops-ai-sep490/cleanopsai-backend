@@ -11,10 +11,22 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		{
 		}
 
-		public async Task<Sop?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default)
-		=> await _context.Sops
-			.Include(s => s.SopSteps)
-			.FirstOrDefaultAsync(s => s.Id == id && s.IsDeleted == false, cancellationToken);
+		public async Task<Sop?> GetByIdWithStepsAsync(
+			Guid id,
+			bool includeDeleted = false,
+			CancellationToken cancellationToken = default)
+		{
+			var query = _context.Sops.AsQueryable();
+
+			if (includeDeleted)
+			{ 
+				query = query.IgnoreQueryFilters();
+			}
+
+			return await query
+				.Include(s => s.SopSteps)  
+				.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+		}
 
 	}
 }

@@ -86,7 +86,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto)
 		{
-			var sop = await _sopRepository.GetByIdWithStepsAsync(id);
+			var sop = await _sopRepository.GetByIdWithStepsAsync(id, true);
 			if (sop == null) return null;
 
 			if (dto.Steps != null)
@@ -95,6 +95,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					throw new ValidationException("SOP must have at least one step");
 
 				var orders = dto.Steps.Select(s => s.StepOrder).ToList();
+
 				if (orders.Distinct().Count() != orders.Count)
 					throw new ValidationException("StepOrder must be unique");
 
@@ -111,21 +112,23 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				}
 
 				var stepDict = steps.ToDictionary(x => x.Id);
+
 				foreach (var sopStep in dto.Steps)
 				{
 					var step = stepDict[sopStep.StepId];
 					ValidateConfigDetail(sopStep.ConfigDetail, step.ConfigSchema, step.Name);
 				}
-
-				MergeSopSteps(sop, dto.Steps); // thay Replace bằng Merge
 			}
 
-			_mapper.Map(dto, sop);
-			sop.Version += 1;
+			_mapper.Map(dto, sop); // map field thường
+
+			if (dto.Steps != null)
+				MergeSopSteps(sop, dto.Steps);
+
+			sop.Version++;
 			sop.LastModified = DateTime.UtcNow;
 			sop.LastModifiedBy = "admin-123";
 
-			await _sopRepository.UpdateAsync(sop.Id,sop);
 			await _sopRepository.SaveChangesAsync();
 
 			var updated = await _sopRepository.GetByIdWithStepsAsync(sop.Id);
@@ -137,7 +140,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id);
 			if (sop == null) return false;
 
+			var now = DateTime.UtcNow;
+
 			sop.IsDeleted = true;
+			sop.LastModified = now;
+			sop.LastModifiedBy = "admin-123";
+
+			// Cascade soft delete SopSteps
+			foreach (var step in sop.SopSteps)
+			{
+				step.IsDeleted = true;
+				step.LastModified = now;
+				step.LastModifiedBy = "admin-123";
+			}
+
 			await _sopRepository.SaveChangesAsync();
 			return true;
 		}
@@ -145,12 +161,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps)
 		{
 			var now = DateTime.UtcNow;
-			var existingSteps = sop.SopSteps.Where(s => !s.IsDeleted).ToList();
+			var allSteps = sop.SopSteps.ToList(); 
+			var activeSteps = allSteps.Where(s => !s.IsDeleted).ToList();
 			var newStepIds = newSteps.Select(s => s.StepId).ToHashSet();
-			var existingStepIds = existingSteps.Select(s => s.StepId).ToHashSet();
+			var activeStepIds = activeSteps.Select(s => s.StepId).ToHashSet();
 
 			// 1. Soft delete step không còn trong danh sách mới
-			foreach (var step in existingSteps.Where(s => !newStepIds.Contains(s.StepId)))
+			foreach (var step in activeSteps.Where(s => !newStepIds.Contains(s.StepId)))
 			{
 				step.IsDeleted = true;
 				step.LastModified = now;
@@ -158,7 +175,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			}
 
 			// 2. Update step còn tồn tại
-			foreach (var existing in existingSteps.Where(s => newStepIds.Contains(s.StepId)))
+			foreach (var existing in activeSteps.Where(s => newStepIds.Contains(s.StepId)))
 			{
 				var newStep = newSteps.First(s => s.StepId == existing.StepId);
 				existing.StepOrder = newStep.StepOrder;
@@ -167,18 +184,32 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				existing.LastModifiedBy = "admin-123";
 			}
 			 
-			foreach (var newStep in newSteps.Where(s => !existingStepIds.Contains(s.StepId)))
+			foreach (var newStep in newSteps.Where(s => !activeStepIds.Contains(s.StepId)))
 			{
-				sop.SopSteps.Add(new SopStep
+				var deletedStep = allSteps
+					.FirstOrDefault(s => s.StepId == newStep.StepId && s.IsDeleted);
+
+				if (deletedStep != null)
 				{
-					Id = Uuid7.NewGuid(),
-					SopId = sop.Id,
-					StepId = newStep.StepId,
-					StepOrder = newStep.StepOrder,
-					ConfigDetail = newStep.ConfigDetail.GetRawText(),
-					CreatedBy = "admin-123",
-					Created = now
-				});
+					// Restore với configDetail mới
+					deletedStep.IsDeleted = false;
+					deletedStep.StepOrder = newStep.StepOrder;
+					deletedStep.ConfigDetail = newStep.ConfigDetail.GetRawText();
+					deletedStep.LastModified = now;
+					deletedStep.LastModifiedBy = "admin-123";
+				}
+				else
+				{
+					sop.SopSteps.Add(new SopStep
+					{ 
+						SopId = sop.Id,
+						StepId = newStep.StepId,
+						StepOrder = newStep.StepOrder,
+						ConfigDetail = newStep.ConfigDetail.GetRawText(),
+						CreatedBy = "admin-123",
+						Created = now
+					});
+				}
 			}
 		}
 
@@ -199,6 +230,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			{
 				throw new ValidationException($"ConfigDetail for step '{stepName}' is not valid JSON: {ex.Message}");
 			}
+		}
+
+		public async Task<SopDto?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default)
+		{
+			var sop = await _sopRepository.GetByIdWithStepsAsync(id,cancellationToken: cancellationToken);
+			return _mapper.Map<SopDto>(sop);
 		}
 	}
 }

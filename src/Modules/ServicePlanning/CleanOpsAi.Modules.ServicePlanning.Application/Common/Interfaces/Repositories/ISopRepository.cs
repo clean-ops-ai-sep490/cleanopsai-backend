@@ -4,6 +4,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 {
 	public interface ISopRepository : IBaseRepo<Sop, Guid>
 	{
-		Task<Sop?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default);
+		Task<Sop?> GetByIdWithStepsAsync(
+			Guid id,
+			bool includeDeleted = false,
+			CancellationToken cancellationToken = default);
+
+
 	}
 }
