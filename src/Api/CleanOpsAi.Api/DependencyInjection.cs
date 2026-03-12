@@ -45,6 +45,19 @@ public static class DependencyInjection
 			c.EnableAnnotations();
 		});
 
+		builder.Services.AddCors(options =>
+		{
+			options.AddPolicy("AllowFrontend", policy =>
+		{
+			policy.WithOrigins(
+				"http://localhost:3000",
+				"https://localhost:3000")
+			.AllowAnyHeader()
+			.AllowAnyMethod()
+			.AllowCredentials();
+			});
+		}); 
+
 		builder.Services.AddScoped<GlobalExceptionMiddleware>();
 		builder.Services.AddScoped<PerformanceMiddleware>();
 	}
