@@ -1,0 +1,24 @@
+﻿using CleanOpsAi.Modules.ClientManagement.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.Slas
+{
+    public class SlaCreateRequest
+    {
+        public string Name { get; set; } = null!;
+
+        public string? Description { get; set; }
+
+        public EnvironmentType EnvironmentType { get; set; }
+
+        public ServiceType ServiceType { get; set; }
+
+        public Guid WorkAreaId { get; set; }
+
+        public Guid ContractId { get; set; }
+    }
+}
