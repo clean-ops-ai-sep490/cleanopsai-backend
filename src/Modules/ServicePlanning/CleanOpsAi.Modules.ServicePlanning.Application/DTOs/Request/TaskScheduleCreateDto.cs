@@ -1,0 +1,24 @@
+﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Enums;
+using System.Text.Json;
+
+namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
+{
+	public class TaskScheduleCreateDto
+	{
+		public Guid SopId { get; set; }
+
+		public Guid SlaTaskId { get; set; }
+
+		public Guid SlaShiftId { get; set; }
+
+		public Guid? WorkAreaDetailId { get; set; }
+
+		public string Name { get; set; } = null!;
+
+		public string Description { get; set; } = null!;
+
+		public RecurrenceType RecurrenceType { get; set; }
+
+		public JsonElement RecurrenceConfig { get; set; } 
+	}
+}

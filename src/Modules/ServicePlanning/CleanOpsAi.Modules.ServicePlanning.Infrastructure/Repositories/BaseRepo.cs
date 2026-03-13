@@ -39,9 +39,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 			return true;
 		}
 
-		public Task<T?> GetActiveByIdAsync(Guid id)
+		public async Task<T?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default)
 		{
-			throw new NotImplementedException();
+			var property = typeof(T).GetProperty("Id");
+			var isActiveProperty = typeof(T).GetProperty("IsDeleted");
+
+			if (property == null || isActiveProperty == null)
+				throw new InvalidOperationException("Entity must have Id and IsDeleted properties");
+
+			return await _context.Set<T>()
+				.AsNoTracking()
+				.FirstOrDefaultAsync(e =>
+					(Guid)property.GetValue(e)! == id &&
+					(bool)isActiveProperty.GetValue(e)!,
+					cancellationToken);
 		}
 
 		public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)

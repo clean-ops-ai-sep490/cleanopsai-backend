@@ -32,7 +32,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.HasMany(x => x.SopSteps)
 				.WithOne(x => x.Sop)
 				.HasForeignKey(x => x.SopId)
-				.OnDelete(DeleteBehavior.Cascade);
+				.OnDelete(DeleteBehavior.Cascade); 
 		}
 	}
 }
