@@ -34,10 +34,13 @@ public static class DependencyInjection
 
 		builder.Services.AddScoped<IStepRepository, StepRepository>();
 		builder.Services.AddScoped<ISopRepository, SopRepository>();
+		builder.Services.AddScoped<ITaskScheduleRepository, TaskScheduleRepository>();
+		builder.Services.AddScoped<ISopStepRepository, SopStepRepository>();
 
 
 		//Services
 		builder.Services.AddScoped<IStepService, StepService>();
 		builder.Services.AddScoped<ISopService, SopService>();
+		builder.Services.AddScoped<ITaskScheduleService, TaskScheduleService>();
 	}
 }

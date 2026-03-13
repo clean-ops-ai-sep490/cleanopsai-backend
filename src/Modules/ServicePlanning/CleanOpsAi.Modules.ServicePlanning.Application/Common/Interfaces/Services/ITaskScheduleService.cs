@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
+﻿namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
 {
-	internal interface ITaskScheduleService
+	public interface ITaskScheduleService
 	{
+		Task<TaskScheduleDto?> GetById(Guid id);
+
+		Task<TaskScheduleDto> Create(TaskScheduleCreateDto createDto);
+
+		Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto);
+
+		Task<bool> Delete(Guid id);
 	}
 }

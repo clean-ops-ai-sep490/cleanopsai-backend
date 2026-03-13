@@ -16,7 +16,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 		Task<T?> GetByIdAsync(Tkey id, CancellationToken cancellationToken = default); 
 		
 
-		Task<T?> GetActiveByIdAsync(Guid id);
+		Task<T?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
 		Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 	}

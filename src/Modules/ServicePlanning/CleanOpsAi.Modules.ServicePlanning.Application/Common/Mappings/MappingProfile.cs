@@ -56,6 +56,25 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 					dest => dest.RecurrenceConfig,
 					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
 				);
+			CreateMap<TaskScheduleUpdateDto, TaskSchedule>()
+				.ForMember(
+					dest => dest.RecurrenceConfig,
+					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
+				);
+
+			CreateMap<TaskSchedule, TaskScheduleDto>()
+				.ForMember(
+				dest => dest.RecurrenceConfig,
+					opt => opt.MapFrom(src =>
+						JsonSerializer.Deserialize<JsonElement>(src.RecurrenceConfig, (JsonSerializerOptions?)null))
+				)
+				.ForMember(
+					dest => dest.Metadata,
+					opt => opt.MapFrom(src =>
+						JsonSerializer.Deserialize<JsonElement>(src.Metadata, (JsonSerializerOptions?)null))
+				);
+
+
 		}
 	}
 }
