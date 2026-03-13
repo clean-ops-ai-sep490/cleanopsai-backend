@@ -21,8 +21,8 @@ public static class DependencyInjection
 		{
 			c.SwaggerDoc("v1", new OpenApiInfo { Title = "cleanopsai_api", Version = "v1" }); 
 			c.CustomSchemaIds(type => type.FullName);
-			
 			c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+
 			{
 				In = ParameterLocation.Header,
 				Description = "Please enter token",
