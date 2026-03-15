@@ -10,4 +10,13 @@
     <ProjectReference Include="..\CleanOpsAi.Modules.Workforce.Application\CleanOpsAi.Modules.Workforce.Application.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
+	</ItemGroup>
+
 </Project>

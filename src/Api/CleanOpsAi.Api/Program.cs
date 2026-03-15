@@ -1,7 +1,8 @@
 using CleanOpsAi.Api.Middlewares;
+using CleanOpsAi.BuildingBlocks.Infrastructure;
+using CleanOpsAi.Modules.Workforce.Application.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 builder.InfrastructureUserAccessModule();
 builder.InfrastructureWorkforceModule();

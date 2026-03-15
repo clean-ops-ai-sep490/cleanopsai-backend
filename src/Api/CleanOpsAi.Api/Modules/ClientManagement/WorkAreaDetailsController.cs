@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos.WorkareaDetails;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -8,6 +9,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Manager")]
     public class WorkAreaDetailsController : ControllerBase
     {
         private readonly IWorkAreaDetailService _service;
