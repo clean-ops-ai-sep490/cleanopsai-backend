@@ -17,6 +17,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.Property(x => x.Description) 
 				.HasMaxLength(1000);
 
+			builder.Property(x => x.AssigneeId);
+
+			builder.Property(t => t.Version);
+
 			builder.Property(x => x.Metadata)
 				.HasColumnType("jsonb");
 

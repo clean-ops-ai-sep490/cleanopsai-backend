@@ -28,7 +28,7 @@ public static class DependencyInjection
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
 
-		builder.Services.AddAutoMapper(typeof(MappingProfile));
+		builder.Services.AddAutoMapper( cfg => { }, typeof(MappingProfile));
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 

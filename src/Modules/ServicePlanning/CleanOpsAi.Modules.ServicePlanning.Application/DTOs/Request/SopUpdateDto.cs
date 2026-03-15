@@ -12,9 +12,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 		public string? Name { get; set; }
 		public string? Description { get; set; }
 		public ServiceType? ServiceType { get; set; }
-		public EnvironmentType? EnvironmentType { get; set; }
-		public bool? IsRequiredSkill { get; set; }
-		public bool? IsRequiredCertification { get; set; }
+		public EnvironmentType? EnvironmentType { get; set; } 
 		public List<SopStepUpdateDto>? Steps { get; set; }
 	}
 }

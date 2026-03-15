@@ -19,6 +19,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 
 		public string Description { get; set; } = null!;
 
+		public Guid? AssigneeId { get; set; }
+
 		public JsonElement Metadata { get; set; }
 
 		public RecurrenceType RecurrenceType { get; set; }

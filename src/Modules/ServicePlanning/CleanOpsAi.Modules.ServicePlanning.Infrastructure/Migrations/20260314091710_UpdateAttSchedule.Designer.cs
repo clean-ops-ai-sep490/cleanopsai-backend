@@ -3,6 +3,7 @@ using System;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 {
     [DbContext(typeof(ServicePlanningDbContext))]
-    partial class ServicePlanningDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260314091710_UpdateAttSchedule")]
+    partial class UpdateAttSchedule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -50,6 +53,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<bool>("IsRequiredCertification")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required_certification");
+
+                    b.Property<bool>("IsRequiredSkill")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required_skill");
+
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified");
@@ -76,38 +87,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasName("pk_sops");
 
                     b.ToTable("sops", (string)null);
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredCertification", b =>
-                {
-                    b.Property<Guid>("SopId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sop_id");
-
-                    b.Property<Guid>("CertificationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("certification_id");
-
-                    b.HasKey("SopId", "CertificationId")
-                        .HasName("pk_sop_required_certifications");
-
-                    b.ToTable("sop_required_certifications", (string)null);
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredSkill", b =>
-                {
-                    b.Property<Guid>("SopId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sop_id");
-
-                    b.Property<Guid>("SkillId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("skill_id");
-
-                    b.HasKey("SopId", "SkillId")
-                        .HasName("pk_sop_required_skills");
-
-                    b.ToTable("sop_required_skills", (string)null);
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopStep", b =>
@@ -314,30 +293,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.ToTable("task_schedules", (string)null);
                 });
 
-            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredCertification", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", "Sop")
-                        .WithMany("SopRequiredCertifications")
-                        .HasForeignKey("SopId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_sop_required_certifications_sops_sop_id");
-
-                    b.Navigation("Sop");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredSkill", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", "Sop")
-                        .WithMany("SopRequiredSkills")
-                        .HasForeignKey("SopId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_sop_required_skills_sops_sop_id");
-
-                    b.Navigation("Sop");
-                });
-
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopStep", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", "Sop")
@@ -373,10 +328,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", b =>
                 {
-                    b.Navigation("SopRequiredCertifications");
-
-                    b.Navigation("SopRequiredSkills");
-
                     b.Navigation("SopSteps");
 
                     b.Navigation("TaskSchedules");

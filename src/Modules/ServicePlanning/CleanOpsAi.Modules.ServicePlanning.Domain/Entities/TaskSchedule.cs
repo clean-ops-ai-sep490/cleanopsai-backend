@@ -18,6 +18,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public string Description { get; set; } = null!;
 
+		public Guid? AssigneeId { get; set; }
+
+		public int Version { get; set; }
+
 		public string Metadata { get; set; } = null!;
 
 		public RecurrenceType RecurrenceType { get; set; }

@@ -33,6 +33,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			taskSchedule.Id = Guid.NewGuid();
 			taskSchedule.Created = DateTime.UtcNow;
 			taskSchedule.CreatedBy = "admin-123";
+			taskSchedule.Version = 1;
 
 			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
 			taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
@@ -47,6 +48,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var taskSchedule = await _taskScheduleRepository.GetById(id);
 			if (taskSchedule == null)
 				throw new KeyNotFoundException($"TaskSchedule with id {id} not found.");
+
+			taskSchedule.Version++;
 
 			_mapper.Map(dto, taskSchedule);
 			taskSchedule.LastModified = DateTime.UtcNow;

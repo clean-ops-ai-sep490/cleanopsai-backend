@@ -71,6 +71,28 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				Created = now
 			}).ToList();
 
+			if (dto.RequiredSkillIds?.Any() == true)
+			{
+				sop.SopRequiredSkills = dto.RequiredSkillIds
+					.Distinct()
+					.Select(x => new SopRequiredSkill
+					{
+						SopId = sop.Id,
+						SkillId = x
+					}).ToList();
+			}
+
+			if (dto.RequiredCertificationIds?.Any() == true)
+			{
+				sop.SopRequiredCertifications = dto.RequiredCertificationIds
+					.Distinct()
+					.Select(x => new SopRequiredCertification
+					{
+						SopId = sop.Id,
+						CertificationId = x
+					}).ToList();
+			}
+
 			await _sopRepository.InsertAsync(sop);
 			await _sopRepository.SaveChangesAsync();
 
@@ -211,7 +233,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					});
 				}
 			}
-		}
+		} 
 
 		private void ValidateConfigDetail(JsonElement configDetail, string configSchema, string stepName)
 		{

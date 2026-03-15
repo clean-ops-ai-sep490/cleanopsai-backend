@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
+﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
+using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -22,6 +23,8 @@ public static class DependencyInjection
 			options.EnableSensitiveDataLogging();
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
+
+		//builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
