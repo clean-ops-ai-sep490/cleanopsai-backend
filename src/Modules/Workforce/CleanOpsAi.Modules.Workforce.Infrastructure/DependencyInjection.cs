@@ -36,12 +36,14 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ICertificationRepository, CertificationRepository>();
 		builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 		builder.Services.AddScoped<ISkillRepository, SkillRepository>();
+		builder.Services.AddScoped<IWorkerCertificationRepository, WorkerCertificationRepository>();
 
         // Services
         builder.Services.AddScoped<IWorkerService, WorkerService>();
 		builder.Services.AddScoped<ICertificationService, CertificationService>();
 		builder.Services.AddScoped<IEquipmentService, EquipmentService>();
 		builder.Services.AddScoped<ISkillService, SkillService>();
+		builder.Services.AddScoped<IWorkerCertificationService, WorkerCertificationService>();
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
