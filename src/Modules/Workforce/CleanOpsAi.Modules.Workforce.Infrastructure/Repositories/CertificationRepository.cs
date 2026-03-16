@@ -1,0 +1,86 @@
+﻿using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Domain.Entities;
+using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
+{
+    public class CertificationRepository : ICertificationRepository
+    {
+        private readonly WorkforceDbContext _dbContext;
+
+        public CertificationRepository(WorkforceDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
+        public async Task<Certification> GetByIdAsync(Guid id)
+        {
+            var certification = await _dbContext.Set<Certification>()
+                .Include(c => c.WorkerCertifications)
+                .FirstOrDefaultAsync(x => x.Id == id && x.IsDeleted == false);
+
+            return certification;
+        }
+
+        public async Task<List<Certification>> GetAllAsync()
+        {
+            var certifications = await _dbContext.Set<Certification>()
+                .Include(c => c.WorkerCertifications)
+                .Where(x => x.IsDeleted == false)
+                .OrderByDescending(x => x.Id)
+                .ToListAsync();
+
+            return certifications;
+        }
+
+        public async Task<(List<Certification> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Set<Certification>()
+                .Include(c => c.WorkerCertifications)
+                .Where(x => x.IsDeleted == false)
+                .OrderByDescending(x => x.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+        public async Task<int> CreateAsync(Certification certification)
+        {
+            _dbContext.Set<Certification>().Add(certification);
+            return await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<int> UpdateAsync(Certification certification)
+        {
+            _dbContext.Set<Certification>().Update(certification);
+            return await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<int> DeleteAsync(Guid id)
+        {
+            var certification = await _dbContext.Set<Certification>()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (certification != null)
+            {
+                certification.IsDeleted = true;
+                _dbContext.Set<Certification>().Update(certification);
+                return await _dbContext.SaveChangesAsync();
+            }
+
+            return 0;
+        }
+    }
+}
