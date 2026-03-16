@@ -38,7 +38,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 			CreateMap<SopCreateDto, Sop>()
 				.ForMember(dest => dest.SopSteps, opt => opt.Ignore());
 
-			CreateMap<Sop, SopDto>();
+			CreateMap<Sop, SopDto>()
+				.ForMember(dest => dest.RequiredSkillIds,
+					opt => opt.MapFrom(src => src.SopRequiredSkills.Select(x => x.SkillId)))
+				.ForMember(dest => dest.RequiredCertificationIds,
+					opt => opt.MapFrom(src => src.SopRequiredCertifications.Select(x => x.CertificationId)));
 
 			CreateMap<SopStep, SopStepDto>()
 				.ForMember(dest => dest.ConfigDetail, opt => opt.MapFrom(src =>

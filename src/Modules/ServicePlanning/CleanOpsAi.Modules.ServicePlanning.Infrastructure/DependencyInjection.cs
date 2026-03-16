@@ -36,7 +36,8 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ISopRepository, SopRepository>();
 		builder.Services.AddScoped<ITaskScheduleRepository, TaskScheduleRepository>();
 		builder.Services.AddScoped<ISopStepRepository, SopStepRepository>();
-
+		builder.Services.AddScoped<ISopRequiredSkillRepository, SopRequiredSkillRepository>();
+		builder.Services.AddScoped<ISopRequiredCertificationRepository, SopRequiredCertificationRepository>();
 
 		//Services
 		builder.Services.AddScoped<IStepService, StepService>();

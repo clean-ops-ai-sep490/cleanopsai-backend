@@ -10,6 +10,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data
 		public DbSet<Sop> Sops { get; set; }
 		public DbSet<SopStep> SopSteps { get; set; }
 		public DbSet<TaskSchedule> TaskSchedules { get; set; }
+		public DbSet<SopRequiredSkill> SopRequiredSkills { get; set; }
+		public DbSet<SopRequiredCertification> SopRequiredCertifications { get; set; }
 
 		public ServicePlanningDbContext()
 		{

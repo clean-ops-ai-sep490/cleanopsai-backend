@@ -24,8 +24,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 			}
 
 			return await query
-				.Include(s => s.SopSteps)  
-				.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+				.Where(x => x.Id == id)
+				.Include(x => x.SopSteps)
+				.Include(x => x.SopRequiredSkills)
+				.Include(x => x.SopRequiredCertifications)
+				.FirstOrDefaultAsync(cancellationToken);
 		}
 
 	}
