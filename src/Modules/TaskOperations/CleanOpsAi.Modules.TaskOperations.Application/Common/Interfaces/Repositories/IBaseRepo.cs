@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces
+namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories
 {
 	public interface IBaseRepo<T, Tkey> where T : class
 	{

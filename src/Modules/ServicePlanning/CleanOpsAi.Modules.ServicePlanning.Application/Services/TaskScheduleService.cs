@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using System.Text.Json;
 
@@ -69,6 +70,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			await _taskScheduleRepository.SaveChangesAsync();
 			return true;
 		}
-		 
+
+		public async Task<IReadOnlyList<ActiveTaskScheduleDto>> GetActiveSchedulesAsync()
+		{
+			var schedules = await _taskScheduleRepository.GetActiveSchedulesAsync();
+
+			return _mapper.Map<IReadOnlyList<ActiveTaskScheduleDto>>(schedules); 
+		}
 	}
 }

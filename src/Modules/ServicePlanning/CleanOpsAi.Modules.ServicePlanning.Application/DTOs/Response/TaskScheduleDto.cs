@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Enums;
+﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response

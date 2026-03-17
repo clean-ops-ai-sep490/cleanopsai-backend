@@ -11,6 +11,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<IReadOnlyList<TaskSchedule>> GetActiveSchedulesAsync()
+		{
+			return await _context.TaskSchedules
+			.Where(x => x.IsActive && !x.IsDeleted) 
+			.ToListAsync();
+		}
+
 		public async Task<TaskSchedule?> GetById(Guid id, CancellationToken cancellationToken = default)
 		{
 			return await _context.TaskSchedules.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);

@@ -1,6 +1,10 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
+﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
 using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -23,11 +27,15 @@ public static class DependencyInjection
 			options.EnableSensitiveDataLogging();
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
+		 
+		builder.Services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
 
-		//builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
-		//test
+
+		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
+
+		builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
 	}
 }

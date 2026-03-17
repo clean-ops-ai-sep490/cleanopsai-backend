@@ -1,7 +1,7 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces;
+﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking; 
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 {

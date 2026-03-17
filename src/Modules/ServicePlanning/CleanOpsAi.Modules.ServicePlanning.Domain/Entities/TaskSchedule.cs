@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Domain;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
@@ -28,6 +29,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		//json
 		public string RecurrenceConfig { get; set; } = null!;
+
+		public DateOnly ContractStartDate { get; set; }
+		public DateOnly? ContractEndDate { get; set; }
+
+		public bool IsActive { get; set; } = true;
 
 		public virtual Sop Sop { get; set; } = null!;
 	}

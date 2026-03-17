@@ -1,4 +1,6 @@
-﻿using AutoMapper; 
+﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Common.Utils;
+using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using System.Text.Json;
 
@@ -77,6 +79,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 					opt => opt.MapFrom(src =>
 						JsonSerializer.Deserialize<JsonElement>(src.Metadata, (JsonSerializerOptions?)null))
 				);
+
+			CreateMap<TaskSchedule, ActiveTaskScheduleDto>()
+				.ForMember(
+					dest => dest.RecurrenceConfig,
+					opt => opt.MapFrom(src => JsonHelper.ToJsonElement(src.RecurrenceConfig))
+				);
+	 
 
 
 		}

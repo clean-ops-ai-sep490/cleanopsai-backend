@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Enums;
+﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
@@ -22,5 +22,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 		public RecurrenceType RecurrenceType { get; set; }
 
 		public JsonElement RecurrenceConfig { get; set; }
+
+		public DateOnly ContractStartDate { get; set; }
+		public DateOnly? ContractEndDate { get; set; }
 	}
 }
