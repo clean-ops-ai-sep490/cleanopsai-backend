@@ -1,7 +1,8 @@
 ﻿using CleanOpsAi.Api.Middlewares;
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
-using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
@@ -48,6 +49,11 @@ public static class DependencyInjection
 
 			c.EnableAnnotations();
 		});
+
+		builder.Services.AddMessageBroker(
+			builder.Configuration,
+			typeof(GenerateTaskAssignmentsConsumer).Assembly
+		);
 
 		builder.Services.AddCors(options =>
 		{

@@ -35,8 +35,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs
 
 				await bus.Publish(new GenerateTaskAssignmentsRequestedEvent(
 					ScheduleId: schedule.Id,
-					FromDate: fromDate,
-					ToDate: toDate,
+					FromDate: effectiveFrom,
+					ToDate: effectiveTo,
 					AssigneeId: schedule.AssigneeId,
 					RecurrenceConfig: config,
 					RecurrenceType: schedule.RecurrenceType,
@@ -45,10 +45,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs
 			}
 		}
 
-		private static DateOnly Max(DateOnly a, DateOnly b)
-	=> a > b ? a : b;
+		private static DateOnly Max(DateOnly a, DateOnly b) => a > b ? a : b;
 
-		private static DateOnly Min(DateOnly a, DateOnly b)
-			=> a < b ? a : b;
+		private static DateOnly Min(DateOnly a, DateOnly b) => a < b ? a : b;
 	}
 }

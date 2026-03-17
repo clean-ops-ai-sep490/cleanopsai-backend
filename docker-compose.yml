@@ -5,7 +5,12 @@ services:
     image: rabbitmq:management
     ports:
       - "5672:5672"   
-      - "15672:15672"  
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=123456
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   cleanopsai-api:
     container_name: cleanopsai-api
@@ -17,5 +22,8 @@ services:
       - "5001:8081"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+
+volumes:
+  rabbitmq_data:
 
     

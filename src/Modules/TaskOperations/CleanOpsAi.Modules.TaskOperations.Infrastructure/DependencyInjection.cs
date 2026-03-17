@@ -5,9 +5,10 @@ using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore; 
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging; 
+
 
 namespace Microsoft.Extensions.DependencyInjection;
 public static class DependencyInjection
@@ -27,12 +28,11 @@ public static class DependencyInjection
 			options.EnableSensitiveDataLogging();
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
-		 
-		builder.Services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
+
+		builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
 
 
-		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
-
+		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));  
 
 		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
 

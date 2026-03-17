@@ -16,6 +16,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 		public async Task Consume(
 			ConsumeContext<GenerateTaskAssignmentsRequestedEvent> context)
 		{
+			Console.WriteLine("CONSUMER START");
 			var msg = context.Message;
 
 			var scheduledTimes = expander.Expand(
@@ -23,13 +24,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 				msg.RecurrenceConfig,
 				msg.FromDate,
 				msg.ToDate);
-
+			Console.WriteLine($"Generated {scheduledTimes.Count()} times");
 			var toInsert = new List<TaskAssignment>();
 
 			foreach (var scheduledAt in scheduledTimes)
-			{ 
+			{
 				if (await repo.ExistsAsync(msg.ScheduleId, scheduledAt))
+				{
+					Console.WriteLine($"Skip existed: {scheduledAt}");
 					continue;
+				}
 
 				toInsert.Add(new TaskAssignment
 				{
@@ -42,7 +46,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 					IsAdhocTask = false,
 				});
 			}
-
+			Console.WriteLine($"Total insert: {toInsert.Count}");
 			if (toInsert.Count > 0)
 				await repo.BulkInsertAsync(toInsert);
 		}

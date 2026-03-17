@@ -20,7 +20,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 
 		public async Task<TaskSchedule?> GetById(Guid id, CancellationToken cancellationToken = default)
 		{
-			return await _context.TaskSchedules.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+			return await _context.TaskSchedules.FirstOrDefaultAsync(s => s.Id == id && s.IsActive && !s.IsDeleted, cancellationToken);
 		}
 	}
 }

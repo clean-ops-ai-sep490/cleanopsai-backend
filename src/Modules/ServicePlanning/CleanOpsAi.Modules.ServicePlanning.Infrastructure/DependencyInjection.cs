@@ -30,15 +30,20 @@ public static class DependencyInjection
 				   .EnableDetailedErrors();
 			options.EnableSensitiveDataLogging();
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
-		});
+		}); 
 
-		builder.Services.AddAutoMapper( cfg => { }, typeof(MappingProfile));
+		builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
 		var jobOptions = builder.Configuration
-		.GetSection(JobOptionsConfig.SectionName)
-		.Get<JobOptionsConfig>() ?? new();
+							.GetSection(JobOptionsConfig.SectionName)
+							.Get<JobOptionsConfig>();
+
+		if (jobOptions == null)
+		{
+			throw new Exception("Job config missing!");
+		}
 
 		builder.Services.Configure<JobOptionsConfig>(
 		builder.Configuration.GetSection(JobOptionsConfig.SectionName));
@@ -53,7 +58,9 @@ public static class DependencyInjection
 				q.AddTrigger(t => t
 					.ForJob("weekly-task-gen", "service-planning")
 					.WithIdentity("weekly-task-gen-trigger")
-					.WithCronSchedule(jobOptions.CronExpression));
+					.WithCronSchedule(jobOptions.CronExpression,
+						x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"))
+				));
 			});
 			builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 		}

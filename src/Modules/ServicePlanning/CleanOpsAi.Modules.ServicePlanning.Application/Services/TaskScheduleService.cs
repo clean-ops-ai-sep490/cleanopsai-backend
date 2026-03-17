@@ -24,7 +24,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 		public async Task<TaskScheduleDto?> GetById(Guid id)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetActiveByIdAsync(id);
+			var taskSchedule = await _taskScheduleRepository.GetById(id);
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
