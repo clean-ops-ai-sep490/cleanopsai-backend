@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Api.Middlewares;
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using Microsoft.OpenApi.Models;
