@@ -14,6 +14,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class WorkerGpsService : IWorkerGpsService
     {
         private readonly IWorkerGpsRepository _repository;
+        private readonly IWorkerRepository _workerRepository;
 
         public WorkerGpsService(IWorkerGpsRepository repository)
         {
@@ -27,45 +28,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             if (entity == null)
                 return null;
 
-            return new WorkerGpsResponse
-            {
-                Id = entity.Id,
-                WorkerId = entity.WorkerId,
-                WorkerName = entity.Worker.FullName,
-                Latitude = entity.Latitude,
-                Longitude = entity.Longitude,
-                Created = entity.Created
-            };
+            return MapToResponse(entity);
         }
 
         public async Task<List<WorkerGpsResponse>> GetAllAsync()
         {
             var items = await _repository.GetAllAsync();
-
-            return items.Select(x => new WorkerGpsResponse
-            {
-                Id = x.Id,
-                WorkerId = x.WorkerId,
-                WorkerName = x.Worker.FullName,
-                Latitude = x.Latitude,
-                Longitude = x.Longitude,
-                Created = x.Created
-            }).ToList();
+            return items.Select(MapToResponse).ToList();
         }
 
         public async Task<PagedResponse<WorkerGpsResponse>> GetAllPaginationAsync(int pageNumber, int pageSize)
         {
             var (items, totalCount) = await _repository.GetAllPaginationAsync(pageNumber, pageSize);
 
-            var responses = items.Select(x => new WorkerGpsResponse
-            {
-                Id = x.Id,
-                WorkerId = x.WorkerId,
-                WorkerName = x.Worker.FullName,
-                Latitude = x.Latitude,
-                Longitude = x.Longitude,
-                Created = x.Created
-            }).ToList();
+            var responses = items.Select(MapToResponse).ToList();
 
             return new PagedResponse<WorkerGpsResponse>
             {
@@ -79,6 +55,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
         public async Task<WorkerGpsResponse?> CreateAsync(WorkerGpsCreateRequest request)
         {
+            //  Validate worker tồn tại
+            var worker = await _workerRepository.GetByIdAsync(request.WorkerId);
+
+            if (worker == null)
+                throw new Exception("Worker không tồn tại");
+
             var entity = new WorkerGps
             {
                 Id = Uuid7.NewGuid(),
@@ -91,15 +73,10 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             await _repository.CreateAsync(entity);
 
-            return new WorkerGpsResponse
-            {
-                Id = entity.Id,
-                WorkerId = entity.WorkerId,
-                WorkerName = entity.Worker.FullName,
-                Latitude = entity.Latitude,
-                Longitude = entity.Longitude,
-                Created = entity.Created
-            };
+            //  Query lại để có navigation property
+            var created = await _repository.GetByIdAsync(entity.Id);
+
+            return MapToResponse(created!);
         }
 
         public async Task<WorkerGpsResponse?> UpdateAsync(Guid id, WorkerGpsUpdateRequest request)
@@ -115,20 +92,26 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             await _repository.UpdateAsync(entity);
 
-            return new WorkerGpsResponse
-            {
-                Id = entity.Id,
-                WorkerId = entity.WorkerId,
-                WorkerName = entity.Worker.FullName,
-                Latitude = entity.Latitude,
-                Longitude = entity.Longitude,
-                Created = entity.Created
-            };
+            return MapToResponse(entity);
         }
 
         public async Task<int> DeleteAsync(Guid id)
         {
             return await _repository.DeleteAsync(id);
+        }
+
+        //  Map riêng để tránh lặp code + tránh null crash
+        private static WorkerGpsResponse MapToResponse(WorkerGps entity)
+        {
+            return new WorkerGpsResponse
+            {
+                Id = entity.Id,
+                WorkerId = entity.WorkerId,
+                WorkerName = entity.Worker?.FullName, //  tránh null
+                Latitude = entity.Latitude,
+                Longitude = entity.Longitude,
+                Created = entity.Created
+            };
         }
     }
 }

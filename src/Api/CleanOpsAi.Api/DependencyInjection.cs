@@ -1,7 +1,10 @@
 ﻿using CleanOpsAi.Api.Middlewares;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using Microsoft.OpenApi.Models;
@@ -24,6 +27,13 @@ public static class DependencyInjection
             builder.Configuration,
             typeof(UserRegisteredConsumer).Assembly
         );
+
+        // đăng ký FrontendSettings và EmailSettings từ appsettings.json
+        builder.Services.Configure<FrontendSettings>(
+		builder.Configuration.GetSection("Frontend"));
+        builder.Services.Configure<EmailSettings>(
+        builder.Configuration.GetSection("EmailSettings"));
+		builder.Services.AddScoped<IEmailService, EmailService>();
 
         builder.Services.AddSwaggerGen(c =>
 		{
