@@ -99,5 +99,27 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 			var role = User.FindFirst("role")?.Value;
 			return Ok(new { userId, email, fullName, role });
 		}
-	}
+
+        [HttpPost("forgot-password")]
+        [SwaggerOperation(
+			Summary = "Forgot password",
+			Description = "Send reset password email",
+			Tags = new[] { "Auth" })]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest forgotPasswordRequest)
+        {
+            await _authService.ForgotPassword(forgotPasswordRequest.Email);
+            return Ok("Đã gửi email reset");
+        }
+
+        [HttpPost("reset-password")]
+        [SwaggerOperation(
+			Summary = "Reset password",
+			Description = "Reset password using token",
+			Tags = new[] { "Auth" })]
+        public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+        {
+            await _authService.ResetPassword(request.Email, request.Token, request.NewPassword);
+            return Ok("Reset password thành công");
+        }
+    }
 }

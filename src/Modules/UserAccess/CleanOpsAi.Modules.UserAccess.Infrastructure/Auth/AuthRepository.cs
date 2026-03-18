@@ -1,4 +1,7 @@
-﻿using CleanOpsAi.Modules.UserAccess.Application.Contracts;
+﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
+using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
 using CleanOpsAi.Modules.UserAccess.Domain;
@@ -6,8 +9,10 @@ using CleanOpsAi.Modules.UserAccess.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -19,16 +24,19 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly UserAccessDbContext _dbContext;
 		private readonly IConfiguration _configuration;
+        
 
-		public AuthRepository(
+        public AuthRepository(
 			UserManager<ApplicationUser> userManager,
 			UserAccessDbContext dbContext,
-			IConfiguration configuration)
+			IConfiguration configuration
+            )
 		{
 			_userManager = userManager;
 			_dbContext = dbContext;
 			_configuration = configuration;
-		}
+            
+        }
 
 		public async Task<RegisterUserResult> Register(string email, string password, string fullName, UserRole role)
 		{
@@ -163,5 +171,6 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 
 			return token;
 		}
-	}
+
+    }
 }

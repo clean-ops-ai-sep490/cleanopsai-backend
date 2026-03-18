@@ -9,5 +9,7 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Contracts
 		Task<RegisterUserResult> Register(string email, string password, string fullName, UserRole role);
         Task<AuthTokenResult> Login(string email, string password);
 		Task<AuthTokenResult> RefreshToken(string refreshToken);
-	}
+		Task ForgotPassword(string email);
+		Task ResetPassword(string email, string token, string newPassword);
+    }
 }
