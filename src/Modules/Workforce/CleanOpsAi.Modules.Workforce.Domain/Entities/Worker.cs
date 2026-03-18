@@ -7,7 +7,9 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 	{
 		public string UserId { get; set; } = null!;
 
-		public string? DisplayAddress { get; set; }
+		public string FullName { get; set; } = null!;
+
+        public string? DisplayAddress { get; set; }
 
 		public double? Latitude { get; set; }
 

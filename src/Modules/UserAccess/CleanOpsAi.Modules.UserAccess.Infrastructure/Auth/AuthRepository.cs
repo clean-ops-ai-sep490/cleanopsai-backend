@@ -30,14 +30,14 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			_configuration = configuration;
 		}
 
-		public async Task<RegisterUserResult> Register(string email, string password, string fullName)
+		public async Task<RegisterUserResult> Register(string email, string password, string fullName, UserRole role)
 		{
 			var user = new ApplicationUser
 			{
 				UserName = email,
 				Email = email,
 				FullName = fullName,
-				Role = UserRole.Worker
+				Role = role
 			};
 
 			var result = await _userManager.CreateAsync(user, password);

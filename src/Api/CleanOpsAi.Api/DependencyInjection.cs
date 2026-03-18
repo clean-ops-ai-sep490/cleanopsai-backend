@@ -2,6 +2,7 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
@@ -16,8 +17,14 @@ public static class DependencyInjection
 		});
 		
 		builder.Services.AddEndpointsApiExplorer();
-		
-		builder.Services.AddSwaggerGen(c =>
+
+        // đăng ký RabbitMQ + Consumers
+        builder.Services.AddMessageBroker(
+            builder.Configuration,
+            typeof(UserRegisteredConsumer).Assembly
+        );
+
+        builder.Services.AddSwaggerGen(c =>
 		{
 			c.SwaggerDoc("v1", new OpenApiInfo { Title = "cleanopsai_api", Version = "v1" }); 
 			c.CustomSchemaIds(type => type.FullName);
@@ -60,9 +67,10 @@ public static class DependencyInjection
 			.AllowAnyMethod()
 			.AllowCredentials();
 			});
-		}); 
+		});
 
-		builder.Services.AddHttpContextAccessor();
+
+        builder.Services.AddHttpContextAccessor();
 		builder.Services.AddScoped<IUserContext, UserContext>();
 
 		builder.Services.AddScoped<GlobalExceptionMiddleware>();

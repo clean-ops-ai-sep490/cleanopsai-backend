@@ -1,5 +1,11 @@
 ﻿using CleanOpsAi.Modules.Workforce.Application.Configurations;
+using CleanOpsAi.Modules.Workforce.Application.Consumers;
+using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
+using CleanOpsAi.Modules.Workforce.Infrastructure.Repositories;
+using CleanOpsAi.Modules.Workforce.Infrastructure.Services;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,5 +31,15 @@ public static class DependencyInjection
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
-	}
+        // Repositories
+        builder.Services.AddScoped<IWorkerRepository, WorkerRepository>();
+
+        // Services
+        builder.Services.AddScoped<IWorkerService, WorkerService>();
+
+        // Dependency Injection for Azure Blob Storage Service
+        builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
+    }
+
+
 }

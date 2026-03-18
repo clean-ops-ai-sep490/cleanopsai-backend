@@ -32,7 +32,7 @@ namespace CleanOpsAi.Api.Modules.UserAccess
 		{
 			try
 			{
-				var result = await _authService.Register(request.Email, request.Password, request.FullName);
+				var result = await _authService.Register(request.Email, request.Password, request.FullName, request.Role);
 				return Ok(result);
 			}
 			catch (InvalidOperationException ex)

@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Locations;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -9,6 +10,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Manager")]
     public class LocationsController : ControllerBase
     {
         private readonly ILocationService _locationService;

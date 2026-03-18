@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using CleanOpsAi.Modules.UserAccess.Domain;
+using System.ComponentModel.DataAnnotations;
 
 namespace CleanOpsAi.Api.Modules.UserAccess.Dtos
 {
@@ -14,5 +15,8 @@ namespace CleanOpsAi.Api.Modules.UserAccess.Dtos
 
 		[Required]
 		public string FullName { get; set; } = string.Empty;
-	}
+
+		[Required]
+        public UserRole Role { get; set; }
+    }
 }
