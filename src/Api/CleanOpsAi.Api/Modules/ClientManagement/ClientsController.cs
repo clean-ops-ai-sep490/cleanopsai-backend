@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Api.Modules.UserAccess.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -9,6 +10,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Manager")]
     public class ClientsController : ControllerBase
     {
         private readonly IClientService _clientService;
