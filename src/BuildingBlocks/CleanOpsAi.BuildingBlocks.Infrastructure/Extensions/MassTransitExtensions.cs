@@ -13,7 +13,9 @@ namespace CleanOpsAi.BuildingBlocks.Infrastructure.Extensions
 			params Assembly[] consumerAssemblies) 
 		{
 			services.AddMassTransit(x =>
-			{ 
+			{
+				x.SetKebabCaseEndpointNameFormatter();
+
 				foreach (var assembly in consumerAssemblies)
 				{
 					x.AddConsumers(assembly);
@@ -27,6 +29,7 @@ namespace CleanOpsAi.BuildingBlocks.Infrastructure.Extensions
 						h.Password(configuration["MessageBroker:Password"]!);
 					});
 
+					cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
 					cfg.ConfigureEndpoints(ctx);
 				});
 			});

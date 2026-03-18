@@ -1,11 +1,6 @@
 ﻿using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Metadata.Builders; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 {
@@ -17,6 +12,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 
 			builder.Property(x => x.Status)
 				.IsRequired();
+
+			builder.HasIndex(x => new { x.TaskScheduleId, x.ScheduledStartAt })
+				.IsUnique()
+				.HasFilter("is_deleted = false");
 
 			builder.Property(x => x.ScheduledStartAt)
 				.IsRequired();

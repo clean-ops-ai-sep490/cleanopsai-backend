@@ -89,5 +89,27 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			if (!deleted) return NotFound();
 			return NoContent();
 		}
+
+		[HttpPost("taskassignments/generate")]
+		[SwaggerOperation(
+			Summary = "Generate Task Assignments",
+			Description = "Generates task assignments for one or more task schedules within a specified date range. " +
+				  "This queues the generation process and returns immediately. The generated assignments will be created based on the recurrence configuration of each schedule.",
+			Tags = new[] { "TaskAssignment" })]
+		[ProducesResponseType(StatusCodes.Status202Accepted)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		public async Task<IActionResult> Generate([FromBody] GenerateTaskAssignmentsRequest request,
+		CancellationToken ct)
+		{
+			if (request.FromDate > request.ToDate)
+				return BadRequest("FromDate must lower than ToDate.");
+
+			if (request.TaskScheduleIds.Count == 0)
+				return BadRequest("Need a least 1 id");
+
+			await _taskScheduleService.GenerateTaskAssigmentsAsync(request, ct); 
+
+			return Accepted(new { message = "Đang xử lý." });
+		}
 	}
 }

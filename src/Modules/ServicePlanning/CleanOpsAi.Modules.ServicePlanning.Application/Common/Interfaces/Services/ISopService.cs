@@ -6,7 +6,7 @@
 
 		Task<SopDto> CreateSopAsync(SopCreateDto dto);
 
-		Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto);
+		Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default);
 
 		Task<bool> DeleteSopAsync(Guid id);
 

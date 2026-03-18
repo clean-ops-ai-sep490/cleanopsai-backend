@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Enums;
+﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
@@ -18,6 +18,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 		public string Name { get; set; } = null!;
 
 		public string Description { get; set; } = null!;
+
+		public Guid? AssigneeId { get; set; }
 
 		public JsonElement Metadata { get; set; }
 

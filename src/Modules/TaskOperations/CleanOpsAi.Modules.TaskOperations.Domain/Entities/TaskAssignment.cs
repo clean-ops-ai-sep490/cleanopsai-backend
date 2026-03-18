@@ -6,7 +6,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 	[Table("task_assignments")]
 	public class TaskAssignment : BaseAuditableEntity
 	{
-		 public Guid TaskScheduleId { get; set; }
+		public Guid TaskScheduleId { get; set; }
 
 		public Guid AssigneeId { get; set; }
 

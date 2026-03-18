@@ -1,8 +1,15 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
+﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
+using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
+using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore; 
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging; 
+
 
 namespace Microsoft.Extensions.DependencyInjection;
 public static class DependencyInjection
@@ -23,8 +30,14 @@ public static class DependencyInjection
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
 
-		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
+		builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
 
-		//test
+
+		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));  
+
+		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
+
+		builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
+		builder.Services.AddScoped<ITaskAssignmentService, TaskAssignmentService>();
 	}
 }
