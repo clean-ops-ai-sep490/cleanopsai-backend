@@ -1,4 +1,5 @@
 ﻿
+using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -6,6 +7,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data
 {
 	public class TaskOperationsDbContext : DbContext
 	{
+		public DbSet<TaskAssignment> TaskAssignments { get; set; }
+
 		public TaskOperationsDbContext()
 		{
 			

@@ -14,12 +14,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 	{
 		private readonly ISopRepository _sopRepository;
 		private readonly IStepRepository _stepRepository;
+		private readonly ISopRequiredSkillRepository _sopRequiredSkillRepository;
+		private readonly ISopRequiredCertificationRepository _sopRequiredCertificationRepository;
 		private readonly IMapper _mapper;
 
-		public SopService(ISopRepository sopRepository, IStepRepository stepRepository, IMapper mapper)
+		public SopService(ISopRepository sopRepository, 
+			IStepRepository stepRepository,
+			ISopRequiredSkillRepository skillRequiredRepository,
+			ISopRequiredCertificationRepository certificationRequiredRepository,
+			IMapper mapper)
 		{
 			_sopRepository = sopRepository;
 			_stepRepository = stepRepository;
+			_sopRequiredSkillRepository = skillRequiredRepository;
+			_sopRequiredCertificationRepository = certificationRequiredRepository;
 			_mapper = mapper;
 		}
 
@@ -71,6 +79,28 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				Created = now
 			}).ToList();
 
+			if (dto.RequiredSkillIds?.Any() == true)
+			{
+				sop.SopRequiredSkills = dto.RequiredSkillIds
+					.Distinct()
+					.Select(x => new SopRequiredSkill
+					{
+						SopId = sop.Id,
+						SkillId = x
+					}).ToList();
+			}
+
+			if (dto.RequiredCertificationIds?.Any() == true)
+			{
+				sop.SopRequiredCertifications = dto.RequiredCertificationIds
+					.Distinct()
+					.Select(x => new SopRequiredCertification
+					{
+						SopId = sop.Id,
+						CertificationId = x
+					}).ToList();
+			}
+
 			await _sopRepository.InsertAsync(sop);
 			await _sopRepository.SaveChangesAsync();
 
@@ -84,7 +114,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(sop);
 		}
 
-		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto)
+		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default)
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id, true);
 			if (sop == null) return null;
@@ -129,7 +159,17 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			sop.LastModified = DateTime.UtcNow;
 			sop.LastModifiedBy = "admin-123";
 
-			await _sopRepository.SaveChangesAsync();
+			if(dto.RequiredSkillIds != null)
+			{
+				await _sopRequiredSkillRepository.MergeAsync(sop.Id, dto.RequiredSkillIds.ToHashSet());
+			}
+
+			if(dto.RequiredCertificationIds != null)
+			{
+				await _sopRequiredCertificationRepository.MergeAsync(sop.Id, dto.RequiredCertificationIds.ToHashSet(), cancellationToken);
+			}
+
+			await _sopRepository.SaveChangesAsync(cancellationToken);
 
 			var updated = await _sopRepository.GetByIdWithStepsAsync(sop.Id);
 			return _mapper.Map<SopDto>(updated);
@@ -211,7 +251,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					});
 				}
 			}
-		}
+		} 
 
 		private void ValidateConfigDetail(JsonElement configDetail, string configSchema, string stepName)
 		{

@@ -1,4 +1,7 @@
-﻿using AutoMapper; 
+﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Common.Utils;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos;
+using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using System.Text.Json;
 
@@ -38,7 +41,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 			CreateMap<SopCreateDto, Sop>()
 				.ForMember(dest => dest.SopSteps, opt => opt.Ignore());
 
-			CreateMap<Sop, SopDto>();
+			CreateMap<Sop, SopDto>()
+				.ForMember(dest => dest.RequiredSkillIds,
+					opt => opt.MapFrom(src => src.SopRequiredSkills.Select(x => x.SkillId)))
+				.ForMember(dest => dest.RequiredCertificationIds,
+					opt => opt.MapFrom(src => src.SopRequiredCertifications.Select(x => x.CertificationId)));
 
 			CreateMap<SopStep, SopStepDto>()
 				.ForMember(dest => dest.ConfigDetail, opt => opt.MapFrom(src =>
@@ -53,13 +60,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 			//Schedule mapping
 			CreateMap<TaskScheduleCreateDto, TaskSchedule>()
 				.ForMember(
-					dest => dest.RecurrenceConfig,
-					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
-				);
+				dest => dest.RecurrenceConfig,
+				opt => opt.MapFrom(src => SerializeRecurrenceConfig(src.RecurrenceConfig))
+			);
+
 			CreateMap<TaskScheduleUpdateDto, TaskSchedule>()
 				.ForMember(
 					dest => dest.RecurrenceConfig,
-					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
+					opt => opt.MapFrom(src => SerializeRecurrenceConfig(src.RecurrenceConfig))
 				);
 
 			CreateMap<TaskSchedule, TaskScheduleDto>()
@@ -74,7 +82,27 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 						JsonSerializer.Deserialize<JsonElement>(src.Metadata, (JsonSerializerOptions?)null))
 				);
 
+			CreateMap<TaskSchedule, ActiveTaskScheduleDto>()
+				.ForMember(
+					dest => dest.RecurrenceConfig,
+					opt => opt.MapFrom(src => JsonHelper.ToJsonElement(src.RecurrenceConfig))
+				);
+	 
+
 
 		}
+
+		private static string SerializeRecurrenceConfig(RecurrenceConfig config)
+		{
+			return JsonSerializer.Serialize(
+				config,
+				new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+				}
+			);
+		}
 	}
+
+
 }

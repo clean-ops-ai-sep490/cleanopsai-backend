@@ -7,6 +7,7 @@ using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.Workforce.Application.Consumers;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
@@ -20,15 +21,8 @@ public static class DependencyInjection
 			options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
 		});
 		
-		builder.Services.AddEndpointsApiExplorer();
-
-        // đăng ký RabbitMQ + Consumers
-        builder.Services.AddMessageBroker(
-            builder.Configuration,
-            typeof(UserRegisteredConsumer).Assembly
-        );
-
-        // đăng ký FrontendSettings và EmailSettings từ appsettings.json
+		builder.Services.AddEndpointsApiExplorer(); 
+ 
         builder.Services.Configure<FrontendSettings>(
 		builder.Configuration.GetSection("Frontend"));
         builder.Services.Configure<EmailSettings>(
@@ -66,6 +60,12 @@ public static class DependencyInjection
 
 			c.EnableAnnotations();
 		});
+
+		builder.Services.AddMessageBroker(
+			builder.Configuration,
+			typeof(GenerateTaskAssignmentsConsumer).Assembly,
+      typeof(UserRegisteredConsumer).Assembly
+		); 
 
 		builder.Services.AddCors(options =>
 		{

@@ -18,13 +18,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 				.HasMaxLength(1000); 
 
 			builder.Property(x => x.EnvironmentType)
-				.IsRequired();
-
-			builder.Property(x => x.IsRequiredSkill)
-				.IsRequired();
-
-			builder.Property(x => x.IsRequiredCertification)
-				.IsRequired();
+				.IsRequired(); 
 
 			builder.Property(x => x.Version)
 				.IsRequired();
@@ -32,7 +26,17 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.HasMany(x => x.SopSteps)
 				.WithOne(x => x.Sop)
 				.HasForeignKey(x => x.SopId)
-				.OnDelete(DeleteBehavior.Cascade); 
+				.OnDelete(DeleteBehavior.Cascade);
+
+			builder.HasMany(x => x.SopRequiredSkills)
+				.WithOne(x => x.Sop)
+				.HasForeignKey(x => x.SopId)
+				.OnDelete(DeleteBehavior.Cascade);
+
+			builder.HasMany(x => x.SopRequiredCertifications)
+				.WithOne(x => x.Sop)
+				.HasForeignKey(x => x.SopId)
+				.OnDelete(DeleteBehavior.Cascade);
 		}
 	}
 }
