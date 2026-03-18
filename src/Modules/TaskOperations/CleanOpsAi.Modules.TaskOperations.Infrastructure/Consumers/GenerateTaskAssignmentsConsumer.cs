@@ -17,21 +17,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 			ConsumeContext<GenerateTaskAssignmentsRequestedEvent> context)
 		{
 			Console.WriteLine("CONSUMER START");
-			var msg = context.Message;
-
+			var msg = context.Message; 
+			   
+			Console.WriteLine($"Range: {msg.FromDate} - {msg.ToDate}");
+ 
 			var scheduledTimes = expander.Expand(
 				msg.RecurrenceType,
 				msg.RecurrenceConfig,
 				msg.FromDate,
 				msg.ToDate);
-			Console.WriteLine($"Generated {scheduledTimes.Count()} times");
+
+
+			foreach (var t in scheduledTimes)
+			{
+				Console.WriteLine($"Generated: {t} | Kind: {t.Kind}");
+
+				var exists = await repo.ExistsAsync(msg.ScheduleId, t);
+				Console.WriteLine($"Exists: {exists}");
+			}
+
 			var toInsert = new List<TaskAssignment>();
 
 			foreach (var scheduledAt in scheduledTimes)
 			{
 				if (await repo.ExistsAsync(msg.ScheduleId, scheduledAt))
 				{
-					Console.WriteLine($"Skip existed: {scheduledAt}");
 					continue;
 				}
 
@@ -44,9 +54,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 					ScheduledStartAt = scheduledAt,
 					Status = TaskAssignmentStatus.Pending,
 					IsAdhocTask = false,
+					Created = DateTime.UtcNow,
+					CreatedBy = "system"
 				});
-			}
-			Console.WriteLine($"Total insert: {toInsert.Count}");
+			} 
 			if (toInsert.Count > 0)
 				await repo.BulkInsertAsync(toInsert);
 		}

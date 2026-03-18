@@ -26,5 +26,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			await _context.TaskAssignments.AddRangeAsync(assignments);
 			await _context.SaveChangesAsync();
 		}
+
+		public async Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct)
+		{
+			return await _context.TaskAssignments.FirstOrDefaultAsync(x=>x.Id == id && x.IsDeleted == false, ct);
+		}
 	}
 }

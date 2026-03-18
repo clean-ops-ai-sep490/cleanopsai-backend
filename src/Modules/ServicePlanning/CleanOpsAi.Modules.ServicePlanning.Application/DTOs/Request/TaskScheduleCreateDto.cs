@@ -17,9 +17,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public string Description { get; set; } = null!;
 
+		public Guid? AssigneeId { get; set; }
+
 		public RecurrenceType RecurrenceType { get; set; }
 
-		public JsonElement RecurrenceConfig { get; set; }
+		public RecurrenceConfig RecurrenceConfig { get; set; } = null!;
 
 		public DateOnly ContractStartDate { get; set; }
 		public DateOnly? ContractEndDate { get; set; }

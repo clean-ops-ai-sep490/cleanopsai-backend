@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application.Common.Utils;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using System.Text.Json;
@@ -59,13 +60,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 			//Schedule mapping
 			CreateMap<TaskScheduleCreateDto, TaskSchedule>()
 				.ForMember(
-					dest => dest.RecurrenceConfig,
-					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
-				);
+				dest => dest.RecurrenceConfig,
+				opt => opt.MapFrom(src => SerializeRecurrenceConfig(src.RecurrenceConfig))
+			);
+
 			CreateMap<TaskScheduleUpdateDto, TaskSchedule>()
 				.ForMember(
 					dest => dest.RecurrenceConfig,
-					opt => opt.MapFrom(src => src.RecurrenceConfig.GetRawText())
+					opt => opt.MapFrom(src => SerializeRecurrenceConfig(src.RecurrenceConfig))
 				);
 
 			CreateMap<TaskSchedule, TaskScheduleDto>()
@@ -89,5 +91,18 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 
 
 		}
+
+		private static string SerializeRecurrenceConfig(RecurrenceConfig config)
+		{
+			return JsonSerializer.Serialize(
+				config,
+				new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+				}
+			);
+		}
 	}
+
+
 }

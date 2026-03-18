@@ -10,5 +10,5 @@ namespace CleanOpsAi.BuildingBlocks.Infrastructure.Events
 	RecurrenceType RecurrenceType,      // enum gửi kèm
 	RecurrenceConfig RecurrenceConfig,  // config detail gửi kèm
 	string Source                       // "manual" | "auto"
-);
+	);
 }

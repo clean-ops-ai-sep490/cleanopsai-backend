@@ -10,7 +10,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
 		RecurrenceConfig config,
 		DateOnly from,
 		DateOnly to)
-		{
+		{ 
 			var times = config.Times ?? [TimeOnly.MinValue];
 			var results = new List<DateTime>();
 
@@ -19,7 +19,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
 				if (!MatchesType(type, config, date)) continue;
 
 				foreach (var time in times)
-					results.Add(date.ToDateTime(time));
+					results.Add(DateTime.SpecifyKind(date.ToDateTime(time), DateTimeKind.Utc));
 			}
 
 			return results;

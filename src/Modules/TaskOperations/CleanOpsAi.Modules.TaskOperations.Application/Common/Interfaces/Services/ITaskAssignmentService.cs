@@ -1,0 +1,16 @@
+﻿using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+
+namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services
+{
+	public interface ITaskAssignmentService
+	{
+		Task<TaskAssignmentDto?> GetById(Guid id, CancellationToken ct = default);
+
+		Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentDto dto);
+
+		Task<bool> Delete(Guid id);
+
+		Task<bool> UpdateStatus(Guid id, TaskAssignmentStatus status);
+	}
+}

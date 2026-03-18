@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
@@ -21,6 +22,42 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		public async Task<TaskSchedule?> GetById(Guid id, CancellationToken cancellationToken = default)
 		{
 			return await _context.TaskSchedules.FirstOrDefaultAsync(s => s.Id == id && s.IsActive && !s.IsDeleted, cancellationToken);
+		}
+
+		public async Task<List<TaskSchedule>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default)
+		{
+			return await _context.TaskSchedules
+			.Where(x => ids.Contains(x.Id) && x.IsActive && !x.IsDeleted)
+			.ToListAsync(ct);
+		}
+
+		public async Task<IReadOnlyList<TaskSchedule>> GetConflictingCandidateSchedulesAsync(
+			Guid? workAreaDetailId,
+			Guid slaShiftId,
+			Guid? assigneeId,
+			DateOnly windowStart,
+			DateOnly windowEnd,
+			Guid? excludeScheduleId = null,
+			CancellationToken cancellationToken = default)
+		{
+			var query = _context.TaskSchedules
+				.Where(x => x.IsActive && !x.IsDeleted)
+				.Where(x => x.SlaShiftId == slaShiftId)
+				.Where(x => x.ContractStartDate <= windowEnd)
+				.Where(x => x.ContractEndDate == null || x.ContractEndDate >= windowStart);
+
+			if (workAreaDetailId.HasValue)
+				query = query.Where(x => x.WorkAreaDetailId == workAreaDetailId.Value);
+			else
+				query = query.Where(x => x.WorkAreaDetailId == null);
+
+			if (excludeScheduleId.HasValue)
+				query = query.Where(x => x.Id != excludeScheduleId.Value);
+
+			if (assigneeId.HasValue)
+				query = query.Where(x => x.AssigneeId == assigneeId);
+
+			return await query.ToListAsync(cancellationToken);
 		}
 	}
 }

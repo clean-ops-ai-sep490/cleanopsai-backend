@@ -2,6 +2,7 @@
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
 using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
+using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services;
@@ -37,5 +38,6 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
 
 		builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
+		builder.Services.AddScoped<ITaskAssignmentService, TaskAssignmentService>();
 	}
 }

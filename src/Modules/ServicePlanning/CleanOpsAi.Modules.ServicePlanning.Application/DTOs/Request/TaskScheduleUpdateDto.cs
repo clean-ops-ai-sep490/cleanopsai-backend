@@ -21,7 +21,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public RecurrenceType RecurrenceType { get; set; }
 
-		public JsonElement RecurrenceConfig { get; set; }
+		public RecurrenceConfig RecurrenceConfig { get; set; } = null!;
 
 		public DateOnly ContractStartDate { get; set; }
 		public DateOnly? ContractEndDate { get; set; }

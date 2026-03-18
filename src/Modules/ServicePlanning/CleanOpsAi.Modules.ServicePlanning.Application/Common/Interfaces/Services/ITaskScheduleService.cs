@@ -13,5 +13,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 		Task<bool> Delete(Guid id);
 
 		Task<IReadOnlyList<ActiveTaskScheduleDto>> GetActiveSchedulesAsync();
+		 
+		Task GenerateTaskAssigmentsAsync(GenerateTaskAssignmentsRequest request, CancellationToken ct = default);
 	}
 }
