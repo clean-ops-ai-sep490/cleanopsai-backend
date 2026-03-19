@@ -12,14 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkforceDbContext))]
-    [Migration("20260308154009_AddWorkerGpsTable")]
-    partial class AddWorkerGpsTable
+    [Migration("20260319143629_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("workforce")
                 .HasAnnotation("ProductVersion", "8.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -65,7 +66,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_certifications");
 
-                    b.ToTable("certifications", (string)null);
+                    b.ToTable("certifications", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Equipment", b =>
@@ -112,7 +113,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_equipments");
 
-                    b.ToTable("equipments", (string)null);
+                    b.ToTable("equipments", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Skill", b =>
@@ -155,7 +156,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_skill");
 
-                    b.ToTable("skill", (string)null);
+                    b.ToTable("skill", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Worker", b =>
@@ -181,6 +182,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.Property<string>("DisplayAddress")
                         .HasColumnType("text")
                         .HasColumnName("display_address");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -210,7 +216,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_workers");
 
-                    b.ToTable("workers", (string)null);
+                    b.ToTable("workers", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerCertification", b =>
@@ -237,7 +243,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasIndex("CertificationId")
                         .HasDatabaseName("ix_worker_certifications_certification_id");
 
-                    b.ToTable("worker_certifications", (string)null);
+                    b.ToTable("worker_certifications", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerGps", b =>
@@ -285,7 +291,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasIndex("WorkerId")
                         .HasDatabaseName("ix_worker_gps_worker_id");
 
-                    b.ToTable("worker_gps", (string)null);
+                    b.ToTable("worker_gps", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerSkill", b =>
@@ -308,7 +314,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasIndex("SkillId")
                         .HasDatabaseName("ix_worker_skills_skill_id");
 
-                    b.ToTable("worker_skills", (string)null);
+                    b.ToTable("worker_skills", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerCertification", b =>

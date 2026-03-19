@@ -17,6 +17,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("client_management")
                 .HasAnnotation("ProductVersion", "8.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -64,7 +65,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_clients");
 
-                    b.ToTable("clients", (string)null);
+                    b.ToTable("clients", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
@@ -115,7 +116,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("ClientId")
                         .HasDatabaseName("ix_contracts_client_id");
 
-                    b.ToTable("contracts", (string)null);
+                    b.ToTable("contracts", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ContractShift", b =>
@@ -182,7 +183,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("WorkAreaId")
                         .HasDatabaseName("ix_contract_shifts_work_area_id");
 
-                    b.ToTable("contract_shifts", (string)null);
+                    b.ToTable("contract_shifts", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
@@ -253,7 +254,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("ClientId")
                         .HasDatabaseName("ix_locations_client_id");
 
-                    b.ToTable("locations", (string)null);
+                    b.ToTable("locations", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
@@ -319,7 +320,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("WorkAreaId")
                         .HasDatabaseName("ix_sla_work_area_id");
 
-                    b.ToTable("sla", (string)null);
+                    b.ToTable("sla", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
@@ -381,7 +382,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("SlaId")
                         .HasDatabaseName("ix_sla_shifts_sla_id");
 
-                    b.ToTable("sla_shifts", (string)null);
+                    b.ToTable("sla_shifts", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
@@ -437,7 +438,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("SlaId")
                         .HasDatabaseName("ix_sla_tasks_sla_id");
 
-                    b.ToTable("sla_tasks", (string)null);
+                    b.ToTable("sla_tasks", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
@@ -483,7 +484,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("ZoneId")
                         .HasDatabaseName("ix_work_areas_zone_id");
 
-                    b.ToTable("work_areas", (string)null);
+                    b.ToTable("work_areas", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkAreaDetail", b =>
@@ -537,7 +538,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("WorkAreaId")
                         .HasDatabaseName("ix_work_area_details_work_area_id");
 
-                    b.ToTable("work_area_details", (string)null);
+                    b.ToTable("work_area_details", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
@@ -587,7 +588,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     b.HasIndex("LocationId")
                         .HasDatabaseName("ix_zones_location_id");
 
-                    b.ToTable("zones", (string)null);
+                    b.ToTable("zones", "client_management");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>

@@ -11,8 +11,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "task_operations");
+
             migrationBuilder.CreateTable(
                 name: "task_assignments",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -37,6 +41,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "adhoc_requests",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -60,6 +65,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_adhoc_requests_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -67,6 +73,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "emergency_leave_requests",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -89,6 +96,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_emergency_leave_requests_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -96,6 +104,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "equipment_requests",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -118,6 +127,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_equipment_requests_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -125,6 +135,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "issue_reports",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -146,6 +157,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_issue_reports_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -153,6 +165,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "task_history",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -174,6 +187,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_task_history_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -181,6 +195,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "task_step_executions",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -202,6 +217,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_task_step_executions_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -209,6 +225,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "task_swap_requests",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -229,6 +246,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_task_swap_requests_task_assignments_task_assignment_id",
                         column: x => x.task_assignment_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_assignments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -236,6 +254,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "compliance_checks",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -255,6 +274,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_compliance_checks_task_step_executions_task_step_execution_",
                         column: x => x.task_step_execution_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_step_executions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -262,6 +282,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "task_step_execution_images",
+                schema: "task_operations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -280,6 +301,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_task_step_execution_images_task_step_executions_task_step_e",
                         column: x => x.task_step_execution_id,
+                        principalSchema: "task_operations",
                         principalTable: "task_step_executions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -287,71 +309,93 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_adhoc_requests_task_assignment_id",
+                schema: "task_operations",
                 table: "adhoc_requests",
                 column: "task_assignment_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_compliance_checks_task_step_execution_id",
+                schema: "task_operations",
                 table: "compliance_checks",
                 column: "task_step_execution_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_emergency_leave_requests_task_assignment_id",
+                schema: "task_operations",
                 table: "emergency_leave_requests",
                 column: "task_assignment_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_equipment_requests_task_assignment_id",
+                schema: "task_operations",
                 table: "equipment_requests",
                 column: "task_assignment_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_equipment_requests_worker_id",
+                schema: "task_operations",
                 table: "equipment_requests",
                 column: "worker_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_issue_reports_reported_by_worker_id",
+                schema: "task_operations",
                 table: "issue_reports",
                 column: "reported_by_worker_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_issue_reports_task_assignment_id",
+                schema: "task_operations",
                 table: "issue_reports",
                 column: "task_assignment_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_assignments_assignee_id",
+                schema: "task_operations",
                 table: "task_assignments",
                 column: "assignee_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_assignments_status",
+                schema: "task_operations",
                 table: "task_assignments",
                 column: "status");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_assignments_task_schedule_id",
+                schema: "task_operations",
                 table: "task_assignments",
                 column: "task_schedule_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_task_assignments_task_schedule_id_scheduled_start_at",
+                schema: "task_operations",
+                table: "task_assignments",
+                columns: new[] { "task_schedule_id", "scheduled_start_at" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_task_history_task_assignment_id",
+                schema: "task_operations",
                 table: "task_history",
                 column: "task_assignment_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_step_execution_images_task_step_execution_id",
+                schema: "task_operations",
                 table: "task_step_execution_images",
                 column: "task_step_execution_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_step_executions_task_assignment_id",
+                schema: "task_operations",
                 table: "task_step_executions",
                 column: "task_assignment_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_swap_requests_task_assignment_id",
+                schema: "task_operations",
                 table: "task_swap_requests",
                 column: "task_assignment_id");
         }
@@ -360,34 +404,44 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "adhoc_requests");
+                name: "adhoc_requests",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "compliance_checks");
+                name: "compliance_checks",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "emergency_leave_requests");
+                name: "emergency_leave_requests",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "equipment_requests");
+                name: "equipment_requests",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "issue_reports");
+                name: "issue_reports",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "task_history");
+                name: "task_history",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "task_step_execution_images");
+                name: "task_step_execution_images",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "task_swap_requests");
+                name: "task_swap_requests",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "task_step_executions");
+                name: "task_step_executions",
+                schema: "task_operations");
 
             migrationBuilder.DropTable(
-                name: "task_assignments");
+                name: "task_assignments",
+                schema: "task_operations");
         }
     }
 }
