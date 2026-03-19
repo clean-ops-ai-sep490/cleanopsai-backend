@@ -11,8 +11,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "client_management");
+
             migrationBuilder.CreateTable(
                 name: "clients",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -31,6 +35,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "contracts",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -49,6 +54,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_contracts_clients_client_id",
                         column: x => x.client_id,
+                        principalSchema: "client_management",
                         principalTable: "clients",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -56,6 +62,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "locations",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -79,6 +86,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_locations_clients_client_id",
                         column: x => x.client_id,
+                        principalSchema: "client_management",
                         principalTable: "clients",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -86,6 +94,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "zones",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -104,6 +113,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_zones_locations_location_id",
                         column: x => x.location_id,
+                        principalSchema: "client_management",
                         principalTable: "locations",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -111,6 +121,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "work_areas",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -128,6 +139,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_work_areas_zones_zone_id",
                         column: x => x.zone_id,
+                        principalSchema: "client_management",
                         principalTable: "zones",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -135,6 +147,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "contract_shifts",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -157,12 +170,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_contract_shifts_contracts_contract_id",
                         column: x => x.contract_id,
+                        principalSchema: "client_management",
                         principalTable: "contracts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_contract_shifts_work_areas_work_area_id",
                         column: x => x.work_area_id,
+                        principalSchema: "client_management",
                         principalTable: "work_areas",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -170,6 +185,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "sla",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -191,12 +207,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_sla_contracts_contract_id",
                         column: x => x.contract_id,
+                        principalSchema: "client_management",
                         principalTable: "contracts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_sla_work_areas_work_area_id",
                         column: x => x.work_area_id,
+                        principalSchema: "client_management",
                         principalTable: "work_areas",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -204,6 +222,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "work_area_details",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -223,6 +242,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_work_area_details_work_areas_work_area_id",
                         column: x => x.work_area_id,
+                        principalSchema: "client_management",
                         principalTable: "work_areas",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -230,6 +250,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "sla_shifts",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -251,6 +272,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_sla_shifts_sla_sla_id",
                         column: x => x.sla_id,
+                        principalSchema: "client_management",
                         principalTable: "sla",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -258,6 +280,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "sla_tasks",
+                schema: "client_management",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -277,6 +300,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_sla_tasks_sla_sla_id",
                         column: x => x.sla_id,
+                        principalSchema: "client_management",
                         principalTable: "sla",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -284,56 +308,67 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_contract_shifts_contract_id",
+                schema: "client_management",
                 table: "contract_shifts",
                 column: "contract_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_contract_shifts_work_area_id",
+                schema: "client_management",
                 table: "contract_shifts",
                 column: "work_area_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_contracts_client_id",
+                schema: "client_management",
                 table: "contracts",
                 column: "client_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_locations_client_id",
+                schema: "client_management",
                 table: "locations",
                 column: "client_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sla_contract_id",
+                schema: "client_management",
                 table: "sla",
                 column: "contract_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sla_work_area_id",
+                schema: "client_management",
                 table: "sla",
                 column: "work_area_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sla_shifts_sla_id",
+                schema: "client_management",
                 table: "sla_shifts",
                 column: "sla_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sla_tasks_sla_id",
+                schema: "client_management",
                 table: "sla_tasks",
                 column: "sla_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_work_area_details_work_area_id",
+                schema: "client_management",
                 table: "work_area_details",
                 column: "work_area_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_work_areas_zone_id",
+                schema: "client_management",
                 table: "work_areas",
                 column: "zone_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_zones_location_id",
+                schema: "client_management",
                 table: "zones",
                 column: "location_id");
         }
@@ -342,34 +377,44 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "contract_shifts");
+                name: "contract_shifts",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "sla_shifts");
+                name: "sla_shifts",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "sla_tasks");
+                name: "sla_tasks",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "work_area_details");
+                name: "work_area_details",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "sla");
+                name: "sla",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "contracts");
+                name: "contracts",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "work_areas");
+                name: "work_areas",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "zones");
+                name: "zones",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "locations");
+                name: "locations",
+                schema: "client_management");
 
             migrationBuilder.DropTable(
-                name: "clients");
+                name: "clients",
+                schema: "client_management");
         }
     }
 }

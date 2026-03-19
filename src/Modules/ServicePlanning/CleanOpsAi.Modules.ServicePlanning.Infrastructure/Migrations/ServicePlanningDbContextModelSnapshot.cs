@@ -17,6 +17,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("service_planning")
                 .HasAnnotation("ProductVersion", "8.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -75,7 +76,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_sops");
 
-                    b.ToTable("sops", (string)null);
+                    b.ToTable("sops", "service_planning");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredCertification", b =>
@@ -91,7 +92,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.HasKey("SopId", "CertificationId")
                         .HasName("pk_sop_required_certifications");
 
-                    b.ToTable("sop_required_certifications", (string)null);
+                    b.ToTable("sop_required_certifications", "service_planning");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredSkill", b =>
@@ -107,7 +108,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.HasKey("SopId", "SkillId")
                         .HasName("pk_sop_required_skills");
 
-                    b.ToTable("sop_required_skills", (string)null);
+                    b.ToTable("sop_required_skills", "service_planning");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopStep", b =>
@@ -165,7 +166,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasDatabaseName("ix_sop_steps_sop_id_step_order")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("sop_steps", (string)null);
+                    b.ToTable("sop_steps", "service_planning");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Step", b =>
@@ -225,7 +226,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasDatabaseName("ix_steps_action_key")
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("steps", (string)null);
+                    b.ToTable("steps", "service_planning");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.TaskSchedule", b =>
@@ -323,7 +324,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.HasIndex("SopId")
                         .HasDatabaseName("ix_task_schedules_sop_id");
 
-                    b.ToTable("task_schedules", (string)null);
+                    b.ToTable("task_schedules", "service_planning");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredCertification", b =>

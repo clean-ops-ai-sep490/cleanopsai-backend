@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 {
     [DbContext(typeof(TaskOperationsDbContext))]
-    [Migration("20260308152242_Initial")]
+    [Migration("20260319144111_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -20,6 +20,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("task_operations")
                 .HasAnnotation("ProductVersion", "8.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -94,7 +95,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_adhoc_requests_task_assignment_id");
 
-                    b.ToTable("adhoc_requests", (string)null);
+                    b.ToTable("adhoc_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.ComplianceCheck", b =>
@@ -147,7 +148,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskStepExecutionId")
                         .HasDatabaseName("ix_compliance_checks_task_step_execution_id");
 
-                    b.ToTable("compliance_checks", (string)null);
+                    b.ToTable("compliance_checks", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EmergencyLeaveRequest", b =>
@@ -213,7 +214,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_emergency_leave_requests_task_assignment_id");
 
-                    b.ToTable("emergency_leave_requests", (string)null);
+                    b.ToTable("emergency_leave_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", b =>
@@ -282,7 +283,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("WorkerId")
                         .HasDatabaseName("ix_equipment_requests_worker_id");
 
-                    b.ToTable("equipment_requests", (string)null);
+                    b.ToTable("equipment_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
@@ -348,7 +349,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_issue_reports_task_assignment_id");
 
-                    b.ToTable("issue_reports", (string)null);
+                    b.ToTable("issue_reports", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", b =>
@@ -424,7 +425,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskScheduleId")
                         .HasDatabaseName("ix_task_assignments_task_schedule_id");
 
-                    b.ToTable("task_assignments", (string)null);
+                    b.HasIndex("TaskScheduleId", "ScheduledStartAt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_task_assignments_task_schedule_id_scheduled_start_at")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("task_assignments", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskHistory", b =>
@@ -485,7 +491,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_task_history_task_assignment_id");
 
-                    b.ToTable("task_history", (string)null);
+                    b.ToTable("task_history", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskStepExecution", b =>
@@ -546,7 +552,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_task_step_executions_task_assignment_id");
 
-                    b.ToTable("task_step_executions", (string)null);
+                    b.ToTable("task_step_executions", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskStepExecutionImage", b =>
@@ -596,7 +602,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskStepExecutionId")
                         .HasDatabaseName("ix_task_step_execution_images_task_step_execution_id");
 
-                    b.ToTable("task_step_execution_images", (string)null);
+                    b.ToTable("task_step_execution_images", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskSwapRequest", b =>
@@ -653,7 +659,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_task_swap_requests_task_assignment_id");
 
-                    b.ToTable("task_swap_requests", (string)null);
+                    b.ToTable("task_swap_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.AdHocRequest", b =>

@@ -11,8 +11,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "service_planning");
+
             migrationBuilder.CreateTable(
                 name: "sops",
+                schema: "service_planning",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -20,8 +24,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     service_type = table.Column<int>(type: "integer", nullable: false),
                     environment_type = table.Column<int>(type: "integer", nullable: false),
-                    is_required_skill = table.Column<bool>(type: "boolean", nullable: false),
-                    is_required_certification = table.Column<bool>(type: "boolean", nullable: false),
                     version = table.Column<int>(type: "integer", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -36,6 +38,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "steps",
+                schema: "service_planning",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -55,7 +58,48 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "sop_required_certifications",
+                schema: "service_planning",
+                columns: table => new
+                {
+                    sop_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    certification_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_sop_required_certifications", x => new { x.sop_id, x.certification_id });
+                    table.ForeignKey(
+                        name: "fk_sop_required_certifications_sops_sop_id",
+                        column: x => x.sop_id,
+                        principalSchema: "service_planning",
+                        principalTable: "sops",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "sop_required_skills",
+                schema: "service_planning",
+                columns: table => new
+                {
+                    sop_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    skill_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_sop_required_skills", x => new { x.sop_id, x.skill_id });
+                    table.ForeignKey(
+                        name: "fk_sop_required_skills_sops_sop_id",
+                        column: x => x.sop_id,
+                        principalSchema: "service_planning",
+                        principalTable: "sops",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "task_schedules",
+                schema: "service_planning",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -65,9 +109,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     work_area_detail_id = table.Column<Guid>(type: "uuid", nullable: true),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    assignee_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    version = table.Column<int>(type: "integer", nullable: false),
                     metadata = table.Column<string>(type: "jsonb", nullable: false),
                     recurrence_type = table.Column<int>(type: "integer", nullable: false),
                     recurrence_config = table.Column<string>(type: "jsonb", nullable: false),
+                    contract_start_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    contract_end_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -80,6 +129,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_task_schedules_sops_sop_id",
                         column: x => x.sop_id,
+                        principalSchema: "service_planning",
                         principalTable: "sops",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -87,6 +137,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "sop_steps",
+                schema: "service_planning",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -106,12 +157,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_sop_steps_sops_sop_id",
                         column: x => x.sop_id,
+                        principalSchema: "service_planning",
                         principalTable: "sops",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_sop_steps_steps_step_id",
                         column: x => x.step_id,
+                        principalSchema: "service_planning",
                         principalTable: "steps",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -119,23 +172,29 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_sop_steps_sop_id_step_order",
+                schema: "service_planning",
                 table: "sop_steps",
                 columns: new[] { "sop_id", "step_order" },
-                unique: true);
+                unique: true,
+                filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sop_steps_step_id",
+                schema: "service_planning",
                 table: "sop_steps",
                 column: "step_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_steps_action_key",
+                schema: "service_planning",
                 table: "steps",
                 column: "action_key",
-                unique: true);
+                unique: true,
+                filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "ix_task_schedules_sop_id",
+                schema: "service_planning",
                 table: "task_schedules",
                 column: "sop_id");
         }
@@ -144,16 +203,28 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "sop_steps");
+                name: "sop_required_certifications",
+                schema: "service_planning");
 
             migrationBuilder.DropTable(
-                name: "task_schedules");
+                name: "sop_required_skills",
+                schema: "service_planning");
 
             migrationBuilder.DropTable(
-                name: "steps");
+                name: "sop_steps",
+                schema: "service_planning");
 
             migrationBuilder.DropTable(
-                name: "sops");
+                name: "task_schedules",
+                schema: "service_planning");
+
+            migrationBuilder.DropTable(
+                name: "steps",
+                schema: "service_planning");
+
+            migrationBuilder.DropTable(
+                name: "sops",
+                schema: "service_planning");
         }
     }
 }

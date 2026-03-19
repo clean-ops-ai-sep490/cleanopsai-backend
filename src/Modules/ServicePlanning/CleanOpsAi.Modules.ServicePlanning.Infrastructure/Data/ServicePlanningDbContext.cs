@@ -26,6 +26,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
+			modelBuilder.HasDefaultSchema("service_planning");
+
 			base.OnModelCreating(modelBuilder);
 
 			modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

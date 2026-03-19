@@ -72,6 +72,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.TaskOper
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.TaskOperations.IntegrationEvents", "src\Modules\TaskOperations\CleanOpsAi.Modules.TaskOperations.IntegrationEvents\CleanOpsAi.Modules.TaskOperations.IntegrationEvents.csproj", "{03D21989-2109-FA3B-DBB3-7D7DF7D781CD}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QualityControl", "QualityControl", "{EB96D769-896E-40DD-85A0-4D4A9042192C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.QualityControl.Domain", "src\Modules\QualityControl\CleanOpsAi.Modules.QualityControl.Domain\CleanOpsAi.Modules.QualityControl.Domain.csproj", "{33DA0429-C647-FB1D-4EA1-47AC2C67675D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.QualityControl.Application", "src\Modules\QualityControl\CleanOpsAi.Modules.QualityControl.Application\CleanOpsAi.Modules.QualityControl.Application.csproj", "{9767A9B9-0109-8364-2EC9-1B4E50A24103}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.QualityControl.Infrastructure", "src\Modules\QualityControl\CleanOpsAi.Modules.QualityControl.Infrastructure\CleanOpsAi.Modules.QualityControl.Infrastructure.csproj", "{1FAF7133-BE13-F69F-9B4C-CD59659BE6A0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.QualityControl.IntegrationEvents", "src\Modules\QualityControl\CleanOpsAi.Modules.QualityControl.IntegrationEvents\CleanOpsAi.Modules.QualityControl.IntegrationEvents.csproj", "{11E4EACC-5317-DAA0-7937-A91CD88C590A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -174,6 +184,22 @@ Global
 		{03D21989-2109-FA3B-DBB3-7D7DF7D781CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03D21989-2109-FA3B-DBB3-7D7DF7D781CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{03D21989-2109-FA3B-DBB3-7D7DF7D781CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33DA0429-C647-FB1D-4EA1-47AC2C67675D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33DA0429-C647-FB1D-4EA1-47AC2C67675D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33DA0429-C647-FB1D-4EA1-47AC2C67675D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33DA0429-C647-FB1D-4EA1-47AC2C67675D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9767A9B9-0109-8364-2EC9-1B4E50A24103}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9767A9B9-0109-8364-2EC9-1B4E50A24103}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9767A9B9-0109-8364-2EC9-1B4E50A24103}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9767A9B9-0109-8364-2EC9-1B4E50A24103}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FAF7133-BE13-F69F-9B4C-CD59659BE6A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FAF7133-BE13-F69F-9B4C-CD59659BE6A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FAF7133-BE13-F69F-9B4C-CD59659BE6A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FAF7133-BE13-F69F-9B4C-CD59659BE6A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11E4EACC-5317-DAA0-7937-A91CD88C590A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11E4EACC-5317-DAA0-7937-A91CD88C590A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11E4EACC-5317-DAA0-7937-A91CD88C590A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11E4EACC-5317-DAA0-7937-A91CD88C590A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -211,6 +237,11 @@ Global
 		{B1059E2E-5BF1-B7FA-EE8C-2F286078E4B2} = {84FB90BC-1151-45EC-8042-735715731128}
 		{7F139EAA-BFE6-090D-65A0-BCD04EF8CD2E} = {84FB90BC-1151-45EC-8042-735715731128}
 		{03D21989-2109-FA3B-DBB3-7D7DF7D781CD} = {84FB90BC-1151-45EC-8042-735715731128}
+		{EB96D769-896E-40DD-85A0-4D4A9042192C} = {1DBB3BE4-6D03-412F-AAE6-2CB0E6962C61}
+		{33DA0429-C647-FB1D-4EA1-47AC2C67675D} = {EB96D769-896E-40DD-85A0-4D4A9042192C}
+		{9767A9B9-0109-8364-2EC9-1B4E50A24103} = {EB96D769-896E-40DD-85A0-4D4A9042192C}
+		{1FAF7133-BE13-F69F-9B4C-CD59659BE6A0} = {EB96D769-896E-40DD-85A0-4D4A9042192C}
+		{11E4EACC-5317-DAA0-7937-A91CD88C590A} = {EB96D769-896E-40DD-85A0-4D4A9042192C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BD300A16-B862-450A-A9A0-D6A2C4900C55}

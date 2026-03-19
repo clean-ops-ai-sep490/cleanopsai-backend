@@ -17,6 +17,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Data
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
+			modelBuilder.HasDefaultSchema("workforce");
+
 			base.OnModelCreating(modelBuilder);
 			 
 			modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
