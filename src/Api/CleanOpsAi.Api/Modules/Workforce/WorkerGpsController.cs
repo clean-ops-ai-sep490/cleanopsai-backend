@@ -21,15 +21,13 @@ namespace CleanOpsAi.Api.Modules.Workforce
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Get worker GPS by id",
-            Description = "Get worker GPS record using id.",
+            Description = "Get worker GPS record by id.",
             Tags = new[] { "WorkerGps" })]
         public async Task<IActionResult> GetById(Guid id)
         {
             var result = await _service.GetByIdAsync(id);
-
             if (result == null)
                 return NotFound();
-
             return Ok(result);
         }
 
@@ -44,7 +42,50 @@ namespace CleanOpsAi.Api.Modules.Workforce
             [FromQuery] int pageSize = 10)
         {
             var result = await _service.GetAllPaginationAsync(pageNumber, pageSize);
+            return Ok(result);
+        }
 
+        [HttpGet("worker/{workerId:guid}/latest")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get latest GPS of a worker",
+            Description = "Get the most recent GPS record of a specific worker.",
+            Tags = new[] { "WorkerGps" })]
+        public async Task<IActionResult> GetLatestByWorkerId(Guid workerId)
+        {
+            var result = await _service.GetLatestByWorkerIdAsync(workerId);
+            if (result == null)
+                return NotFound();
+            return Ok(result);
+        }
+
+        [HttpGet("worker/{workerId:guid}/history")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get GPS history of a worker",
+            Description = "Get paginated GPS history of a specific worker.",
+            Tags = new[] { "WorkerGps" })]
+        public async Task<IActionResult> GetHistoryByWorkerId(
+            Guid workerId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.GetByWorkerIdPaginationAsync(workerId, pageNumber, pageSize);
+            return Ok(result);
+        }
+
+        [HttpPost("workers/latest")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get latest GPS of multiple workers",
+            Description = "Get the most recent GPS record for each worker in the provided list.",
+            Tags = new[] { "WorkerGps" })]
+        public async Task<IActionResult> GetLatestByWorkerIds([FromBody] List<Guid> workerIds)
+        {
+            if (workerIds == null || !workerIds.Any())
+                return BadRequest("Worker ids are required.");
+
+            var result = await _service.GetLatestByWorkerIdsAsync(workerIds);
             return Ok(result);
         }
 
@@ -54,46 +95,12 @@ namespace CleanOpsAi.Api.Modules.Workforce
             Summary = "Create worker GPS",
             Description = "Create new worker GPS record.",
             Tags = new[] { "WorkerGps" })]
-        public async Task<IActionResult> Create(WorkerGpsCreateRequest request)
+        public async Task<IActionResult> Create([FromBody] WorkerGpsCreateRequest request)
         {
             var result = await _service.CreateAsync(request);
-
-            if (result != null)
-                return Ok(result);
-
-            return BadRequest();
-        }
-
-        [HttpPut("{id}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Update worker GPS",
-            Description = "Update worker GPS location.",
-            Tags = new[] { "WorkerGps" })]
-        public async Task<IActionResult> Update(Guid id, WorkerGpsUpdateRequest request)
-        {
-            var result = await _service.UpdateAsync(id, request);
-
-            if (result != null)
-                return Ok(result);
-
-            return NotFound();
-        }
-
-        [HttpDelete("{id}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Delete worker GPS",
-            Description = "Delete worker GPS record.",
-            Tags = new[] { "WorkerGps" })]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            var result = await _service.DeleteAsync(id);
-
-            if (result > 0)
-                return Ok(result);
-
-            return NotFound();
+            if (result == null)
+                return BadRequest();
+            return Ok(result);
         }
     }
 }

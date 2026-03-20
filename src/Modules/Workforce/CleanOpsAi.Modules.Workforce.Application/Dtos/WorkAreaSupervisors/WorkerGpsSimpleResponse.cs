@@ -4,16 +4,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CleanOpsAi.Modules.Workforce.Application.Dtos.WorkerGps
+namespace CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors
 {
-    public class WorkerGpsCreateRequest
+    public class WorkerGpsSimpleResponse
     {
         public Guid WorkerId { get; set; }
+        public string? WorkerName { get; set; }
 
         public double? Latitude { get; set; }
-
         public double? Longitude { get; set; }
 
         public bool? IsConfirmed { get; set; }
+
+        public DateTime Created { get; set; }
     }
 }
