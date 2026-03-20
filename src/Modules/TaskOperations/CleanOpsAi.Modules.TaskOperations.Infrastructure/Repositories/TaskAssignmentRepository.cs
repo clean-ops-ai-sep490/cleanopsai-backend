@@ -29,7 +29,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 
 		public async Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct)
 		{
-			return await _context.TaskAssignments.FirstOrDefaultAsync(x=>x.Id == id && x.IsDeleted == false, ct);
+			return await _context.TaskAssignments.FirstOrDefaultAsync(x=>x.Id == id, ct);
 		}
 	}
 }

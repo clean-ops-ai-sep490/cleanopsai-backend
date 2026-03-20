@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Infrastructure\CleanOpsAi.BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\ClientManagement\CleanOpsAi.Modules.ClientManagement.Infrastructure\CleanOpsAi.Modules.ClientManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\QualityControl\CleanOpsAi.Modules.QualityControl.Infrastructure\CleanOpsAi.Modules.QualityControl.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\ServicePlanning\CleanOpsAi.Modules.ServicePlanning.Infrastructure\CleanOpsAi.Modules.ServicePlanning.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\TaskOperations\CleanOpsAi.Modules.TaskOperations.Infrastructure\CleanOpsAi.Modules.TaskOperations.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\UserAccess\CleanOpsAi.Modules.UserAccess.Infrastructure\CleanOpsAi.Modules.UserAccess.Infrastructure.csproj" />

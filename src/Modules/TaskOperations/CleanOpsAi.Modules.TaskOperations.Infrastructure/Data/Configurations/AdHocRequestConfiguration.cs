@@ -10,9 +10,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 		{
 			builder.HasKey(x => x.Id);
 
-			builder.Property(x => x.RequestedByUserId)
-				.IsRequired()
-				.HasMaxLength(450);
+			builder.Property(x => x.RequestedByWorkerId)
+				.IsRequired();
 
 			builder.Property(x => x.Reason)
 				.HasMaxLength(1000); 
@@ -27,6 +26,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 				.WithMany(x => x.AdHocRequests)
 				.HasForeignKey(x => x.TaskAssignmentId)
 				.OnDelete(DeleteBehavior.Cascade);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

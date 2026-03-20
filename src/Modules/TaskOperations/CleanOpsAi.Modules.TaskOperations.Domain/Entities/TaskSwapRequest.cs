@@ -14,7 +14,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public SwapRequestStatus Status { get; set; }
 
-		public string? ReviewedBy { get; set; }	
+		public Guid? ReviewedByUserId { get; set; }	 
 
 		public TaskAssignment TaskAssignment { get; set; } = null!;
 	}

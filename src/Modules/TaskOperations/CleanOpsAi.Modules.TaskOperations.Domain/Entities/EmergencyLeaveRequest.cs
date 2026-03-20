@@ -16,7 +16,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public RequestStatus Status { get; set; }
 
-		public string? ReviewedById { get; set; }  
+		public Guid? ReviewedByUserId { get; set; }  
 
 		public DateTime? ApprovedAt { get; set; }
 

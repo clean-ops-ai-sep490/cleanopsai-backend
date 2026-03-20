@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+	  <PackageReference Include="AutoMapper" Version="16.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CleanOpsAi.Modules.QualityControl.Domain\CleanOpsAi.Modules.QualityControl.Domain.csproj" />
     <ProjectReference Include="..\CleanOpsAi.Modules.QualityControl.IntegrationEvents\CleanOpsAi.Modules.QualityControl.IntegrationEvents.csproj" />
   </ItemGroup>

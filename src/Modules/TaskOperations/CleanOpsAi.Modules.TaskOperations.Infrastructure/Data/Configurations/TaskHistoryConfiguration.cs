@@ -20,6 +20,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 				.WithMany()
 				.HasForeignKey(x => x.TaskAssignmentId)
 				.OnDelete(DeleteBehavior.Cascade);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }
