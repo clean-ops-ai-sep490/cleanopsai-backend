@@ -58,6 +58,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.HasIndex(x => x.AssigneeId);
 			builder.HasIndex(x => x.TaskScheduleId);
 			builder.HasIndex(x => x.Status);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

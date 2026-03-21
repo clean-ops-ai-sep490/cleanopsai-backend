@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 	{ 
 		public Guid TaskAssignmentId { get; set; }
 
-		public string RequestedByUserId { get; set; } = null!;
+		public Guid RequestedByWorkerId { get; set; }   
 
 		public AdHocRequestType RequestType { get; set; }
 
@@ -19,7 +19,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public AdHocRequestStatus Status { get; set; }
 
-		public string? ReviewedByUserId { get; set; }  
+		public Guid? ReviewedByUserId { get; set; }  
 
 		public DateTime? ApprovedAt { get; set; }
 

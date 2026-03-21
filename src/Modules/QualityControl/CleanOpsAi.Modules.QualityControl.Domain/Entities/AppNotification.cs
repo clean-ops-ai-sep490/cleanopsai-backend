@@ -1,6 +1,6 @@
-﻿using CleanOpsAi.BuildingBlocks.Domain;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
+﻿using CleanOpsAi.BuildingBlocks.Domain; 
+using CleanOpsAi.Modules.QualityControl.Domain.Enums;
+using System.ComponentModel.DataAnnotations.Schema; 
 
 namespace CleanOpsAi.Modules.QualityControl.Domain.Entities
 {
@@ -14,10 +14,12 @@ namespace CleanOpsAi.Modules.QualityControl.Domain.Entities
 		[Column(TypeName = "jsonb")]
 		public string Payload { get; set; } = "{}";
 
-		public int Priority { get; set; }
+		public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
 
-		public string SenderType { get; set; } = null!;
+		public SenderTypeEnum SenderType { get; set; } = SenderTypeEnum.System;
 
-		public string SenderId { get; set; } = null!;
+		public Guid? SenderId { get; set; } 
+
+		public virtual ICollection<NotificationRecipient> NotificationRecipients { get; set; } = new List<NotificationRecipient>();
 	}
 }

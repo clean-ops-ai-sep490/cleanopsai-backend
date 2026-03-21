@@ -67,15 +67,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("request_type");
 
-                    b.Property<string>("RequestedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("requested_by_user_id");
+                    b.Property<Guid>("RequestedByWorkerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_worker_id");
 
-                    b.Property<string>("ReviewedByUserId")
+                    b.Property<Guid?>("ReviewedByUserId")
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
@@ -184,10 +182,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
-                    b.Property<string>("ReviewedById")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("reviewed_by_id");
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -220,6 +217,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
@@ -254,9 +255,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("reason");
 
-                    b.Property<string>("ReviewedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
@@ -324,9 +324,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
 
-                    b.Property<string>("ResolvedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("resolved_by_user_id");
 
                     b.Property<int>("Status")
@@ -633,10 +632,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("requester_id");
 
-                    b.Property<string>("ReviewedBy")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("reviewed_by");
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")

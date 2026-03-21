@@ -16,8 +16,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.Property(x => x.Reason)
 				.HasMaxLength(1000);
 
-			builder.Property(x => x.ReviewedByUserId)
-				.HasMaxLength(450);
+			builder.Property(x => x.ReviewedByUserId);
 
 			builder.Property(x => x.Status)
 				.IsRequired();
@@ -29,6 +28,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 
 			builder.HasIndex(x => x.TaskAssignmentId);
 			builder.HasIndex(x => x.WorkerId);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

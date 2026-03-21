@@ -14,7 +14,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public IssueStatus Status { get; set; }
 
-		public string? ResolvedByUserId { get; set; }
+		public Guid? ResolvedByUserId { get; set; }
 
 		public DateTime? ResolvedAt { get; set; }
 

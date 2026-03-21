@@ -9,6 +9,7 @@ builder.InfrastructureWorkforceModule();
 builder.InfrastructureClientManagementModule();
 builder.InfrastructureServicePlanningModule();
 builder.InfrastructureTaskOperationsModule(); 
+builder.InfrastructureQualityControlModule();
 
 builder.AddWebAPIServices();  
 
