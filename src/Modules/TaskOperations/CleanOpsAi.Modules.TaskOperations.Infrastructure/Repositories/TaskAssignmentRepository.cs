@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 		public async Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct)
 		{
 			return await _context.TaskAssignments.FirstOrDefaultAsync(x=>x.Id == id, ct);
+		}
+
+		public async Task<PaginatedResult<TaskAssignment>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
+		{
+			return await _context.TaskAssignments.ToPaginatedResultAsync(request, ct);
+		}
+
+		public async Task<PaginatedResult<TaskAssignment>> GetsByAssigneeIdPaging(Guid assgineeId, PaginationRequest request, CancellationToken ct = default)
+		{
+			return await _context.TaskAssignments.Where(x=> x.AssigneeId == assgineeId).ToPaginatedResultAsync(request,ct);
 		}
 	}
 }

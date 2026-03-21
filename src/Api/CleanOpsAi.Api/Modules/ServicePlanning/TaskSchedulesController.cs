@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
 using Microsoft.AspNetCore.Http;
@@ -16,6 +17,21 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		public TaskSchedulesController(ITaskScheduleService taskScheduleService)
 		{
 			_taskScheduleService = taskScheduleService;
+		}
+
+		[HttpGet]
+		[SwaggerOperation(
+		Summary = "Get task schedules with pagination",
+		Description = "Retrieves a paginated list of task schedules. Each task schedule represents a planned cleaning or service task associated with a specific SOP, including recurrence configuration, assigned worker, and execution metadata.",
+		Tags = new[] { "TaskSchedule" }
+	)]
+		[ProducesResponseType(typeof(PaginatedResult<TaskScheduleDto>), StatusCodes.Status200OK)]
+		public async Task<IActionResult> Gets(
+		[FromQuery] PaginationRequest request,
+		CancellationToken ct)
+		{
+			var result = await _taskScheduleService.Gets(request, ct);
+			return Ok(result);
 		}
 
 		[HttpGet("{id:guid}")]

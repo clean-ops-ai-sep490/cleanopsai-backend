@@ -14,7 +14,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		public async Task<List<SopStep>> GetListBySopId(Guid id, CancellationToken cancellationToken = default)
 		{
 			return await _context.SopSteps
-				.Where(s => s.SopId == id && s.IsDeleted == false)
+				.Where(s => s.SopId == id)
 				.ToListAsync(cancellationToken);
 		}
 	}

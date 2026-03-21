@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories
 {
@@ -9,6 +10,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 			bool includeDeleted = false,
 			CancellationToken cancellationToken = default);
 
+		Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
 
 	}
 }

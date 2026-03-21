@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 {
     [DbContext(typeof(ServicePlanningDbContext))]
-    [Migration("20260319143948_Initial")]
+    [Migration("20260321063104_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -25,6 +25,50 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.EnvironmentType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_environment_types");
+
+                    b.ToTable("environment_types", "service_planning");
+                });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", b =>
                 {
@@ -46,9 +90,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
-                    b.Property<int>("EnvironmentType")
-                        .HasColumnType("integer")
-                        .HasColumnName("environment_type");
+                    b.Property<Guid>("EnvironmentTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("environment_type_id");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -78,6 +122,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_sops");
+
+                    b.HasIndex("EnvironmentTypeId")
+                        .HasDatabaseName("ix_sops_environment_type_id");
 
                     b.ToTable("sops", "service_planning");
                 });
@@ -202,6 +249,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -330,6 +383,18 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.ToTable("task_schedules", "service_planning");
                 });
 
+            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.EnvironmentType", "EnvironmentType")
+                        .WithMany("Sops")
+                        .HasForeignKey("EnvironmentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sops_environment_types_environment_type_id");
+
+                    b.Navigation("EnvironmentType");
+                });
+
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.SopRequiredCertification", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", "Sop")
@@ -385,6 +450,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasConstraintName("fk_task_schedules_sops_sop_id");
 
                     b.Navigation("Sop");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.EnvironmentType", b =>
+                {
+                    b.Navigation("Sops");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.ServicePlanning.Domain.Entities.Sop", b =>

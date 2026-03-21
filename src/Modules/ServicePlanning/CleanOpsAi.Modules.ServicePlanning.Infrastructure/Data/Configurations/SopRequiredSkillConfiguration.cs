@@ -13,6 +13,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.HasOne(x => x.Sop)
 				.WithMany(x => x.SopRequiredSkills)
 				.HasForeignKey(x => x.SopId);
+
 		}
 	}
 }

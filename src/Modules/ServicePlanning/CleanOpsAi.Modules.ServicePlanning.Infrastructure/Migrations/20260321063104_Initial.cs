@@ -15,16 +15,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 name: "service_planning");
 
             migrationBuilder.CreateTable(
-                name: "sops",
+                name: "environment_types",
                 schema: "service_planning",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    service_type = table.Column<int>(type: "integer", nullable: false),
-                    environment_type = table.Column<int>(type: "integer", nullable: false),
-                    version = table.Column<int>(type: "integer", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -33,7 +30,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_sops", x => x.id);
+                    table.PrimaryKey("pk_environment_types", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -46,6 +43,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     config_schema = table.Column<string>(type: "jsonb", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -55,6 +53,35 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_steps", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "sops",
+                schema: "service_planning",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    service_type = table.Column<int>(type: "integer", nullable: false),
+                    environment_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    version = table.Column<int>(type: "integer", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<string>(type: "text", nullable: true),
+                    last_modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_modified_by = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_sops", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_sops_environment_types_environment_type_id",
+                        column: x => x.environment_type_id,
+                        principalSchema: "service_planning",
+                        principalTable: "environment_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -98,6 +125,41 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "sop_steps",
+                schema: "service_planning",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sop_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    step_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    step_order = table.Column<int>(type: "integer", nullable: false),
+                    config_detail = table.Column<string>(type: "jsonb", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<string>(type: "text", nullable: true),
+                    last_modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_modified_by = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_sop_steps", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_sop_steps_sops_sop_id",
+                        column: x => x.sop_id,
+                        principalSchema: "service_planning",
+                        principalTable: "sops",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_sop_steps_steps_step_id",
+                        column: x => x.step_id,
+                        principalSchema: "service_planning",
+                        principalTable: "steps",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "task_schedules",
                 schema: "service_planning",
                 columns: table => new
@@ -135,41 +197,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "sop_steps",
-                schema: "service_planning",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    sop_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    step_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    step_order = table.Column<int>(type: "integer", nullable: false),
-                    config_detail = table.Column<string>(type: "jsonb", nullable: false),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<string>(type: "text", nullable: true),
-                    last_modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    last_modified_by = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_sop_steps", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_sop_steps_sops_sop_id",
-                        column: x => x.sop_id,
-                        principalSchema: "service_planning",
-                        principalTable: "sops",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_sop_steps_steps_step_id",
-                        column: x => x.step_id,
-                        principalSchema: "service_planning",
-                        principalTable: "steps",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "ix_sop_steps_sop_id_step_order",
                 schema: "service_planning",
@@ -183,6 +210,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 schema: "service_planning",
                 table: "sop_steps",
                 column: "step_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_sops_environment_type_id",
+                schema: "service_planning",
+                table: "sops",
+                column: "environment_type_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_steps_action_key",
@@ -224,6 +257,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "sops",
+                schema: "service_planning");
+
+            migrationBuilder.DropTable(
+                name: "environment_types",
                 schema: "service_planning");
         }
     }

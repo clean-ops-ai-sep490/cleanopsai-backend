@@ -12,7 +12,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public ServiceType ServiceType { get; set; }
 
-		public EnvironmentType EnvironmentType { get; set; } 
+		public Guid EnvironmentTypeId { get; set; }
 
 		public int Version { get; set; }
 
@@ -25,5 +25,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public virtual ICollection<SopRequiredCertification> SopRequiredCertifications { get; set; }
 			= new List<SopRequiredCertification>();
+
+		public EnvironmentType EnvironmentType { get; set; } = null!;
 	}
 }

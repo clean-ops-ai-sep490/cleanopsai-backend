@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
@@ -276,6 +277,17 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id,cancellationToken: cancellationToken);
 			return _mapper.Map<SopDto>(sop);
+		}
+
+		public async Task<PaginatedResult<SopDto>> Gets(PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _sopRepository.GetsPaging(request, ct);
+
+			return new PaginatedResult<SopDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<SopDto>>(result.Content));
 		}
 	}
 }

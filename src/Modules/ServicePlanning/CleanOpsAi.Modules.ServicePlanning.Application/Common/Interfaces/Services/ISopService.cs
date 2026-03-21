@@ -1,4 +1,6 @@
-﻿namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+
+namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
 {
 	public interface ISopService 
 	{
@@ -11,5 +13,7 @@
 		Task<bool> DeleteSopAsync(Guid id);
 
 		Task<SopDto?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default);
+
+		Task<PaginatedResult<SopDto>> Gets(PaginationRequest request, CancellationToken ct = default);
 	}
 }

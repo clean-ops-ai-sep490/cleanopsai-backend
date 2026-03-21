@@ -29,6 +29,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 
 			builder.HasIndex(x => new { x.SopId, x.StepOrder })
 				.IsUnique().HasFilter("is_deleted = false");
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

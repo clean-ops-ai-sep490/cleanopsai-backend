@@ -87,8 +87,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 					dest => dest.RecurrenceConfig,
 					opt => opt.MapFrom(src => JsonHelper.ToJsonElement(src.RecurrenceConfig))
 				);
-	 
 
+			CreateMap<EnvironmentTypeCreateDto, EnvironmentType>(); 
+			CreateMap<EnvironmentTypeUpdateDto, EnvironmentType>();
+			CreateMap<EnvironmentType, EnvironmentTypeDto>(); 
 
 		}
 

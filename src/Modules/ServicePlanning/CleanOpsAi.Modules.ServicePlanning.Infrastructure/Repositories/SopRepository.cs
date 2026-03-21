@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
+using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -31,5 +33,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 				.FirstOrDefaultAsync(cancellationToken);
 		}
 
+		public async Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
+		{
+			return await _context.Sops.ToPaginatedResultAsync(request, ct);
+		}
 	}
 }
