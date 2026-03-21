@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories
 {
@@ -18,5 +19,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 			CancellationToken cancellationToken = default);
 
 		Task<List<TaskSchedule>> GetByIdsAsync( List<Guid> ids, CancellationToken ct = default);
+
+		Task<PaginatedResult<TaskSchedule>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
+
 	}
 }

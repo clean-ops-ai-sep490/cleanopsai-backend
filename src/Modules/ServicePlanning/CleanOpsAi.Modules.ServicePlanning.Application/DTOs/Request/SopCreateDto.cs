@@ -10,7 +10,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public ServiceType ServiceType { get; set; }
 
-		public EnvironmentType EnvironmentType { get; set; } 
+		public Guid EnvironmentTypeId { get; set; }
 
 		public List<SopStepCreateDto> Steps { get; set; } = new();
 

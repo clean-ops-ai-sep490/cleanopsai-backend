@@ -37,6 +37,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 				.WithMany(x => x.TaskSchedules)
 				.HasForeignKey(x => x.SopId)
 				.OnDelete(DeleteBehavior.Restrict);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
+
 		}
 	}
 }

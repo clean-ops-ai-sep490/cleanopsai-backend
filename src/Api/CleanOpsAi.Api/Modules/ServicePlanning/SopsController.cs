@@ -1,6 +1,8 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
+using CleanOpsAi.Modules.ServicePlanning.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -19,12 +21,29 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			_sopService = sopService;
 		}
 
+		[HttpGet]
+		[SwaggerOperation(
+			Summary = "Get SOPs with pagination",
+			Description = "Retrieves a paginated list of Standard Operating Procedures (SOPs). Each SOP defines a structured workflow consisting of ordered steps, associated environment type, and service configuration.",
+			Tags = new[] { "SOP" }
+		)]
+		[ProducesResponseType(typeof(PaginatedResult<SopDto>), StatusCodes.Status200OK)]
+		public async Task<IActionResult> Gets(
+		[FromQuery] PaginationRequest request,
+		CancellationToken ct)
+		{
+			var result = await _sopService.Gets(request, ct);
+			return Ok(result);
+		}
+
 		[HttpGet("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Get SOP by Id",
 			Description = "Retrieves detailed information of a Standard Operating Procedure (SOP), including all ordered steps and their configuration details.",
 			Tags = new[] { "SOP" }
 		)]
+
+
 		[ProducesResponseType(typeof(SopDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> GetById(Guid id)

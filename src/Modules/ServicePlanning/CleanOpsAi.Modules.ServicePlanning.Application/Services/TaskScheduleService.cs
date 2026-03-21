@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -309,6 +310,17 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			}
 
 			//throw new NotImplementedException();
+		}
+
+		public async Task<PaginatedResult<TaskScheduleDto>> Gets(PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _taskScheduleRepository.GetsPaging(request, ct);
+
+			return new PaginatedResult<TaskScheduleDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<TaskScheduleDto>>(result.Content));
 		}
 	}
 }

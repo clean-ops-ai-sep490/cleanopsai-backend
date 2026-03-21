@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Enums;
+﻿using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Enums;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 {
@@ -8,7 +9,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 		public string Name { get; set; } = null!;
 		public string? Description { get; set; }
 		public ServiceType ServiceType { get; set; }
-		public EnvironmentType EnvironmentType { get; set; }
+		public Guid EnvironmentTypeId { get; set; }
 		public bool IsRequiredSkill { get; set; }
 		public bool IsRequiredCertification { get; set; }
 		public int Version { get; set; }
@@ -16,5 +17,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 
 		public List<Guid>? RequiredSkillIds { get; set; } 
 		public List<Guid>? RequiredCertificationIds { get; set; }
+		public EnvironmentType? EnvironmentType { get; set; }
 	}
 }

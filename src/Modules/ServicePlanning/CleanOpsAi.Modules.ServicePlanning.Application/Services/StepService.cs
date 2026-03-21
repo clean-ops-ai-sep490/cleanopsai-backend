@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
@@ -60,6 +61,17 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 			step.IsDeleted = true;
 			return await _stepRepository.SaveChangesAsync() > 0;
+		}
+
+		public async Task<PaginatedResult<StepDto>> Gets(PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _stepRepository.GetsPaging(request, ct);
+
+			return new PaginatedResult<StepDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<StepDto>>(result.Content)); 
 		}
 	}
 }

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
@@ -35,6 +36,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (taskAssignment == null) return null;
 
 			return _mapper.Map<TaskAssignmentDto?>(taskAssignment);
+		}
+
+		public async Task<PaginatedResult<TaskAssignmentDto>> Gets(PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _taskAssignmentRepository.GetsPaging(request, ct);
+
+			return new PaginatedResult<TaskAssignmentDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
+		}
+
+		public async Task<PaginatedResult<TaskAssignmentDto>> GetsByAssigneeId(Guid assgineeId,PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _taskAssignmentRepository.GetsByAssigneeIdPaging(assgineeId, request, ct);
+
+			return new PaginatedResult<TaskAssignmentDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
 		}
 
 		public async Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentDto dto)

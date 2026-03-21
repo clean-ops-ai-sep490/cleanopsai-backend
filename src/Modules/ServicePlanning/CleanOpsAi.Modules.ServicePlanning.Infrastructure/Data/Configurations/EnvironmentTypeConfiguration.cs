@@ -4,15 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 {
-	public class StepConfiguration : IEntityTypeConfiguration<Step>
+	public class EnvironmentTypeConfiguration : IEntityTypeConfiguration<EnvironmentType>
 	{
-		public void Configure(EntityTypeBuilder<Step> builder)
+		public void Configure(EntityTypeBuilder<EnvironmentType> builder)
 		{
 			builder.HasKey(x => x.Id);
-
-			builder.Property(x => x.ActionKey)
-				.IsRequired()
-				.HasMaxLength(100);
 
 			builder.Property(x => x.Name)
 				.IsRequired()
@@ -21,16 +17,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.Property(x => x.Description)
 				.HasMaxLength(1000);
 
-			builder.Property(x => x.ConfigSchema)
-				.IsRequired()
-				.HasColumnType("jsonb");  
-
-			builder.Property(x=> x.IsActive).HasDefaultValue(true);
-
-			builder.HasIndex(x => x.ActionKey)
-				.IsUnique().HasFilter("is_deleted = false");
-
 			builder.HasQueryFilter(x => !x.IsDeleted);
+
 		}
 	}
 }

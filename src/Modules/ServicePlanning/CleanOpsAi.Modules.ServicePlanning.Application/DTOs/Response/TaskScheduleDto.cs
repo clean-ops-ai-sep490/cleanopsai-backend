@@ -26,5 +26,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 		public RecurrenceType RecurrenceType { get; set; }
 
 		public JsonElement RecurrenceConfig { get; set; }
+
+		public bool IsActive { get; set; }  
 	}
 }
