@@ -11,6 +11,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public Guid SlaShiftId { get; set; }
 
+		public Guid WorkAreaId { get; set; }
+
 		public Guid? WorkAreaDetailId { get; set; }
 
 		public string Name { get; set; } = null!;

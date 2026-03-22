@@ -36,8 +36,12 @@ public static class DependencyInjection
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));  
 
 		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
+		builder.Services.AddScoped<ITaskSwapRequestRepository, TaskSwapRequestRepository>();
+
 
 		builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
 		builder.Services.AddScoped<ITaskAssignmentService, TaskAssignmentService>();
+		builder.Services.AddScoped<ITaskSwapRequestService, TaskSwapRequestService>();
+
 	}
 }

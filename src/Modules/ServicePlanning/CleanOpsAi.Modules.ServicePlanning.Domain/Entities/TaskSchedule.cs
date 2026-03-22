@@ -11,7 +11,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public Guid SlaTaskId { get; set; }
 
-		public Guid SlaShiftId { get; set; }	
+		public Guid SlaShiftId { get; set; }
+
+		public Guid WorkAreaId { get; set; }
 
 		public Guid? WorkAreaDetailId { get; set; }
 

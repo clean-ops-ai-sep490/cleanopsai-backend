@@ -7,15 +7,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 	public class TaskSwapRequest : BaseAuditableEntity
 	{
 		public Guid TaskAssignmentId { get; set; }
+		public Guid TargetTaskAssignmentId { get; set; }
 
 		public Guid RequesterId { get; set; }
-
-		public Guid? TargetWorkerId { get; set; }
+		public Guid TargetWorkerId { get; set; }
 
 		public SwapRequestStatus Status { get; set; }
 
-		public Guid? ReviewedByUserId { get; set; }	 
+		public string? RequesterNote { get; set; } 
+
+		public Guid? ReviewedByUserId { get; set; } 
+		public string? ReviewNote { get; set; }
+		public DateTime ExpiredAt { get; set; }
 
 		public TaskAssignment TaskAssignment { get; set; } = null!;
+		public TaskAssignment TargetTaskAssignment { get; set; } = null!;
 	}
 }
