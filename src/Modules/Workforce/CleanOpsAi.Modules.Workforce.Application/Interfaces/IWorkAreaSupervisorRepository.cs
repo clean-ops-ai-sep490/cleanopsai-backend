@@ -15,9 +15,11 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<List<WorkAreaSupervisor>> GetAllAsync();
         Task<(List<WorkAreaSupervisor> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize);
         Task<List<WorkAreaSupervisor>> GetByWorkAreaIdAsync(Guid workAreaId);
-        Task<int> CreateAsync(WorkAreaSupervisor workAreaSupervisor);
-        Task<int> UpdateAsync(WorkAreaSupervisor workAreaSupervisor);
         Task<int> DeleteAsync(Guid id);
         Task<List<WorkerGps>> GetWorkersLatestGpsByWorkAreaIdAsync(Guid workAreaId);
+        Task<bool> ExistsAsync(Guid workAreaId, string userId, Guid workerId);
+        Task<int> CreateRangeAsync(List<WorkAreaSupervisor> entities);
+        Task<WorkAreaSupervisor?> GetByWorkAreaUserWorkerAsync(Guid workAreaId, string userId, Guid workerId);
+        Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, string supervisorId);
     }
 }

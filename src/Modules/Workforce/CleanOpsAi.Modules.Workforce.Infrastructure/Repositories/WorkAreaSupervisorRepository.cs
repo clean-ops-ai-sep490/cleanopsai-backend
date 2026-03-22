@@ -77,27 +77,15 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<int> CreateAsync(WorkAreaSupervisor workAreaSupervisor)
-        {
-            _dbContext.Set<WorkAreaSupervisor>().Add(workAreaSupervisor);
-            return await _dbContext.SaveChangesAsync();
-        }
-
-        public async Task<int> UpdateAsync(WorkAreaSupervisor workAreaSupervisor)
-        {
-            _dbContext.Set<WorkAreaSupervisor>().Update(workAreaSupervisor);
-            return await _dbContext.SaveChangesAsync();
-        }
-
         public async Task<int> DeleteAsync(Guid id)
         {
-            var supervisor = await _dbContext.Set<WorkAreaSupervisor>()
+            var supervisorWorkarea = await _dbContext.Set<WorkAreaSupervisor>()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (supervisor != null)
+            if (supervisorWorkarea != null)
             {
-                supervisor.IsDeleted = true;
-                _dbContext.Set<WorkAreaSupervisor>().Update(supervisor);
+                supervisorWorkarea.IsDeleted = true;
+                _dbContext.Set<WorkAreaSupervisor>().Update(supervisorWorkarea);
                 return await _dbContext.SaveChangesAsync();
             }
 
@@ -130,5 +118,51 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .Select(g => g.First())
                 .ToList();
         }
+
+        // Kiểm tra đã tồn tại chưa (tránh duplicate)
+        public async Task<bool> ExistsAsync(Guid workAreaId, string userId, Guid workerId)
+        {
+            return await _dbContext.Set<WorkAreaSupervisor>()
+                .AnyAsync(x => x.WorkAreaId == workAreaId
+                            && x.UserId == userId
+                            && x.WorkerId == workerId
+                            && x.IsDeleted == false);
+        }
+
+        // Bulk create
+        public async Task<int> CreateRangeAsync(List<WorkAreaSupervisor> entities)
+        {
+            _dbContext.Set<WorkAreaSupervisor>().AddRange(entities);
+            return await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<WorkAreaSupervisor?> GetByWorkAreaUserWorkerAsync(
+            Guid workAreaId, string userId, Guid workerId)
+        {
+            return await _dbContext.Set<WorkAreaSupervisor>()
+                .FirstOrDefaultAsync(x => x.WorkAreaId == workAreaId
+                                       && x.UserId == userId
+                                       && x.WorkerId == workerId
+                                       && x.IsDeleted == false);
+        }
+
+        // Xoa khi update
+        public async Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, string supervisorId)
+        {
+            var entities = await _dbContext.Set<WorkAreaSupervisor>()
+                .Where(x => x.WorkAreaId == workAreaId
+                         && x.UserId == supervisorId
+                         && x.IsDeleted == false)
+                .ToListAsync();
+
+            foreach (var entity in entities)
+            {
+                entity.IsDeleted = true;
+                entity.LastModified = DateTime.UtcNow;
+            }
+
+            return await _dbContext.SaveChangesAsync();
+        }
+
     }
 }

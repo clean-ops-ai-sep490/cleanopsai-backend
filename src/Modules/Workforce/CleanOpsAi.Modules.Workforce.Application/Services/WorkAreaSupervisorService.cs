@@ -33,7 +33,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = entity.WorkAreaId,
                 WorkerId = entity.WorkerId,
                 WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
+                SupervisorId = entity.UserId,
                 Created = entity.Created
             };
         }
@@ -51,7 +51,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = entity.WorkAreaId,
                 WorkerId = entity.WorkerId,
                 WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
+                SupervisorId = entity.UserId,
                 Created = entity.Created
             };
         }
@@ -69,7 +69,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = entity.WorkAreaId,
                 WorkerId = entity.WorkerId,
                 WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
+                SupervisorId = entity.UserId,
                 Created = entity.Created
             };
         }
@@ -84,7 +84,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = entity.WorkAreaId,
                 WorkerId = entity.WorkerId,
                 WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
+                SupervisorId = entity.UserId,
                 Created = entity.Created
             }).ToList();
         }
@@ -99,7 +99,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = entity.WorkAreaId,
                 WorkerId = entity.WorkerId,
                 WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
+                SupervisorId = entity.UserId,
                 Created = entity.Created
             }).ToList();
 
@@ -123,66 +123,55 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = entity.WorkAreaId,
                 WorkerId = entity.WorkerId,
                 WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
+                SupervisorId = entity.UserId,
                 Created = entity.Created
             }).ToList();
         }
 
-        public async Task<WorkAreaSupervisorResponse?> CreateAsync(WorkAreaSupervisorCreateRequest request)
+        
+
+        public async Task<WorkAreaSupervisorAssignResponse> UpdateAsync(WorkAreaSupervisorUpdateRequest request)
         {
-            // ❗ Validate
-            if (request.WorkAreaId == null)
-                throw new Exception("WorkAreaId không được null");
+            if (!request.WorkerIds.Any())
+                throw new ArgumentException("WorkerIds không được rỗng.");
 
-            if (string.IsNullOrEmpty(request.UserId))
-                throw new Exception("UserId không được null");
+            // Xóa hết assignment cũ
+            await _repository.DeleteByWorkAreaAndSupervisorAsync(
+                request.WorkAreaId, request.SupervisorId);
 
-            var entity = new WorkAreaSupervisor
+            // Tạo lại theo danh sách mới
+            var toCreate = request.WorkerIds.Select(workerId => new WorkAreaSupervisor
             {
                 Id = Uuid7.NewGuid(),
                 WorkAreaId = request.WorkAreaId,
-                WorkerId = request.WorkerId,
-                UserId = request.UserId,
+                WorkerId = workerId,
+                UserId = request.SupervisorId,
                 Created = DateTime.UtcNow,
                 IsDeleted = false
-            };
+            }).ToList();
 
-            await _repository.CreateAsync(entity);
+            await _repository.CreateRangeAsync(toCreate);
 
-            var created = await _repository.GetByIdAsync(entity.Id);
+            var all = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
+            var mine = all
+                .Where(x => x.UserId == request.SupervisorId)
+                .Select(x => new WorkAreaSupervisorResponse
+                {
+                    Id = x.Id,
+                    WorkAreaId = x.WorkAreaId,
+                    WorkerId = x.WorkerId,
+                    WorkerName = x.Worker?.FullName,
+                    SupervisorId = x.UserId,
+                    Created = x.Created
+                })
+                .ToList();
 
-            return new WorkAreaSupervisorResponse
+            return new WorkAreaSupervisorAssignResponse
             {
-                Id = created!.Id,
-                WorkAreaId = created.WorkAreaId,
-                WorkerId = created.WorkerId,
-                WorkerName = created.Worker?.FullName,
-                UserId = created.UserId,
-                Created = created.Created
-            };
-        }
-
-        public async Task<WorkAreaSupervisorResponse?> UpdateAsync(Guid id, WorkAreaSupervisorUpdateRequest request)
-        {
-            var entity = await _repository.GetByIdAsync(id);
-
-            if (entity == null)
-                return null;
-
-            entity.WorkerId = request.WorkerId ?? entity.WorkerId;
-            entity.UserId = request.UserId ?? entity.UserId;
-            entity.LastModified = DateTime.UtcNow;
-
-            await _repository.UpdateAsync(entity);
-
-            return new WorkAreaSupervisorResponse
-            {
-                Id = entity.Id,
-                WorkAreaId = entity.WorkAreaId,
-                WorkerId = entity.WorkerId,
-                WorkerName = entity.Worker?.FullName,
-                UserId = entity.UserId,
-                Created = entity.Created
+                WorkAreaId = request.WorkAreaId,
+                SupervisorId = request.SupervisorId,
+                TotalAssigned = mine.Count,
+                Assignments = mine
             };
         }
 
@@ -207,5 +196,71 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Created = x.Created
             }).ToList();
         }
+
+        public async Task<WorkAreaSupervisorAssignResponse> AssignWorkersAsync(WorkAreaSupervisorAssignRequest request)
+        {
+            if (!request.WorkerIds.Any())
+                throw new ArgumentException("WorkerIds không được rỗng.");
+
+            var toCreate = new List<WorkAreaSupervisor>();
+
+            foreach (var workerId in request.WorkerIds)
+            {
+                var exists = await _repository.ExistsAsync(
+                    request.WorkAreaId, request.SupervisorId, workerId);
+
+                if (!exists)
+                {
+                    toCreate.Add(new WorkAreaSupervisor
+                    {
+                        Id = Uuid7.NewGuid(),
+                        WorkAreaId = request.WorkAreaId,
+                        WorkerId = workerId,
+                        UserId = request.SupervisorId,
+                        Created = DateTime.UtcNow,
+                        IsDeleted = false
+                    });
+                }
+            }
+
+            if (toCreate.Any())
+                await _repository.CreateRangeAsync(toCreate);
+
+            var all = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
+
+            var mine = all
+                .Where(x => x.UserId == request.SupervisorId)
+                .Select(x => new WorkAreaSupervisorResponse
+                {
+                    Id = x.Id,
+                    WorkAreaId = x.WorkAreaId,
+                    WorkerId = x.WorkerId,
+                    WorkerName = x.Worker?.FullName,
+                    SupervisorId = x.UserId,
+                    Created = x.Created
+                })
+                .ToList();
+
+            return new WorkAreaSupervisorAssignResponse
+            {
+                WorkAreaId = request.WorkAreaId,
+                SupervisorId = request.SupervisorId,
+                TotalAssigned = mine.Count,
+                Assignments = mine
+            };
+        }
+
+        // Service — UnassignWorkerAsync
+        public async Task<int> UnassignWorkerAsync(Guid workAreaId, string userId, Guid workerId)
+        {
+            var entity = await _repository.GetByWorkAreaUserWorkerAsync(
+                workAreaId, userId, workerId);
+
+            if (entity == null)
+                throw new KeyNotFoundException("Assignment không tồn tại.");
+
+            return await _repository.DeleteAsync(entity.Id);
+        }
+
     }
 }

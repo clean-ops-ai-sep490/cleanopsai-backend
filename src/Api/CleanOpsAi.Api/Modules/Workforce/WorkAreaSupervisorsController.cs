@@ -93,47 +93,27 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return Ok(result);
         }
 
-        [HttpPost]
+        
+
+        [HttpPut("update-assignments")]
         [Consumes("application/json")]
         [SwaggerOperation(
-            Summary = "Create WorkAreaSupervisor",
-            Description = "Create new supervisor.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        [SwaggerResponse(StatusCodes.Status200OK, "Create successfully")]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data")]
-        public async Task<IActionResult> Create(WorkAreaSupervisorCreateRequest request)
-        {
-            var result = await _service.CreateAsync(request);
-
-            if (result != null)
-                return Ok(result);
-
-            return BadRequest();
-        }
-
-        [HttpPut("{id:guid}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Update WorkAreaSupervisor",
-            Description = "Update supervisor information.",
+            Summary = "Update worker assignments of supervisor in work area",
+            Description = "Replace all current worker assignments of a supervisor in a work area with the new list.",
             Tags = new[] { "WorkAreaSupervisors" })]
         [SwaggerResponse(StatusCodes.Status200OK, "Update successfully")]
-        [SwaggerResponse(StatusCodes.Status404NotFound, "Supervisor not found")]
-        public async Task<IActionResult> Update(Guid id, WorkAreaSupervisorUpdateRequest request)
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid request data")]
+        public async Task<IActionResult> UpdateAssignments([FromBody] WorkAreaSupervisorUpdateRequest request)
         {
-            var result = await _service.UpdateAsync(id, request);
-
-            if (result != null)
-                return Ok(result);
-
-            return NotFound();
+            var result = await _service.UpdateAsync(request);
+            return Ok(result);
         }
 
         [HttpDelete("{id:guid}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Delete WorkAreaSupervisor",
-            Description = "Delete supervisor by id.",
+            Description = "Delete WorkAreaSupervisor by id.",
             Tags = new[] { "WorkAreaSupervisors" })]
         [SwaggerResponse(StatusCodes.Status200OK, "Delete successfully")]
         [SwaggerResponse(StatusCodes.Status404NotFound, "Supervisor not found")]
@@ -160,6 +140,36 @@ namespace CleanOpsAi.Api.Modules.Workforce
             var result = await _service.GetWorkersLatestGpsByWorkAreaIdAsync(workAreaId);
 
             return Ok(result);
+        }
+
+        [HttpPost("assign")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Assign workers to supervisor in work area",
+            Description = "Assign a list of workers to a supervisor in a specific work area.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> AssignWorkers(
+            [FromBody] WorkAreaSupervisorAssignRequest request)
+        {
+            var result = await _service.AssignWorkersAsync(request);
+            return Ok(result);
+        }
+
+        [HttpDelete("unassign")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Unassign a worker from supervisor in work area",
+            Description = "Remove a specific worker assignment from a supervisor in a work area.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> UnassignWorker(
+            [FromQuery] Guid workAreaId,
+            [FromQuery] string userId,
+            [FromQuery] Guid workerId)
+        {
+            var result = await _service.UnassignWorkerAsync(workAreaId, userId, workerId);
+            if (result > 0)
+                return Ok();
+            return NotFound();
         }
     }
 }

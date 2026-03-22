@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors
 {
-    public class WorkAreaSupervisorUpdateRequest
+    public class WorkAreaSupervisorAssignResponse
     {
         public Guid WorkAreaId { get; set; }
         public string SupervisorId { get; set; } = null!;
-        public List<Guid> WorkerIds { get; set; } = new();
+        public int TotalAssigned { get; set; }
+        public List<WorkAreaSupervisorResponse> Assignments { get; set; } = new();
     }
 }
