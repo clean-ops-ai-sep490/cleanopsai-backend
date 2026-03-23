@@ -4,6 +4,7 @@
 	{
 		public Guid TaskAssignmentId { get; set; }
 		public Guid TargetTaskAssignmentId { get; set; }
+		public Guid RequesterId { get; set; }
 		public Guid TargetWorkerId { get; set; }
 		public string? RequesterNote { get; set; }
 	}

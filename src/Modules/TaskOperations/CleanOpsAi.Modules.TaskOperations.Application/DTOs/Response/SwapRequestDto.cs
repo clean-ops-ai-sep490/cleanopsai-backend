@@ -12,11 +12,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 		public DateTime CreatedAt { get; set; }
 
 		// Task of A
-		public Guid RequesterId { get; set; }
-		public SwapTaskInfoDto RequesterTask { get; set; } = null!;
+		public Guid RequesterId { get; set; } 
 
 		// Task of B
-		public Guid TargetWorkerId { get; set; }
-		public SwapTaskInfoDto TargetTask { get; set; } = null!;
+		public Guid TargetWorkerId { get; set; } 
 	}
 }

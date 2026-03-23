@@ -15,13 +15,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
 			CreateMap<TaskSwapRequest, TaskSwapRequestDto>();
 			CreateMap<TaskSwapRequestCreateDto, TaskSwapRequest>();
 
-			CreateMap<TaskSwapRequest, SwapRequestDto>()
-			.ForMember(dest => dest.RequesterId,
-				opt => opt.MapFrom(src => src.RequesterId))
-			.ForMember(dest => dest.RequesterTask,
-				opt => opt.MapFrom(src => src.TaskAssignment))
-			.ForMember(dest => dest.TargetTask,
-				opt => opt.MapFrom(src => src.TargetTaskAssignment));
+			CreateMap<TaskSwapRequest, SwapRequestDto>();
 
 			CreateMap<TaskAssignment, SwapTaskInfoDto>();
 		}

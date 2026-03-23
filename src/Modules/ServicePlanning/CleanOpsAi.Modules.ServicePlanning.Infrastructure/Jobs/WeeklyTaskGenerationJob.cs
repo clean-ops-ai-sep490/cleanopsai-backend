@@ -38,8 +38,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs
 					FromDate: effectiveFrom,
 					ToDate: effectiveTo,
 					AssigneeId: schedule.AssigneeId,
+					WorkAreaId: schedule.WorkAreaId,
 					RecurrenceConfig: config,
 					RecurrenceType: schedule.RecurrenceType,
+					DurationMinutes: schedule.DurationMinutes,
 					Source: "auto"
 				));
 			}

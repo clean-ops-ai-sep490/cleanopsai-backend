@@ -28,6 +28,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.Property(x => x.Metadata)
 				.HasColumnType("jsonb");
 
+			builder.Property(t => t.DurationMinutes);
+
+
 			builder.Property(x => x.RecurrenceConfig)
 				.IsRequired()
 				.HasColumnType("jsonb");
