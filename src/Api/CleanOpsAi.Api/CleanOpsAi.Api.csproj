@@ -31,4 +31,10 @@
     <ProjectReference Include="..\..\Modules\Workforce\CleanOpsAi.Modules.Workforce.Infrastructure\CleanOpsAi.Modules.Workforce.Infrastructure.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<Content Include="Templates\**\*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
 </Project>
