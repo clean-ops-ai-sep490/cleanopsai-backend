@@ -1,6 +1,6 @@
 ﻿namespace CleanOpsAi.Modules.QualityControl.Application
 {
-	public class Class1
+	public class GlobalUsings
 	{
 
 	}

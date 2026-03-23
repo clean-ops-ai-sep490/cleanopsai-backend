@@ -1,5 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.QualityControl.Application.DTOs.Request;
+using CleanOpsAi.Modules.QualityControl.Application.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace CleanOpsAi.Api.Modules.QualityControl
 {
@@ -7,42 +12,41 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 	[ApiController]
 	public class FcmTokensController : ControllerBase
 	{
-		[HttpGet("firebase-status")]
-		public async Task<IActionResult> GetFirebaseStatus()
+		private readonly IFcmTokenService _tokenService;
+		public FcmTokensController(IFcmTokenService fcmTokenService)
 		{
-			try
-			{
-				var app = FirebaseAdmin.FirebaseApp.DefaultInstance;
+			_tokenService = fcmTokenService;
+		}
 
-				// test call tới Firebase (dry run)
-				var message = new FirebaseAdmin.Messaging.Message
-				{
-					Token = "fake_token_for_test",
-					Notification = new FirebaseAdmin.Messaging.Notification
-					{
-						Title = "Test",
-						Body = "Test"
-					}
-				};
+		[Authorize]
+		[HttpPost("register")]
+		[SwaggerOperation(
+			Summary = "Register FCM Token",
+			Description = "Creates or updates an FCM token for the current user's device. If the device already has an active token, it will be updated. If the token is used by another device, that device will be deactivated.",
+			Tags = new[] { "FcmToken" }
+		)]
+		[ProducesResponseType(typeof(FcmTokenDto), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		public async Task<IActionResult> Register([FromBody] FcmTokenCreateDto dto, CancellationToken ct = default)
+		{
+			var result = await _tokenService.CreateOrUpdateAsync(dto, ct);
+			return Ok(result);
+		}
 
-				await FirebaseAdmin.Messaging.FirebaseMessaging
-					.DefaultInstance
-					.SendAsync(message, dryRun: true);
-
-				return Ok(new
-				{
-					Status = "Firebase connected OK",
-					ProjectId = app.Options.ProjectId
-				});
-			}
-			catch (Exception ex)
-			{
-				return BadRequest(new
-				{
-					Status = "Firebase connection failed",
-					Error = ex.Message
-				});
-			}
+		[Authorize]
+		[HttpPatch("deactivate")]
+		[SwaggerOperation(
+			Summary = "Deactivate FCM Token",
+			Description = "Deactivates the FCM token for the specified device of the current user. Should be called on logout to prevent push notifications from being sent to logged-out devices.",
+			Tags = new[] { "FcmToken" }
+		)]
+		[ProducesResponseType(StatusCodes.Status204NoContent)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		public async Task<IActionResult> Deactivate([FromQuery] string uniqueId, CancellationToken ct = default)
+		{
+			await _tokenService.DeactivateTokenAsync(uniqueId, ct);
+			return NoContent();
 		}
 	}
 }

@@ -1,4 +1,9 @@
-﻿using CleanOpsAi.Modules.QualityControl.Infrastructure.Data;
+﻿using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.QualityControl.Application.Common.Mappings;
+using CleanOpsAi.Modules.QualityControl.Application.Services;
+using CleanOpsAi.Modules.QualityControl.Infrastructure.Data;
+using CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Builder.Extensions;
@@ -39,6 +44,16 @@ public static class DependencyInjection
 				ProjectId = builder.Configuration["Firebase:ProjectId"]
 			});
 		}
-		//builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
+		builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
+
+		//Repo
+		builder.Services.AddScoped<IFcmTokenRepository, FcmTokenRepository>();
+
+		
+		//Services
+		builder.Services.AddScoped<IFcmTokenService, FcmTokenService>();
+
+
+
 	}
 }
