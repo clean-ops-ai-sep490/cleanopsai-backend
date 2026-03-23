@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
 {
     public interface ILocationRepository
     {
-        Task<Location> GetByIdAsync(Guid id);
+        Task<Location?> GetByIdAsync(Guid id);
         Task<List<Location>> GetAllAsync();
         Task<(List<Location> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize);
         Task<int> CreateAsync(Location location);

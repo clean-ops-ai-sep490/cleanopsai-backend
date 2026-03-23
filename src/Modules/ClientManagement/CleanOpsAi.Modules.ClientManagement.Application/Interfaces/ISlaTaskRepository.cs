@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
 {
     public interface ISlaTaskRepository
     {
-        Task<SlaTask> GetByIdAsync(Guid id);
+        Task<SlaTask?> GetByIdAsync(Guid id);
 
         Task<List<SlaTask>> GetAllAsync();
 

@@ -19,18 +19,20 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         }
 
         // get Constract by id
-        public async Task<Contract> GetByIdAsync(Guid id)
+        public async Task<Contract?> GetByIdAsync(Guid id)
         {
-            var contract = _dbContext.Set<Contract>().Include(c => c.Client).FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
-            return contract;
-
+            return await _dbContext.Set<Contract>()
+                .Include(c => c.Client)
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         }
 
         // get all Contracts
         public async Task<List<Contract>> GetAllAsync()
         {
-            var constracts = _dbContext.Set<Contract>().Include(c => c.Client).OrderByDescending(c => c.Id).ToList();
-            return constracts;
+            return await _dbContext.Set<Contract>()
+                .Include(c => c.Client)
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
         }
 
         // get all Contracts with pagination

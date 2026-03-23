@@ -21,9 +21,13 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // get Client by id
         public async Task<Client> GetByIdAsync(Guid id)
         {
-            var client = _dbContext.Set<Client>().FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
-            return client;
+            var client = await _dbContext.Set<Client>()
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
 
+            if (client == null)
+                throw new KeyNotFoundException($"Client {id} not found");
+
+            return client;
         }
 
         // get all Clients
