@@ -16,19 +16,29 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private readonly IWorkerGpsRepository _repository;
         private readonly IWorkerRepository _workerRepository;
 
-        public WorkerGpsService(IWorkerGpsRepository repository)
+        public WorkerGpsService(
+            IWorkerGpsRepository repository,
+            IWorkerRepository workerRepository)
         {
             _repository = repository;
+            _workerRepository = workerRepository;
         }
+
+        private static WorkerGpsResponse MapToResponse(WorkerGps entity) => new()
+        {
+            Id = entity.Id,
+            WorkerId = entity.WorkerId,
+            WorkerName = entity.Worker?.FullName,
+            Latitude = entity.Latitude,
+            Longitude = entity.Longitude,
+            IsConfirmed = entity.IsConfirmed,
+            Created = entity.Created
+        };
 
         public async Task<WorkerGpsResponse?> GetByIdAsync(Guid id)
         {
             var entity = await _repository.GetByIdAsync(id);
-
-            if (entity == null)
-                return null;
-
-            return MapToResponse(entity);
+            return entity == null ? null : MapToResponse(entity);
         }
 
         public async Task<List<WorkerGpsResponse>> GetAllAsync()
@@ -37,11 +47,10 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             return items.Select(MapToResponse).ToList();
         }
 
-        public async Task<PagedResponse<WorkerGpsResponse>> GetAllPaginationAsync(int pageNumber, int pageSize)
+        public async Task<PagedResponse<WorkerGpsResponse>> GetAllPaginationAsync(
+            int pageNumber, int pageSize)
         {
             var (items, totalCount) = await _repository.GetAllPaginationAsync(pageNumber, pageSize);
-
-            var responses = items.Select(MapToResponse).ToList();
 
             return new PagedResponse<WorkerGpsResponse>
             {
@@ -49,17 +58,16 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 PageSize = pageSize,
                 TotalElements = totalCount,
                 TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
-                Content = responses
+                Content = items.Select(MapToResponse).ToList()
             };
         }
 
         public async Task<WorkerGpsResponse?> CreateAsync(WorkerGpsCreateRequest request)
         {
-            //  Validate worker tồn tại
             var worker = await _workerRepository.GetByIdAsync(request.WorkerId);
 
             if (worker == null)
-                throw new Exception("Worker không tồn tại");
+                throw new KeyNotFoundException($"Worker with id {request.WorkerId} not found.");
 
             var entity = new WorkerGps
             {
@@ -67,50 +75,42 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkerId = request.WorkerId,
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
+                IsConfirmed = request.IsConfirmed,
                 Created = DateTime.UtcNow,
                 IsDeleted = false
             };
 
             await _repository.CreateAsync(entity);
 
-            //  Query lại để có navigation property
             var created = await _repository.GetByIdAsync(entity.Id);
-
             return MapToResponse(created!);
         }
 
-        public async Task<WorkerGpsResponse?> UpdateAsync(Guid id, WorkerGpsUpdateRequest request)
+        public async Task<WorkerGpsResponse?> GetLatestByWorkerIdAsync(Guid workerId)
         {
-            var entity = await _repository.GetByIdAsync(id);
-
-            if (entity == null)
-                return null;
-
-            entity.Latitude = request.Latitude;
-            entity.Longitude = request.Longitude;
-            entity.LastModified = DateTime.UtcNow;
-
-            await _repository.UpdateAsync(entity);
-
-            return MapToResponse(entity);
+            var entity = await _repository.GetLatestByWorkerIdAsync(workerId);
+            return entity == null ? null : MapToResponse(entity);
         }
 
-        public async Task<int> DeleteAsync(Guid id)
+        public async Task<List<WorkerGpsResponse>> GetLatestByWorkerIdsAsync(List<Guid> workerIds)
         {
-            return await _repository.DeleteAsync(id);
+            var items = await _repository.GetLatestByWorkerIdsAsync(workerIds);
+            return items.Select(MapToResponse).ToList();
         }
 
-        //  Map riêng để tránh lặp code + tránh null crash
-        private static WorkerGpsResponse MapToResponse(WorkerGps entity)
+        public async Task<PagedResponse<WorkerGpsResponse>> GetByWorkerIdPaginationAsync(
+            Guid workerId, int pageNumber, int pageSize)
         {
-            return new WorkerGpsResponse
+            var (items, totalCount) = await _repository
+                .GetByWorkerIdPaginationAsync(workerId, pageNumber, pageSize);
+
+            return new PagedResponse<WorkerGpsResponse>
             {
-                Id = entity.Id,
-                WorkerId = entity.WorkerId,
-                WorkerName = entity.Worker?.FullName, //  tránh null
-                Latitude = entity.Latitude,
-                Longitude = entity.Longitude,
-                Created = entity.Created
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = items.Select(MapToResponse).ToList()
             };
         }
     }

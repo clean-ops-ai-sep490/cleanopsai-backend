@@ -12,6 +12,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Dtos
         public int PageSize { get; set; }
         public int TotalElements { get; set; }
         public int TotalPages { get; set; }
+        public bool HasPreviousPage => PageNumber > 1;
+        public bool HasNextPage => PageNumber < TotalPages;
         public List<T> Content { get; set; } = new();
     }
 }

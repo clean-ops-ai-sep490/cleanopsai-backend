@@ -64,7 +64,7 @@ public static class DependencyInjection
 		builder.Services.AddMessageBroker(
 			builder.Configuration,
 			typeof(GenerateTaskAssignmentsConsumer).Assembly,
-      typeof(UserRegisteredConsumer).Assembly
+			typeof(UserRegisteredConsumer).Assembly
 		); 
 
 		builder.Services.AddCors(options =>

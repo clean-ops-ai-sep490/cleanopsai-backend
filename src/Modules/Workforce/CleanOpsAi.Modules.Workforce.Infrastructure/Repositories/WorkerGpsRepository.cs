@@ -35,7 +35,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<(List<WorkerGps> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
+        public async Task<(List<WorkerGps> Items, int TotalCount)> GetAllPaginationAsync(
+            int pageNumber, int pageSize)
         {
             var query = _dbContext.Set<WorkerGps>()
                 .Include(x => x.Worker)
@@ -43,7 +44,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
-
             var items = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -58,25 +58,44 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.SaveChangesAsync();
         }
 
-        public async Task<int> UpdateAsync(WorkerGps entity)
+        public async Task<WorkerGps?> GetLatestByWorkerIdAsync(Guid workerId)
         {
-            _dbContext.Set<WorkerGps>().Update(entity);
-            return await _dbContext.SaveChangesAsync();
+            return await _dbContext.Set<WorkerGps>()
+                .Include(x => x.Worker)
+                .Where(x => x.WorkerId == workerId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created)
+                .FirstOrDefaultAsync();
         }
 
-        public async Task<int> DeleteAsync(Guid id)
+        public async Task<List<WorkerGps>> GetLatestByWorkerIdsAsync(List<Guid> workerIds)
         {
-            var entity = await _dbContext.Set<WorkerGps>()
-                .FirstOrDefaultAsync(x => x.Id == id);
+            var allGps = await _dbContext.Set<WorkerGps>()
+                .Include(x => x.Worker)
+                .Where(x => workerIds.Contains(x.WorkerId) && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created)
+                .ToListAsync();
 
-            if (entity != null)
-            {
-                entity.IsDeleted = true;
-                _dbContext.Set<WorkerGps>().Update(entity);
-                return await _dbContext.SaveChangesAsync();
-            }
+            return allGps
+                .GroupBy(x => x.WorkerId)
+                .Select(g => g.First())
+                .ToList();
+        }
 
-            return 0;
+        public async Task<(List<WorkerGps> Items, int TotalCount)> GetByWorkerIdPaginationAsync(
+            Guid workerId, int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Set<WorkerGps>()
+                .Include(x => x.Worker)
+                .Where(x => x.WorkerId == workerId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
         }
     }
 }

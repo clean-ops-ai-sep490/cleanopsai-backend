@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
 {
     public interface IContractRepository
     {
-        Task<Contract> GetByIdAsync(Guid id);
+        Task<Contract?> GetByIdAsync(Guid id);
         Task<List<Contract>> GetAllAsync();
         Task<(List<Contract> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize);
         Task<int> CreateAsync(Contract contract);

@@ -19,18 +19,20 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         }
 
         // get Location by id
-        public async Task<Location> GetByIdAsync(Guid id)
+        public async Task<Location?> GetByIdAsync(Guid id)
         {
-            var item = _dbContext.Set<Location>().Include(c => c.Client).FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
-            return item;
-
+            return await _dbContext.Set<Location>()
+                .Include(c => c.Client)
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         }
 
         // get all Locations
         public async Task<List<Location>> GetAllAsync()
         {
-            var items = _dbContext.Set<Location>().Include(c => c.Client).OrderByDescending(c => c.Id).ToList();
-            return items;
+            return await _dbContext.Set<Location>()
+                .Include(c => c.Client)
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
         }
 
         // get all Locations with pagination

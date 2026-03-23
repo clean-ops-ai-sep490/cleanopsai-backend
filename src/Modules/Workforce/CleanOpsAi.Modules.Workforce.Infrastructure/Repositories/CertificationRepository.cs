@@ -19,13 +19,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<Certification> GetByIdAsync(Guid id)
+        public async Task<Certification?> GetByIdAsync(Guid id)
         {
-            var certification = await _dbContext.Set<Certification>()
+            return await _dbContext.Set<Certification>()
                 .Include(c => c.WorkerCertifications)
-                .FirstOrDefaultAsync(x => x.Id == id && x.IsDeleted == false);
-
-            return certification;
+                .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
         }
 
         public async Task<List<Certification>> GetAllAsync()

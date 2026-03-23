@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 {
     public interface ICertificationRepository
     {
-        Task<Certification> GetByIdAsync(Guid id);
+        Task<Certification?> GetByIdAsync(Guid id);
 
         Task<List<Certification>> GetAllAsync();
 

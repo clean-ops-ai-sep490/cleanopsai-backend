@@ -19,14 +19,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<Sla> GetByIdAsync(Guid id)
+        public async Task<Sla?> GetByIdAsync(Guid id)
         {
-            var sla = _dbContext.Set<Sla>()
+            return await _dbContext.Set<Sla>()
                 .Include(s => s.WorkArea)
                 .Include(s => s.Contract)
-                .FirstOrDefault(x => x.Id == id && x.IsDeleted == false);
-
-            return sla;
+                .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
         }
 
         public async Task<List<Sla>> GetAllAsync()
