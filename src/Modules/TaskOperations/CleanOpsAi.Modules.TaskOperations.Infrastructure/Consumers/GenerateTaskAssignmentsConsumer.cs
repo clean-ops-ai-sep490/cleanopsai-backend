@@ -25,16 +25,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 				msg.RecurrenceType,
 				msg.RecurrenceConfig,
 				msg.FromDate,
-				msg.ToDate);
-
-
-			foreach (var t in scheduledTimes)
-			{
-				Console.WriteLine($"Generated: {t} | Kind: {t.Kind}");
-
-				var exists = await repo.ExistsAsync(msg.ScheduleId, t);
-				Console.WriteLine($"Exists: {exists}");
-			}
+				msg.ToDate); 
 
 			var toInsert = new List<TaskAssignment>();
 
@@ -51,8 +42,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 					TaskScheduleId = msg.ScheduleId,
 					AssigneeId = msg.AssigneeId ?? Guid.Empty,
 					OriginalAssigneeId = msg.AssigneeId ?? Guid.Empty,
+					WorkAreaId = msg.WorkAreaId,
 					ScheduledStartAt = scheduledAt,
-					Status = TaskAssignmentStatus.Pending,
+					ScheduledEndAt = scheduledAt.AddMinutes(msg.DurationMinutes),
+					Status = TaskAssignmentStatus.NotStarted,
 					IsAdhocTask = false,
 					Created = DateTime.UtcNow,
 					CreatedBy = "system"

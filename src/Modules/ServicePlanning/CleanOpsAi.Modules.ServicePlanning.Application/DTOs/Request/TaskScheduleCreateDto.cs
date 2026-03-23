@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos;
-using System.Text.Json;
+﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos; 
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 {
@@ -11,6 +10,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public Guid SlaShiftId { get; set; }
 
+		public Guid WorkAreaId { get; set; }
+
 		public Guid? WorkAreaDetailId { get; set; }
 
 		public string Name { get; set; } = null!;
@@ -18,6 +19,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 		public string Description { get; set; } = null!;
 
 		public Guid? AssigneeId { get; set; }
+
+		public int DurationMinutes { get; set; }
 
 		public RecurrenceType RecurrenceType { get; set; }
 

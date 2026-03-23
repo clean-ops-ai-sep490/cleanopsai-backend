@@ -9,9 +9,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
 	{
 		public MappingProfile() 
 		{
-			CreateMap<TaskAssignmentUpdateDto, TaskAssignment>();
-
+			CreateMap<TaskAssignmentUpdateDto, TaskAssignment>(); 
 			CreateMap<TaskAssignment, TaskAssignmentDto>();
+
+			CreateMap<TaskSwapRequest, TaskSwapRequestDto>();
+			CreateMap<TaskSwapRequestCreateDto, TaskSwapRequest>();
+
+			CreateMap<TaskSwapRequest, SwapRequestDto>();
+
+			CreateMap<TaskAssignment, SwapTaskInfoDto>();
 		}
 	}
 }

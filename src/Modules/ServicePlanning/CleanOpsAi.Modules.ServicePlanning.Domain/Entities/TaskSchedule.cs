@@ -11,12 +11,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public Guid SlaTaskId { get; set; }
 
-		public Guid SlaShiftId { get; set; }	
+		public Guid SlaShiftId { get; set; }
+
+		public Guid WorkAreaId { get; set; }
 
 		public Guid? WorkAreaDetailId { get; set; }
 
 		public string Name { get; set; } = null!;
-
+			
 		public string Description { get; set; } = null!;
 
 		public Guid? AssigneeId { get; set; }
@@ -24,6 +26,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 		public int Version { get; set; }
 
 		public string Metadata { get; set; } = null!;
+
+		public int DurationMinutes { get; set; }
 
 		public RecurrenceType RecurrenceType { get; set; }
 

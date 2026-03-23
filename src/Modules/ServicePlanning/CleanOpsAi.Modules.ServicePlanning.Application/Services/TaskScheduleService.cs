@@ -301,10 +301,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				await _bus.Publish(new GenerateTaskAssignmentsRequestedEvent(
 					ScheduleId: schedule.Id,
 					AssigneeId: schedule.AssigneeId,
+					WorkAreaId: schedule.WorkAreaId,
 					FromDate: request.FromDate,
 					ToDate: request.ToDate,
 					RecurrenceType: schedule.RecurrenceType,
 					RecurrenceConfig: config,
+					DurationMinutes: schedule.DurationMinutes,
 					Source: "manual"
 				), ct);
 			}

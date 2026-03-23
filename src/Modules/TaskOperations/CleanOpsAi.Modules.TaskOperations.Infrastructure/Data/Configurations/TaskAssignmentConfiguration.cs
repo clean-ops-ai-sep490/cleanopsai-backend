@@ -23,6 +23,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.Property(x => x.IsAdhocTask)
 				.IsRequired();
 
+			builder.Property(x => x.WorkAreaId);
+			builder.Property(x => x.ScheduledEndAt);
+
 			builder.Property(x => x.NameAdhocTask)
 				.HasMaxLength(500);
 
@@ -37,7 +40,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 
 			builder.HasMany(x => x.TaskSwapRequests)
 				.WithOne(x => x.TaskAssignment)
-				.HasForeignKey(x => x.TaskAssignmentId);
+				.HasForeignKey(x => x.TaskAssignmentId)
+				.OnDelete(DeleteBehavior.Restrict);
+
+			builder.HasMany(x => x.TargetTaskSwapRequests)
+				.WithOne(x => x.TargetTaskAssignment)
+				.HasForeignKey(x => x.TargetTaskAssignmentId)
+				.OnDelete(DeleteBehavior.Restrict);
 
 			builder.HasMany(x => x.IssueReports)
 				.WithOne(x => x.TaskAssignment)
