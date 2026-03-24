@@ -10,7 +10,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 
 		public string? Description { get; set; } 
 
-		public EnvironmentType EnvironmentType { get; set; }
+		public Guid? EnvironmentTypeId { get; set; }
 
 		public ServiceType ServiceType { get; set; }
 

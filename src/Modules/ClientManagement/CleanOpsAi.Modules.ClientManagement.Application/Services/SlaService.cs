@@ -39,7 +39,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                     Id = sla.Id,
                     Name = sla.Name,
                     Description = sla.Description,
-                    EnvironmentType = sla.EnvironmentType,
+                    EnvironmentTypeId = sla.EnvironmentTypeId,
                     ServiceType = sla.ServiceType,
                     WorkAreaId = sla.WorkAreaId,
                     WorkAreaName = sla.WorkArea?.Name, // Assuming WorkArea has a Name property
@@ -59,7 +59,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 Description = x.Description,
-                EnvironmentType = x.EnvironmentType,
+                EnvironmentTypeId = x.EnvironmentTypeId,
                 ServiceType = x.ServiceType,
                 WorkAreaId = x.WorkAreaId,
                 WorkAreaName = x.WorkArea?.Name, // Assuming WorkArea has a Name property
@@ -78,7 +78,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 Description = x.Description,
-                EnvironmentType = x.EnvironmentType,
+                EnvironmentTypeId = x.EnvironmentTypeId,
                 ServiceType = x.ServiceType,
                 WorkAreaId = x.WorkAreaId,
                 WorkAreaName = x.WorkArea?.Name, // Assuming WorkArea has a Name property
@@ -111,7 +111,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 Description = x.Description,
-                EnvironmentType = x.EnvironmentType,
+                EnvironmentTypeId = x.EnvironmentTypeId,
                 ServiceType = x.ServiceType,
                 WorkAreaId = x.WorkAreaId,
                 WorkAreaName = x.WorkArea?.Name, // Assuming WorkArea has a Name property
@@ -145,7 +145,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = Uuid7.NewGuid(),
                 Name = request.Name,
                 Description = request.Description,
-                EnvironmentType = request.EnvironmentType,
+                EnvironmentTypeId = request.EnvironmentTypeId,
                 ServiceType = request.ServiceType,
                 WorkAreaId = request.WorkAreaId,
                 ContractId = request.ContractId,
@@ -160,7 +160,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = sla.Id,
                 Name = sla.Name,
                 Description = sla.Description,
-                EnvironmentType = sla.EnvironmentType,
+                EnvironmentTypeId = sla.EnvironmentTypeId,
                 ServiceType = sla.ServiceType,
                 WorkAreaId = sla.WorkAreaId,
                 WorkAreaName = sla.WorkArea.Name,
@@ -180,8 +180,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             sla.Name = string.IsNullOrWhiteSpace(request.Name) ? sla.Name : request.Name;
             sla.Description = string.IsNullOrWhiteSpace(request.Description) ? sla.Description : request.Description;
 
-            if (request.EnvironmentType.HasValue)
-                sla.EnvironmentType = request.EnvironmentType.Value;
+            if (request.EnvironmentTypeId.HasValue)
+                sla.EnvironmentTypeId = request.EnvironmentTypeId.Value;
 
             if (request.ServiceType.HasValue)
                 sla.ServiceType = request.ServiceType.Value;
@@ -195,7 +195,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = sla.Id,
                 Name = sla.Name,
                 Description = sla.Description,
-                EnvironmentType = sla.EnvironmentType,
+                EnvironmentTypeId = sla.EnvironmentTypeId,
                 ServiceType = sla.ServiceType,
                 WorkAreaId = sla.WorkAreaId,
                 WorkAreaName = sla.WorkArea.Name,

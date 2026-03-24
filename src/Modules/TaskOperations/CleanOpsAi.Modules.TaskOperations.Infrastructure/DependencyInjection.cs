@@ -37,11 +37,13 @@ public static class DependencyInjection
 
 		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
 		builder.Services.AddScoped<ITaskSwapRequestRepository, TaskSwapRequestRepository>();
+		builder.Services.AddScoped<IEquipmentRequestRepository, EquipmentRequestRepository>();
 
 
-		builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
+        builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
 		builder.Services.AddScoped<ITaskAssignmentService, TaskAssignmentService>();
 		builder.Services.AddScoped<ITaskSwapRequestService, TaskSwapRequestService>();
+		builder.Services.AddScoped<IEquipmentRequestService, EquipmentRequestService>();
 
-	}
+    }
 }

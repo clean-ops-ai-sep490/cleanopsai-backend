@@ -13,7 +13,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.Slas
 
         public string? Description { get; set; }
 
-        public EnvironmentType? EnvironmentType { get; set; }
+        public Guid? EnvironmentTypeId { get; set; }
 
         public ServiceType? ServiceType { get; set; }
     }
