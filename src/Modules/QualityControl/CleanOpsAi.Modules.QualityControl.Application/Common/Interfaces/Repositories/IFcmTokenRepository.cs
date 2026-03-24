@@ -8,6 +8,6 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Reposi
 
 		Task<FcmToken?> GetByTokenAsync(string token, CancellationToken cancellationToken = default);
 
-		Task<List<FcmToken>> GetActiveTokensByUserIdsAsync(List<Guid> userIds, CancellationToken ct = default);
+		Task<List<FcmToken>> GetActiveTokensByUserIdsAsync(List<Guid> userIds, CancellationToken ct = default); 
 	}
 }

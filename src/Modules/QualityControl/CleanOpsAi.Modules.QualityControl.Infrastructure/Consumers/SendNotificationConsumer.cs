@@ -8,6 +8,10 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers
 	{
 		private readonly IFcmTokenRepository _fcmTokenRepository;
 
+		public SendNotificationConsumer()
+		{
+			
+		}
 		public Task Consume(ConsumeContext<SendNotificationEvent> context)
 		{
 			throw new NotImplementedException();
