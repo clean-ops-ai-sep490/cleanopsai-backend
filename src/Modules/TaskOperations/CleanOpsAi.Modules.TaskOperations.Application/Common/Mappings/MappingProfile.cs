@@ -24,6 +24,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
             CreateMap<CreateEquipmentRequestDto, EquipmentRequest>();
             CreateMap<UpdateEquipmentRequestDto, EquipmentRequest>()
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
+
+            // IssueReport mappings
+            CreateMap<IssueReport, IssueReportDto>();
+            CreateMap<CreateIssueReportDto, IssueReport>();
+            CreateMap<UpdateIssueReportDto, IssueReport>()
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
         }
     }
 }
