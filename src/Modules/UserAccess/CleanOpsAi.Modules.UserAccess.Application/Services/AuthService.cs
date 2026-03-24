@@ -8,6 +8,7 @@ using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
 using CleanOpsAi.Modules.UserAccess.Domain;
 using MassTransit;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Net;
 
@@ -20,14 +21,16 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailService _emailService;
         private readonly FrontendSettings _frontendSettings;
+        private readonly IPasswordResetOtpRepository _otpRepo;
 
-        public AuthService(IAuthRepository authRepository, IPublishEndpoint publishEndpoint, UserManager<ApplicationUser> userManager, IEmailService emailService, IOptions<FrontendSettings> frontendOptions)
+        public AuthService(IAuthRepository authRepository, IPublishEndpoint publishEndpoint, UserManager<ApplicationUser> userManager, IEmailService emailService, IOptions<FrontendSettings> frontendOptions, IPasswordResetOtpRepository otpRepository)
 		{
 			_authRepository = authRepository;
 			_publishEndpoint = publishEndpoint;
             _userManager = userManager;
             _emailService = emailService;
             _frontendSettings = frontendOptions.Value;
+            _otpRepo = otpRepository;
         }
 
         public async Task<RegisterUserResult> Register(
@@ -68,23 +71,63 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Services
             if (user == null)
                 return; // tránh lộ email tồn tại
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            // generate OTP 6 số
+            var otp = new Random().Next(100000, 999999).ToString();
 
-            var encodedToken = WebUtility.UrlEncode(token);
+            var otpEntity = new PasswordResetOtp
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                OtpCode = otp,
+                ExpiredAt = DateTime.UtcNow.AddMinutes(5),
+                IsUsed = false
+            };
 
-            // lấy path từ appsettings
-            var resetLink =
-                $"{_frontendSettings.BaseUrl}{_frontendSettings.ResetPasswordPath}?email={email}&token={encodedToken}";
+            await _otpRepo.AddAsync(otpEntity);
+            await _otpRepo.SaveChangesAsync();
+
+            //var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            //var encodedToken = WebUtility.UrlEncode(token);
+
+            //// lấy path từ appsettings
+            //var resetLink =
+            //    $"{_frontendSettings.BaseUrl}{_frontendSettings.ResetPasswordPath}?email={email}&token={encodedToken}";
 
             var template = await _emailService.LoadTemplate("reset-password.html");
 
-            var body = template.Replace("{{RESET_LINK}}", resetLink);
+            var body = template
+                .Replace("{{FULL_NAME}}", user.UserName)
+                .Replace("{{OTP_CODE}}", otp);
+
 
             await _emailService.SendEmailAsync(
                 email,
-                "Reset Password",
+                "Your OTP Code",
                 body
             );
+        }
+
+        // Verify OTP implementation: validate OTP code for email
+        public async Task<string> VerifyOtp(string email, string otp)
+        {
+            var record = await _otpRepo.GetValidOtpAsync(email, otp);
+
+            if (record == null)
+                throw new Exception("OTP không đúng hoặc hết hạn");
+
+            record.IsUsed = true;
+            var user = await _userManager.FindByEmailAsync(email);
+
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            // encode trước khi trả về client
+            var encodedToken = WebUtility.UrlEncode(resetToken);
+            Console.WriteLine( "ResetToken: ",resetToken);
+
+            await _otpRepo.SaveChangesAsync();
+
+            return encodedToken;
+            
         }
 
         // Reset password implementation: validate token and reset password
@@ -94,6 +137,7 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Services
                 ?? throw new Exception("User not found");
 
             var decodedToken = WebUtility.UrlDecode(token);
+            Console.WriteLine("DecodeToken: ", decodedToken);
 
             var result = await _userManager.ResetPasswordAsync(
                 user,

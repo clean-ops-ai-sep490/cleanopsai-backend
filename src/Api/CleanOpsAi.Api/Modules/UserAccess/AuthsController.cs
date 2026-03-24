@@ -111,6 +111,18 @@ namespace CleanOpsAi.Api.Modules.UserAccess
             return Ok("Đã gửi email reset");
         }
 
+        [HttpPost("verify-otp")]
+        [SwaggerOperation(
+            Summary = "Verify Otp",
+            Description = "Response token to reset password",
+            Tags = new[] { "Auth" })]
+        public async Task<IActionResult> VerifyOtp(VerifyOtpRequest request)
+        {
+            var token = await _authService.VerifyOtp(request.Email, request.OtpCode);
+
+            return Ok(new { token });
+        }
+
         [HttpPost("reset-password")]
         [SwaggerOperation(
 			Summary = "Reset password",

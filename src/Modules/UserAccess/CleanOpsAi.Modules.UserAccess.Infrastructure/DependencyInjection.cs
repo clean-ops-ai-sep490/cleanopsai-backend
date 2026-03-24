@@ -67,5 +67,6 @@ public static class DependencyInjection
 
 		builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 		builder.Services.AddScoped<IAuthService, AuthService>();
-	}
+		builder.Services.AddScoped<IPasswordResetOtpRepository, PasswordResetOtpRepository>();
+    }
 }
