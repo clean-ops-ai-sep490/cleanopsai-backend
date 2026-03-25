@@ -1,7 +1,9 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -13,12 +15,15 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 	public class StepsController : ControllerBase
 	{
 		private readonly IStepService _stepService;
+		private readonly IUserContext _userContext;
 
-		public StepsController(IStepService stepService)
+		public StepsController(IStepService stepService, IUserContext userContext)
 		{
 			_stepService = stepService;
+			_userContext = userContext;
 		}
 
+		[Authorize]
 		[HttpGet]
 		[SwaggerOperation(
 			Summary = "Get steps with pagination",
@@ -34,6 +39,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpGet("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Get step by ID",
@@ -52,6 +58,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return Ok(step);
 		}
 
+		[Authorize(Roles = "Admin")]
 		[HttpPost]
 		[SwaggerOperation(
 			Summary = "Create a new step",
@@ -60,9 +67,9 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		)]
 		[ProducesResponseType(typeof(StepDto), StatusCodes.Status201Created)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> Create([FromBody] StepCreateDto dto)
+		public async Task<IActionResult> Create([FromBody] StepCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _stepService.CreateNewStep(dto);
+			var result = await _stepService.CreateNewStep(dto, _userContext.UserId, ct);
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -71,6 +78,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			);
 		}
 
+		[Authorize(Roles = "Admin")]
 		[HttpPatch("{id}")]
 		[SwaggerOperation(
 			Summary = "Update a step",
@@ -80,13 +88,14 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(typeof(StepDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> Update(Guid id, [FromBody] StepUpdateDto dto)
+		public async Task<IActionResult> Update(Guid id, [FromBody] StepUpdateDto dto, CancellationToken ct = default)
 		{
-			var result = await _stepService.UpdateStep(id, dto);
+			var result = await _stepService.UpdateStep(id, dto, _userContext.UserId, ct);
 
 			return Ok(result);
 		}
 
+		[Authorize(Roles = "Admin")]
 		[HttpDelete("{id}")]
 		[SwaggerOperation(
 			Summary = "Delete a step",

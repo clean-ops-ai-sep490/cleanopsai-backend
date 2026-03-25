@@ -4,5 +4,6 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Reposi
 {
 	public interface INotificationRepository : IBaseRepo<AppNotification, Guid>
 	{
+		 
 	}
 }

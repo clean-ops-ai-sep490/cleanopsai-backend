@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
@@ -18,16 +19,23 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly ISopStepRepository _sopStepRepository;
 		private readonly IMapper _mapper;
 		private readonly IPublishEndpoint _bus;
+		private readonly IIdGenerator _idGenerator;
+		private readonly IDateTimeProvider _dateTimeProvider;
+
+
 
 		public TaskScheduleService(
 			ITaskScheduleRepository taskScheduleRepository,
 			ISopStepRepository sopStepRepository,
-			IMapper mapper, IPublishEndpoint publishEndpoint)
+			IMapper mapper, IPublishEndpoint publishEndpoint,
+			IIdGenerator idGenerator, IDateTimeProvider dateTimeProvider)
 		{
 			_taskScheduleRepository = taskScheduleRepository;
 			_sopStepRepository = sopStepRepository;
 			_mapper = mapper; 
 			_bus = publishEndpoint;
+			_idGenerator = idGenerator;
+			_dateTimeProvider = dateTimeProvider;
 		}
 
 		public async Task<TaskScheduleDto?> GetById(Guid id)
@@ -38,7 +46,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 		public async Task<TaskScheduleDto> Create(TaskScheduleCreateDto dto)
 		{
-			var windowStart = DateOnly.FromDateTime(DateTime.UtcNow);
+			var windowStart = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
 			var windowEnd = windowStart.AddDays(14); 
 
 			var hasConflict = await HasScheduleConflictAsync(
@@ -57,8 +65,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				throw new ValidationException("Schedule conflict detected");
 
 			var taskSchedule = _mapper.Map<TaskSchedule>(dto);
-			taskSchedule.Id = Guid.NewGuid();
-			taskSchedule.Created = DateTime.UtcNow;
+			taskSchedule.Id = _idGenerator.Generate();
+			taskSchedule.Created = _dateTimeProvider.UtcNow;
 			taskSchedule.CreatedBy = "admin-123";
 			taskSchedule.Version = 1;
 
@@ -107,7 +115,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					throw new ValidationException("Schedule conflict detected");
 
 				taskSchedule.Version++;
-				taskSchedule.LastModified = DateTime.UtcNow;
+				taskSchedule.LastModified = _dateTimeProvider.UtcNow;
 				taskSchedule.LastModifiedBy = "admin-123";
 
 				if (dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId)

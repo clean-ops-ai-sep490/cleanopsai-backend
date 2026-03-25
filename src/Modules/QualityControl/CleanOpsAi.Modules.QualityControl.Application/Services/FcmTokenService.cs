@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Request;
@@ -11,19 +12,19 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 	public class FcmTokenService : IFcmTokenService
 	{
 		private readonly IFcmTokenRepository _fcmTokenRepository;
-		private readonly IMapper _mapper;
-		private readonly IUserContext _userContext;
+		private readonly IMapper _mapper; 
+		private readonly IDateTimeProvider _dateTimeProvider;
 
-		public FcmTokenService(IFcmTokenRepository fcmTokenRepository, IMapper mapper, IUserContext userContext)
+		public FcmTokenService(IFcmTokenRepository fcmTokenRepository, IMapper mapper, IDateTimeProvider dateTimeProvider)
 		{
 			_fcmTokenRepository = fcmTokenRepository;
-			_mapper = mapper;
-			_userContext = userContext;
+			_mapper = mapper; 
+			_dateTimeProvider = dateTimeProvider;
 
 		}
-		public async Task<FcmTokenDto> CreateOrUpdateAsync(FcmTokenCreateDto dto, CancellationToken cancellationToken = default)
+		public async Task<FcmTokenDto> CreateOrUpdateAsync(Guid UserId, FcmTokenCreateDto dto, CancellationToken cancellationToken = default)
 		{
-			var existing = await _fcmTokenRepository.GetActiveTokenAsync(dto.UniqueId, _userContext.UserId, cancellationToken);
+			var existing = await _fcmTokenRepository.GetActiveTokenAsync(dto.UniqueId, UserId, cancellationToken);
 
 			if (existing is not null)
 			{
@@ -31,7 +32,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 				existing.Platform = dto.Platform;
 				existing.DeviceName = dto.DeviceName;
 				existing.IsActive = true;
-				existing.LastUsed = DateTime.UtcNow;
+				existing.LastUsed = _dateTimeProvider.UtcNow;
 
 				await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
 				return _mapper.Map<FcmTokenDto>(existing);
@@ -51,13 +52,13 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 
 		}
 
-		public async Task DeactivateTokenAsync(string uniqueId, CancellationToken cancellationToken = default)
+		public async Task DeactivateTokenAsync(Guid UserId, string uniqueId, CancellationToken cancellationToken = default)
 		{
-			var token = await _fcmTokenRepository.GetActiveTokenAsync(uniqueId, _userContext.UserId, cancellationToken);
+			var token = await _fcmTokenRepository.GetActiveTokenAsync(uniqueId, UserId, cancellationToken);
 			if (token is null) return;
 
 			token.IsActive = false;
-			token.LastUsed = DateTime.UtcNow;
+			token.LastUsed = _dateTimeProvider.UtcNow;
 
 			await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
 		}
