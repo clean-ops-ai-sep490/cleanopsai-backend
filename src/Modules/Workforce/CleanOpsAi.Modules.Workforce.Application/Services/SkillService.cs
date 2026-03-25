@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Skills;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -14,10 +15,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class SkillService : ISkillService
     {
         private readonly ISkillRepository _repository;
+        private readonly IUserContext _userContext;
 
-        public SkillService(ISkillRepository repository)
+        public SkillService(ISkillRepository repository, IUserContext userContext)
         {
             _repository = repository;
+            _userContext = userContext;
         }
 
         public async Task<List<SkillResponse>?> GetByIdAsync(Guid id)
@@ -79,6 +82,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Name = request.Name,
                 Description = request.Description,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -102,6 +106,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             skill.Name = string.IsNullOrWhiteSpace(request.Name) ? skill.Name : request.Name;
             skill.Description = request.Description ?? skill.Description;
             skill.LastModified = DateTime.UtcNow;
+            skill.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(skill);
 

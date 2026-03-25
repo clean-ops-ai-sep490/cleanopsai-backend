@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -14,10 +15,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class WorkAreaSupervisorService : IWorkAreaSupervisorService
     {
         private readonly IWorkAreaSupervisorRepository _repository;
+        private readonly IUserContext _userContext;
 
-        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository)
+        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository, IUserContext userContext)
         {
             _repository = repository;
+            _userContext = userContext;
         }
 
         public async Task<WorkAreaSupervisorResponse?> GetByIdAsync(Guid id)
@@ -147,6 +150,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkerId = workerId,
                 UserId = request.SupervisorId,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             }).ToList();
 
@@ -218,6 +222,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                         WorkerId = workerId,
                         UserId = request.SupervisorId,
                         Created = DateTime.UtcNow,
+                        CreatedBy = _userContext.UserId.ToString(),
                         IsDeleted = false
                     });
                 }

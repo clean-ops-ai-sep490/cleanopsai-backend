@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkerGps;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -15,13 +16,16 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     {
         private readonly IWorkerGpsRepository _repository;
         private readonly IWorkerRepository _workerRepository;
+        private readonly IUserContext _userContext;
 
         public WorkerGpsService(
             IWorkerGpsRepository repository,
-            IWorkerRepository workerRepository)
+            IWorkerRepository workerRepository,
+            IUserContext userContext)
         {
             _repository = repository;
             _workerRepository = workerRepository;
+            _userContext = userContext;
         }
 
         private static WorkerGpsResponse MapToResponse(WorkerGps entity) => new()
@@ -77,6 +81,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Longitude = request.Longitude,
                 IsConfirmed = request.IsConfirmed,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 

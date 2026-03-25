@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
@@ -18,15 +19,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
     {
         private readonly IEquipmentRequestRepository _equipmentRequestRepository;
         private readonly IMapper _mapper;
-
-        // TODO: Inject IRabbitMqPublisher _rabbitMqPublisher khi co RabbitMQ
+        private readonly IUserContext _userContext;
 
         public EquipmentRequestService(
             IEquipmentRequestRepository equipmentRequestRepository,
-            IMapper mapper)
+            IMapper mapper,
+            IUserContext userContext)
         {
             _equipmentRequestRepository = equipmentRequestRepository;
             _mapper = mapper;
+            _userContext = userContext;
         }
 
         public async Task<EquipmentRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -91,7 +93,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var entity = _mapper.Map<EquipmentRequest>(dto);
             entity.Status = EquipmentRequestStatus.Pending;
             entity.Created = DateTime.UtcNow;
-            entity.CreatedBy = "system";
+            entity.CreatedBy = _userContext.UserId.ToString();
 
             await _equipmentRequestRepository.AddAsync(entity, ct);
 
@@ -116,7 +118,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             _mapper.Map(dto, entity);
             entity.LastModified = DateTime.UtcNow;
-            entity.LastModifiedBy = "system";
+            entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _equipmentRequestRepository.UpdateAsync(entity, ct);
             return _mapper.Map<EquipmentRequestDto>(entity);
@@ -132,8 +134,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.ApprovedAt = dto.Status == EquipmentRequestStatus.Approved
                 ? DateTime.UtcNow
                 : null;
-            entity.LastModified = DateTime.UtcNow;
-            entity.LastModifiedBy = dto.ReviewedByUserId.ToString();
 
             await _equipmentRequestRepository.UpdateAsync(entity, ct);
 

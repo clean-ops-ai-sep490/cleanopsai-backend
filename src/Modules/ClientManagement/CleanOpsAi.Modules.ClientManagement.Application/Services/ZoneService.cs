@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Zones;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
@@ -14,10 +15,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     public class ZoneService : IZoneService
     {
         private readonly IZoneRepository _repository;
+        private readonly IUserContext _userContext;
 
-        public ZoneService(IZoneRepository repository)
+        public ZoneService(IZoneRepository repository, IUserContext userContext)
         {
             _repository = repository;
+            _userContext = userContext;
         }
 
         // get by id
@@ -123,6 +126,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Description = request.Description,
                 LocationId = request.LocationId,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -149,6 +153,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             zone.Description = request.Description ?? zone.Description;
 
             zone.LastModified = DateTime.UtcNow;
+            zone.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(zone);
 

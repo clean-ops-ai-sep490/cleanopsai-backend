@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
@@ -14,9 +15,11 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     public class ClientService : IClientService
     {
         private readonly IClientRepository _clientRepository;
-        public ClientService(IClientRepository clientRepository)
+        private readonly IUserContext _userContext;
+        public ClientService(IClientRepository clientRepository, IUserContext userContext)
         {
             _clientRepository = clientRepository;
+            _userContext = userContext;
         }
 
         // get Client by id and return as ClientResponse
@@ -71,6 +74,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Name = request.Name,
                 Email = request.Email,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -101,6 +105,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 : request.Email;
 
             client.LastModified = DateTime.UtcNow;
+            client.LastModifiedBy = _userContext.UserId.ToString();
 
             await _clientRepository.UpdateAsync(client);
 

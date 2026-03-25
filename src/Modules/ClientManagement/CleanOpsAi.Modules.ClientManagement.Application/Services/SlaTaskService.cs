@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks.ConfigModels;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -17,6 +18,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly ISlaTaskRepository _repository;
         private readonly ISlaRepository _slaRepository;
+        private readonly IUserContext _userContext;
 
         private readonly string[] validRecurrenceTypes =
         {
@@ -25,10 +27,11 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             "Monthly"
         };
 
-        public SlaTaskService(ISlaTaskRepository repository, ISlaRepository slaRepository)
+        public SlaTaskService(ISlaTaskRepository repository, ISlaRepository slaRepository, IUserContext userContext)
         {
             _repository = repository;
             _slaRepository = slaRepository;
+            _userContext = userContext;
         }
 
         public async Task<SlaTaskResponse> GetByIdAsync(Guid id)
@@ -106,7 +109,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 SlaId = request.SlaId,
                 RecurrenceType = request.RecurrenceType,
                 RecurrenceConfig = request.RecurrenceConfig,
-                Created = DateTime.UtcNow
+                Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
             };
 
             await _repository.CreateAsync(task);
@@ -159,6 +163,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             task.RecurrenceConfig = finalRecurrenceConfig;
 
             task.LastModified = DateTime.UtcNow;
+            task.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(task);
 

@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaShifts;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
@@ -14,11 +15,13 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly ISlaShiftRepository _repository;
         private readonly ISlaRepository _slaRepository;
+        private readonly IUserContext _userContext;
 
-        public SlaShiftService(ISlaShiftRepository repository, ISlaRepository slaRepository)
+        public SlaShiftService(ISlaShiftRepository repository, ISlaRepository slaRepository, IUserContext userContext)
         {
             _repository = repository;
             _slaRepository = slaRepository;
+            _userContext = userContext;
         }
 
         public async Task<SlaShiftResponse?> GetByIdAsync(Guid id)
@@ -100,7 +103,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 EndTime = request.EndTime,
                 RequiredWorker = request.RequiredWorker,
                 BreakTime = request.BreakTime,
-                Created = DateTime.UtcNow
+                Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
             };
 
             await _repository.CreateAsync(entity);
@@ -140,6 +144,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 shift.BreakTime = request.BreakTime.Value;
 
             shift.LastModified = DateTime.UtcNow;
+            shift.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(shift);
 

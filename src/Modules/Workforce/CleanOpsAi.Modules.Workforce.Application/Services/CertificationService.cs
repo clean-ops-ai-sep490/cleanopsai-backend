@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Certifications;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -14,10 +15,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class CertificationService : ICertificationService
     {
         private readonly ICertificationRepository _certificationRepository;
+        private readonly IUserContext _userContext;
 
-        public CertificationService(ICertificationRepository certificationRepository)
+        public CertificationService(ICertificationRepository certificationRepository, IUserContext userContext)
         {
             _certificationRepository = certificationRepository;
+            _userContext = userContext;
         }
 
         // get by id
@@ -83,6 +86,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Name = request.Name,
                 IssuingOrganization = request.IssuingOrganization,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -113,6 +117,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 : request.IssuingOrganization;
 
             certification.LastModified = DateTime.UtcNow;
+            certification.LastModifiedBy = _userContext.UserId.ToString();
 
             await _certificationRepository.UpdateAsync(certification);
 
