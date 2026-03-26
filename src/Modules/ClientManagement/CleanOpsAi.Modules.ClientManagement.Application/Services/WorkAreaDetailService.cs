@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.WorkareaDetails;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
@@ -13,10 +14,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     public class WorkAreaDetailService : IWorkAreaDetailService
     {
         private readonly IWorkAreaDetailRepository _repository;
+        private readonly IUserContext _userContext;
 
-        public WorkAreaDetailService(IWorkAreaDetailRepository repository)
+        public WorkAreaDetailService(IWorkAreaDetailRepository repository, IUserContext userContext)
         {
             _repository = repository;
+            _userContext = userContext;
         }
 
         // get by id with work area name
@@ -102,7 +105,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Name = request.Name,
                 Area = request.Area,
                 TotalArea = request.TotalArea,
-                WorkAreaId = request.WorkAreaId
+                WorkAreaId = request.WorkAreaId,
+                Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
             };
 
             await _repository.CreateAsync(entity);
@@ -127,6 +132,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             entity.Name = request.Name;
             entity.Area = request.Area;
             entity.TotalArea = request.TotalArea;
+            entity.Created = DateTime.UtcNow;
+            entity.CreatedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(entity);
 

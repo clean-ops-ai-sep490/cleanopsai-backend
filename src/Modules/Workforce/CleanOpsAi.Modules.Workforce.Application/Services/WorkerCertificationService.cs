@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkerCertifications;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -13,10 +14,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class WorkerCertificationService : IWorkerCertificationService
     {
         private readonly IWorkerCertificationRepository _repository;
+        private readonly IUserContext _userContext;
 
-        public WorkerCertificationService(IWorkerCertificationRepository repository)
+        public WorkerCertificationService(IWorkerCertificationRepository repository, IUserContext userContext)
         {
             _repository = repository;
+            _userContext = userContext;
         }
 
         // get by id

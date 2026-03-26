@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Slas;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
@@ -16,12 +17,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly ISlaRepository _slaRepository;
         private readonly IWorkAreaRepository _workAreaRepository;
         private readonly IContractRepository _contractRepository;
+        private readonly IUserContext _userContext;
 
-        public SlaService(ISlaRepository slaRepository, IContractRepository contractRepository, IWorkAreaRepository workAreaRepository)
+        public SlaService(ISlaRepository slaRepository, IContractRepository contractRepository, IWorkAreaRepository workAreaRepository, IUserContext userContext)
         {
             _slaRepository = slaRepository;
             _contractRepository = contractRepository;
             _workAreaRepository = workAreaRepository;
+            _userContext = userContext;
         }
 
         // get by id
@@ -150,6 +153,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 WorkAreaId = request.WorkAreaId,
                 ContractId = request.ContractId,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -187,6 +191,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 sla.ServiceType = request.ServiceType.Value;
 
             sla.LastModified = DateTime.UtcNow;
+            sla.LastModifiedBy = _userContext.UserId.ToString();
 
             await _slaRepository.UpdateAsync(sla);
 

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
@@ -18,13 +19,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
     {
         private readonly IIssueReportRepository _issueReportRepository;
         private readonly IMapper _mapper;
+        private readonly IUserContext _userContext;
 
         public IssueReportService(
             IIssueReportRepository issueReportRepository,
-            IMapper mapper)
+            IMapper mapper,
+            IUserContext userContext)
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
+            _userContext = userContext;
         }
 
         public async Task<IssueReportDto?> GetById(Guid id, CancellationToken ct = default)
@@ -78,7 +82,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         {
             var entity = _mapper.Map<IssueReport>(dto);
             entity.Created = DateTime.UtcNow;
-            entity.CreatedBy = "system";
+            entity.CreatedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.AddAsync(entity, ct);
 
@@ -102,7 +106,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             _mapper.Map(dto, entity);
             entity.LastModified = DateTime.UtcNow;
-            entity.LastModifiedBy = "system";
+            entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.UpdateAsync(entity, ct);
             return _mapper.Map<IssueReportDto>(entity);
@@ -118,8 +122,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.ResolvedAt = dto.Status == IssueStatus.Approved
                 ? DateTime.UtcNow
                 : null;
-            entity.LastModified = DateTime.UtcNow;
-            entity.LastModifiedBy = dto.ResolvedByUserId.ToString();
 
             await _issueReportRepository.UpdateAsync(entity, ct);
 

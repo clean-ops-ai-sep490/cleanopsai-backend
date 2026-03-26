@@ -50,6 +50,22 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return Ok(worker);
         }
 
+        [HttpGet("me")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get current Worker",
+            Description = "Get current worker information.",
+            Tags = new[] { "Workers" })]
+        public async Task<IActionResult> GetInfor()
+        {
+            var worker = await _service.GetInforAsync();
+
+            if (worker == null)
+                return NotFound();
+
+            return Ok(worker);
+        }
+
         [HttpGet]
         [Consumes("application/json")]
         [SwaggerOperation(

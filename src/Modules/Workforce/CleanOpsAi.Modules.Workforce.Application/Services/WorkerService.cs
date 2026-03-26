@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -17,11 +18,13 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private readonly IFileStorageService _fileStorage;
         private const string CONTAINER = "contracts";
         private const string AVATAR_FOLDER = "avatars";
+        private readonly IUserContext _userContext;
 
-        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService)
+        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext)
         {
             _workerRepository = workerRepository;
             _fileStorage = fileStorageService;
+            _userContext = userContext;
         }
 
         // get by id
@@ -134,6 +137,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Longitude = request.Longitude,
                 AvatarUrl = request.AvatarUrl,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -186,6 +190,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             }
 
             worker.LastModified = DateTime.UtcNow;
+            worker.LastModifiedBy = _userContext.UserId.ToString();
 
             await _workerRepository.UpdateAsync(worker);
 
@@ -212,6 +217,31 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 throw new KeyNotFoundException($"Worker with id {id} not found.");
 
             return await _workerRepository.DeleteAsync(id);
+        }
+
+        // get information of current worker by user id from user context
+        public async Task<List<WorkerResponse>> GetInforAsync()
+        {
+            var worker = await _workerRepository.GetByUserIdAsync(_userContext.UserId.ToString());
+
+            if (worker == null)
+                return null;
+
+            return new List<WorkerResponse>
+            {
+                new WorkerResponse
+                {
+                    Id = worker.Id,
+                    UserId = worker.UserId,
+                    FullName = worker.FullName,
+                    DisplayAddress = worker.DisplayAddress,
+                    Latitude = worker.Latitude,
+                    Longitude = worker.Longitude,
+                    AvatarUrl = worker.AvatarUrl,
+                    TotalSkills = worker.WorkerSkills.Count,
+                    TotalCertifications = worker.WorkerCertifications.Count
+                }
+            };
         }
     }
 }

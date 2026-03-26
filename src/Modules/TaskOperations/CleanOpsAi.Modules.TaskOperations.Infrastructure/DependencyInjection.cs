@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Infrastructure;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
 using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
@@ -39,6 +41,9 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ITaskSwapRequestRepository, TaskSwapRequestRepository>();
 		builder.Services.AddScoped<IEquipmentRequestRepository, EquipmentRequestRepository>();
 		builder.Services.AddScoped<IIssueReportRepository, IssueReportRepository>();
+		builder.Services.AddScoped<IEmergencyLeaveRequestRepository, EmergencyLeaveRequestRepository>();
+		builder.Services.AddScoped<IUserContext, UserContext>();
+		builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
 
         builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
@@ -46,6 +51,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ITaskSwapRequestService, TaskSwapRequestService>();
 		builder.Services.AddScoped<IEquipmentRequestService, EquipmentRequestService>();
 		builder.Services.AddScoped<IIssueReportService, IssueReportService>();
+        builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>();
 
     }
 }

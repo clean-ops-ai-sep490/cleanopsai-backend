@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Configurations;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Infrastructure;
+using CleanOpsAi.Modules.Workforce.Application.Configurations;
 using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Application.Services;
@@ -40,6 +42,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkerSkillRepository, WorkerSkillRepository>();
 		builder.Services.AddScoped<IWorkerGpsRepository, WorkerGpsRepository>();
 		builder.Services.AddScoped<IWorkAreaSupervisorRepository, WorkAreaSupervisorRepository>();
+		builder.Services.AddScoped<IUserContext, UserContext>();
 
         // Services
         builder.Services.AddScoped<IWorkerService, WorkerService>();

@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Equipments;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -14,10 +15,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class EquipmentService : IEquipmentService
     {
         private readonly IEquipmentRepository _repository;
+        private readonly IUserContext _userContext;
 
-        public EquipmentService(IEquipmentRepository repository)
+        public EquipmentService(IEquipmentRepository repository, IUserContext userContext)
         {
             _repository = repository;
+            _userContext = userContext;
         }
 
         public async Task<List<EquipmentResponse>?> GetByIdAsync(Guid id)
@@ -83,6 +86,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Type = request.Type,
                 Description = request.Description,
                 Created = DateTime.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
 
@@ -112,6 +116,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             equipment.Description = request.Description ?? equipment.Description;
 
             equipment.LastModified = DateTime.UtcNow;
+            equipment.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(equipment);
 
