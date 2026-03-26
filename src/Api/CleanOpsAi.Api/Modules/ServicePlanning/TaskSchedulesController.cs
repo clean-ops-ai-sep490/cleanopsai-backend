@@ -1,7 +1,9 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -13,12 +15,15 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 	public class TaskSchedulesController : ControllerBase
 	{
 		private readonly ITaskScheduleService _taskScheduleService;
+		private readonly IUserContext _userContext;
 
-		public TaskSchedulesController(ITaskScheduleService taskScheduleService)
+		public TaskSchedulesController(ITaskScheduleService taskScheduleService, IUserContext userContext)
 		{
 			_taskScheduleService = taskScheduleService;
+			_userContext = userContext;
 		}
 
+		[Authorize]
 		[HttpGet]
 		[SwaggerOperation(
 		Summary = "Get task schedules with pagination",
@@ -34,6 +39,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpGet("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Get Task Schedule by Id",
@@ -52,6 +58,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpPost]
 		[SwaggerOperation(
 			Summary = "Create Task Schedule",
@@ -60,9 +67,9 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		)]
 		[ProducesResponseType(typeof(TaskScheduleDto), StatusCodes.Status201Created)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> Create([FromBody] TaskScheduleCreateDto createDto)
+		public async Task<IActionResult> Create([FromBody] TaskScheduleCreateDto createDto, CancellationToken ct = default)
 		{
-			var result = await _taskScheduleService.Create(createDto);
+			var result = await _taskScheduleService.Create(createDto, _userContext.UserId, ct);
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -71,6 +78,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			);
 		}
 
+		[Authorize]
 		[HttpPut("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Update Task Schedule",
@@ -78,11 +86,11 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			Tags = new[] { "TaskSchedule" })]
 		[ProducesResponseType(typeof(TaskScheduleDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		public async Task<IActionResult> Update(Guid id, [FromBody] TaskScheduleUpdateDto dto)
+		public async Task<IActionResult> Update(Guid id, [FromBody] TaskScheduleUpdateDto dto, CancellationToken ct = default)
 		{
 			try
 			{
-				var result = await _taskScheduleService.Update(id, dto);
+				var result = await _taskScheduleService.Update(id, dto, _userContext.UserId, ct);
 				return Ok(result);
 			}
 			catch (KeyNotFoundException)
@@ -91,6 +99,8 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			}
 		}
 
+
+		[Authorize]
 		[HttpDelete("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Delete Task Schedule",
@@ -106,6 +116,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return NoContent();
 		}
 
+		[Authorize]
 		[HttpPost("taskassignments/generate")]
 		[SwaggerOperation(
 			Summary = "Generate Task Assignments",

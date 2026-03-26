@@ -1,13 +1,13 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application.Common;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using Medo;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -16,14 +16,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly ITaskSwapRequestRepository _taskSwapRequestRepository;
 		private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 		private readonly IMapper _mapper;
+		private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IIdGenerator _idGenerator;
 
 		public TaskSwapRequestService(ITaskSwapRequestRepository taskSwapRequestRepository,
 			ITaskAssignmentRepository taskAssignmentRepository,
-			IMapper mapper)
+			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
 		{
 			_taskSwapRequestRepository = taskSwapRequestRepository;
 			_taskAssignmentRepository = taskAssignmentRepository;
 			_mapper = mapper;
+			_dateTimeProvider = dateTimeProvider;
+			_idGenerator = idGenerator;
 		}
 
 		public async Task<Result<SwapRequestDto?>> GetById(Guid id, CancellationToken ct = default)
@@ -47,7 +51,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return Result.Success();
 		}
 
-		public async Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, CancellationToken ct = default)
+		public async Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, Guid userId, CancellationToken ct = default)
 		{ 
 
 			var requesterTask = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
@@ -77,18 +81,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 			var swapRequest = new TaskSwapRequest
 			{
-				Id = Uuid7.NewGuid(),
+				Id = _idGenerator.Generate(),
 				TaskAssignmentId = dto.TaskAssignmentId,
 				TargetTaskAssignmentId = dto.TargetTaskAssignmentId,
 				RequesterId = dto.RequesterId,
 				TargetWorkerId = dto.TargetWorkerId,
 				Status = SwapRequestStatus.PendingTargetApproval,
 				RequesterNote = dto.RequesterNote,
-				ExpiredAt = DateTime.UtcNow.AddHours(12)
+				ExpiredAt = _dateTimeProvider.UtcNow.AddHours(12),
+				Created = _dateTimeProvider.UtcNow,
+				CreatedBy = userId.ToString()
 			};
 
 			await _taskSwapRequestRepository.InsertAsync(swapRequest, ct);
-			await _taskSwapRequestRepository.SaveChangesAsync();
+			await _taskSwapRequestRepository.SaveChangesAsync(ct);
 
 			//notifi to Target
 

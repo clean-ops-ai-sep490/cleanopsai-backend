@@ -1,7 +1,9 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -14,12 +16,15 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 	public class TaskSwapRequestsController : ControllerBase
 	{
 		private readonly ITaskSwapRequestService _service;
+		private readonly IUserContext _userContext;
 
-		public TaskSwapRequestsController(ITaskSwapRequestService taskSwapRequestService)
+		public TaskSwapRequestsController(ITaskSwapRequestService taskSwapRequestService, IUserContext userContext)
 		{
 			_service = taskSwapRequestService;
+			_userContext = userContext;
 		}
 
+		[Authorize]
 		[HttpGet]
 		[SwaggerOperation(
 			Summary = "Get Task Swap Requests List",
@@ -36,6 +41,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpGet("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Get Task Swap Request by Id",
@@ -58,6 +64,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			return Ok(result.Value);
 		}
 
+		[Authorize]
 		[HttpPost]
 		[SwaggerOperation(
 			Summary = "Create Task Swap Request",
@@ -69,7 +76,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> Create([FromBody] TaskSwapRequestCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _service.CreateSwapRequestAsync(dto, ct);
+			var result = await _service.CreateSwapRequestAsync(dto, _userContext.UserId, ct);
 
 			if (!result.Succeeded)
 				return BadRequest(new { errors = result.Errors });
@@ -81,6 +88,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			);
 		}
 
+		[Authorize]
 		[HttpPut("respond")]
 		[SwaggerOperation(
 			Summary = "Respond to Task Swap Request",
@@ -102,6 +110,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			return Ok();
 		}
 
+		[Authorize]
 		[HttpPut("review")]
 		[SwaggerOperation(
 			Summary = "Review Task Swap Request",
@@ -122,6 +131,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			return Ok();
 		}
 
+		[Authorize]
 		[HttpDelete("{id:guid}/cancel")]
 		[SwaggerOperation(
 			Summary = "Cancel Task Swap Request",
