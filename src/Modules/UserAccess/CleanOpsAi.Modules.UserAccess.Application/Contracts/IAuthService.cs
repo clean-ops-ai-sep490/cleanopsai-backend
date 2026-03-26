@@ -11,5 +11,6 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Contracts
 		Task<AuthTokenResult> RefreshToken(string refreshToken);
 		Task ForgotPassword(string email);
 		Task ResetPassword(string email, string token, string newPassword);
+        Task<string> VerifyOtp(string email, string otp);
     }
 }

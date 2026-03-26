@@ -39,8 +39,22 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Persistence
 					.OnDelete(DeleteBehavior.Cascade);
 			});
 
-			// Seed the 5 roles
-			builder.Entity<IdentityRole<Guid>>().HasData(
+            // PasswordResetOtp configuration
+            builder.Entity<PasswordResetOtp>(entity =>
+            {
+                entity.ToTable("PasswordResetOtps");
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Email)
+                    .IsRequired();
+                entity.Property(x => x.OtpCode)
+                    .IsRequired();
+                entity.Property(x => x.ExpiredAt)
+                    .IsRequired();
+                entity.HasIndex(x => x.Email);
+            });
+
+            // Seed the 5 roles
+            builder.Entity<IdentityRole<Guid>>().HasData(
 				new IdentityRole<Guid> { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = nameof(UserRole.Worker), NormalizedName = nameof(UserRole.Worker).ToUpperInvariant(), ConcurrencyStamp = "11111111-1111-1111-1111-111111111111" },
 				new IdentityRole<Guid> { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Name = nameof(UserRole.Admin), NormalizedName = nameof(UserRole.Admin).ToUpperInvariant(), ConcurrencyStamp = "22222222-2222-2222-2222-222222222222" },
 				new IdentityRole<Guid> { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = nameof(UserRole.Manager), NormalizedName = nameof(UserRole.Manager).ToUpperInvariant(), ConcurrencyStamp = "33333333-3333-3333-3333-333333333333" },
