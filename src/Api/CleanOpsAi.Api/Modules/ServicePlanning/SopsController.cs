@@ -1,8 +1,10 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
 using CleanOpsAi.Modules.ServicePlanning.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -15,12 +17,15 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 	public class SopsController : ControllerBase
 	{
 		private readonly ISopService _sopService;
+		private readonly IUserContext _userContext;
 
-		public SopsController(ISopService sopService)
+		public SopsController(ISopService sopService, IUserContext userContext)
 		{
 			_sopService = sopService;
+			_userContext = userContext;
 		}
 
+		[Authorize]
 		[HttpGet]
 		[SwaggerOperation(
 			Summary = "Get SOPs with pagination",
@@ -36,6 +41,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpGet("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Get SOP by Id",
@@ -43,7 +49,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			Tags = new[] { "SOP" }
 		)]
 
-
+		[Authorize]
 		[ProducesResponseType(typeof(SopDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> GetById(Guid id)
@@ -56,6 +62,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpPost]
 		[SwaggerOperation(
 			Summary = "Create a new SOP",
@@ -65,9 +72,9 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(typeof(SopDto), StatusCodes.Status201Created)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		public async Task<IActionResult> Create([FromBody] SopCreateDto dto)
+		public async Task<IActionResult> Create([FromBody] SopCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _sopService.CreateSopAsync(dto);
+			var result = await _sopService.CreateSopAsync(dto, _userContext.UserId, ct);
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -76,6 +83,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			);
 		}
 
+		[Authorize]
 		[HttpPut("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Update a SOP",
@@ -85,13 +93,14 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(typeof(SopDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		public async Task<IActionResult> Update(Guid id, [FromBody] SopUpdateDto dto)
+		public async Task<IActionResult> Update(Guid id, [FromBody] SopUpdateDto dto, CancellationToken ct = default)
 		{
-			var result = await _sopService.UpdateSopAsync(id, dto);
+			var result = await _sopService.UpdateSopAsync(id, dto, _userContext.UserId, ct);
 			if (result == null) return NotFound();
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpDelete("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Delete a SOP",
@@ -100,9 +109,9 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		)]
 		[ProducesResponseType(StatusCodes.Status204NoContent)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		public async Task<IActionResult> Delete(Guid id)
+		public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
 		{
-			var result = await _sopService.DeleteSopAsync(id);
+			var result = await _sopService.DeleteSopAsync(id, _userContext.UserId, ct);
 			if (!result) return NotFound();
 			return NoContent();
 		}

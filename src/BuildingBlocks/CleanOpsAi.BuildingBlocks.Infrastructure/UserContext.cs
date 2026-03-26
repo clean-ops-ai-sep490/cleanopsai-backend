@@ -21,8 +21,11 @@ namespace CleanOpsAi.BuildingBlocks.Infrastructure
 		{
 			get
 			{
-				var sub = User?.FindFirst("sub")?.Value;
-				return sub is not null ? Guid.Parse(sub) : Guid.Empty;
+				var id =
+					User?.FindFirst("sub")?.Value ??
+					User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+				return Guid.TryParse(id, out var userId) ? userId : Guid.Empty;
 			}
 		}
 

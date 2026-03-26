@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
@@ -18,27 +19,34 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly ISopStepRepository _sopStepRepository;
 		private readonly IMapper _mapper;
 		private readonly IPublishEndpoint _bus;
+		private readonly IIdGenerator _idGenerator;
+		private readonly IDateTimeProvider _dateTimeProvider;
+
+
 
 		public TaskScheduleService(
 			ITaskScheduleRepository taskScheduleRepository,
 			ISopStepRepository sopStepRepository,
-			IMapper mapper, IPublishEndpoint publishEndpoint)
+			IMapper mapper, IPublishEndpoint publishEndpoint,
+			IIdGenerator idGenerator, IDateTimeProvider dateTimeProvider)
 		{
 			_taskScheduleRepository = taskScheduleRepository;
 			_sopStepRepository = sopStepRepository;
 			_mapper = mapper; 
 			_bus = publishEndpoint;
+			_idGenerator = idGenerator;
+			_dateTimeProvider = dateTimeProvider;
 		}
 
-		public async Task<TaskScheduleDto?> GetById(Guid id)
+		public async Task<TaskScheduleDto?> GetById(Guid id, CancellationToken ct = default)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetById(id);
+			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
-		public async Task<TaskScheduleDto> Create(TaskScheduleCreateDto dto)
+		public async Task<TaskScheduleDto> Create(TaskScheduleCreateDto dto, Guid userId, CancellationToken ct = default)
 		{
-			var windowStart = DateOnly.FromDateTime(DateTime.UtcNow);
+			var windowStart = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
 			var windowEnd = windowStart.AddDays(14); 
 
 			var hasConflict = await HasScheduleConflictAsync(
@@ -57,9 +65,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				throw new ValidationException("Schedule conflict detected");
 
 			var taskSchedule = _mapper.Map<TaskSchedule>(dto);
-			taskSchedule.Id = Guid.NewGuid();
-			taskSchedule.Created = DateTime.UtcNow;
-			taskSchedule.CreatedBy = "admin-123";
+			taskSchedule.Id = _idGenerator.Generate();
+			taskSchedule.Created = _dateTimeProvider.UtcNow;
+			taskSchedule.CreatedBy = userId.ToString();
 			taskSchedule.Version = 1;
 
 			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
@@ -70,9 +78,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
-		public async Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto)
+		public async Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto, Guid userId, CancellationToken ct = default)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetById(id);
+			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
 			if (taskSchedule == null)
 			{
 
@@ -107,8 +115,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					throw new ValidationException("Schedule conflict detected");
 
 				taskSchedule.Version++;
-				taskSchedule.LastModified = DateTime.UtcNow;
-				taskSchedule.LastModifiedBy = "admin-123";
+				taskSchedule.LastModified = _dateTimeProvider.UtcNow;
+				taskSchedule.LastModifiedBy = userId.ToString();
 
 				if (dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId)
 				{
@@ -116,21 +124,21 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
 				}
 
-				await _taskScheduleRepository.SaveChangesAsync();
+				await _taskScheduleRepository.SaveChangesAsync(ct);
 				return _mapper.Map<TaskScheduleDto>(taskSchedule);
 			}
 
 			
 		}
 
-		public async Task<bool> Delete(Guid id)
+		public async Task<bool> Delete(Guid id, CancellationToken ct = default)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetById(id);
+			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
 			if (taskSchedule == null)
 				return false;
 
 			taskSchedule.IsDeleted = true;
-			await _taskScheduleRepository.SaveChangesAsync();
+			await _taskScheduleRepository.SaveChangesAsync(ct);
 			return true;
 		}
 

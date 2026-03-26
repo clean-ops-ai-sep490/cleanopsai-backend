@@ -63,7 +63,11 @@ public static class DependencyInjection
 			};
 		});
 
-		builder.Services.AddAuthorization();
+		builder.Services.AddAuthorization(options =>
+		{
+			options.AddPolicy("AdminOrManager", policy =>
+				policy.RequireRole("Admin", "Manager"));
+		});
 
 		builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 		builder.Services.AddScoped<IAuthService, AuthService>();

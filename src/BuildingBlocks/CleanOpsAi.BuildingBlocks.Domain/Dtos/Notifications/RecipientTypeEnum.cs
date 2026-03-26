@@ -1,4 +1,4 @@
-﻿namespace CleanOpsAi.Modules.QualityControl.Domain.Enums
+﻿namespace CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications
 {
 	public enum RecipientTypeEnum
 	{

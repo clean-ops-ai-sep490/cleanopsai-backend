@@ -4,13 +4,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 {
 	public interface IStepService
 	{
-		Task<StepDto> GetStepById(Guid id);
+		Task<StepDto> GetStepById(Guid id, CancellationToken ct = default);
 
-		Task<StepDto> CreateNewStep(StepCreateDto dto);
+		Task<StepDto> CreateNewStep(StepCreateDto dto, Guid userId, CancellationToken ct = default);
 
-		Task<StepDto> UpdateStep(Guid id, StepUpdateDto dto);
+		Task<StepDto> UpdateStep(Guid id, StepUpdateDto dto, Guid userId, CancellationToken ct = default);
 
-		Task<bool> DeleteStep(Guid id);
+		Task<bool> DeleteStep(Guid id, CancellationToken ct = default);
 
 		Task<PaginatedResult<StepDto>> Gets(PaginationRequest request, CancellationToken ct = default);
 

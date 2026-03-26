@@ -1,5 +1,5 @@
-﻿using CleanOpsAi.BuildingBlocks.Domain; 
-using CleanOpsAi.Modules.QualityControl.Domain.Enums;
+﻿using CleanOpsAi.BuildingBlocks.Domain;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications; 
 using System.ComponentModel.DataAnnotations.Schema; 
 
 namespace CleanOpsAi.Modules.QualityControl.Domain.Entities

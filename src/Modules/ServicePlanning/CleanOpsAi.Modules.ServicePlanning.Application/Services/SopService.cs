@@ -1,9 +1,9 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
-using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
-using Medo;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities; 
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
 using System.ComponentModel.DataAnnotations;
@@ -18,21 +18,25 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly ISopRequiredSkillRepository _sopRequiredSkillRepository;
 		private readonly ISopRequiredCertificationRepository _sopRequiredCertificationRepository;
 		private readonly IMapper _mapper;
+		private readonly IDateTimeProvider _dateProvider;
+		private readonly IIdGenerator _idGenerator;
 
 		public SopService(ISopRepository sopRepository, 
 			IStepRepository stepRepository,
 			ISopRequiredSkillRepository skillRequiredRepository,
 			ISopRequiredCertificationRepository certificationRequiredRepository,
-			IMapper mapper)
+			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
 		{
 			_sopRepository = sopRepository;
 			_stepRepository = stepRepository;
 			_sopRequiredSkillRepository = skillRequiredRepository;
 			_sopRequiredCertificationRepository = certificationRequiredRepository;
 			_mapper = mapper;
+			_dateProvider = dateTimeProvider;
+			_idGenerator = idGenerator;
 		}
 
-		public async Task<SopDto> CreateSopAsync(SopCreateDto dto)
+		public async Task<SopDto> CreateSopAsync(SopCreateDto dto, Guid userId, CancellationToken ct = default)
 		{
 			if (dto.Steps == null || dto.Steps.Count == 0)
 				throw new ValidationException("SOP must have at least one step");
@@ -61,22 +65,22 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				ValidateConfigDetail(sopStep.ConfigDetail, step.ConfigSchema, step.Name);
 			}
 
-			var now = DateTime.UtcNow;
+			var now = _dateProvider.UtcNow;
 
 			var sop = _mapper.Map<Sop>(dto);
-			sop.Id = Uuid7.NewGuid();
+			sop.Id = _idGenerator.Generate();
 			sop.Version = 1;
-			sop.CreatedBy = "admin-123";
+			sop.CreatedBy = userId.ToString();
 			sop.Created = now;
 
 			sop.SopSteps = dto.Steps.Select(s => new SopStep
 			{
-				Id = Uuid7.NewGuid(),
+				Id = _idGenerator.Generate(),
 				SopId = sop.Id,
 				StepId = s.StepId,
 				StepOrder = s.StepOrder,
 				ConfigDetail = s.ConfigDetail.GetRawText(),
-				CreatedBy = "admin-123",
+				CreatedBy = userId.ToString(),
 				Created = now
 			}).ToList();
 
@@ -102,20 +106,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					}).ToList();
 			}
 
-			await _sopRepository.InsertAsync(sop);
-			await _sopRepository.SaveChangesAsync();
+			await _sopRepository.InsertAsync(sop, ct);
+			await _sopRepository.SaveChangesAsync(ct);
 
 			var created = await _sopRepository.GetByIdWithStepsAsync(sop.Id);
 			return _mapper.Map<SopDto>(created);
 		}
 
-		public async Task<SopDto?> GetSopByIdAsync(Guid id)
+		public async Task<SopDto?> GetSopByIdAsync(Guid id, CancellationToken ct = default)
 		{
-			var sop = await _sopRepository.GetByIdAsync(id);
+			var sop = await _sopRepository.GetByIdAsync(id, ct);
 			return _mapper.Map<SopDto>(sop);
 		}
 
-		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default)
+		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, Guid userId, CancellationToken cancellationToken = default)
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id, true);
 			if (sop == null) return null;
@@ -154,11 +158,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			_mapper.Map(dto, sop); // map field thường
 
 			if (dto.Steps != null)
-				MergeSopSteps(sop, dto.Steps);
+				MergeSopSteps(sop, dto.Steps, userId.ToString());
 
 			sop.Version++;
-			sop.LastModified = DateTime.UtcNow;
-			sop.LastModifiedBy = "admin-123";
+			sop.LastModified = _dateProvider.UtcNow;
+			sop.LastModifiedBy = userId.ToString();
 
 			if(dto.RequiredSkillIds != null)
 			{
@@ -176,7 +180,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(updated);
 		}
 
-		public async Task<bool> DeleteSopAsync(Guid id)
+		public async Task<bool> DeleteSopAsync(Guid id, Guid userId, CancellationToken ct = default)
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id);
 			if (sop == null) return false;
@@ -184,22 +188,22 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var now = DateTime.UtcNow;
 
 			sop.IsDeleted = true;
-			sop.LastModified = now;
-			sop.LastModifiedBy = "admin-123";
+			sop.LastModified = _dateProvider.UtcNow;
+			sop.LastModifiedBy = userId.ToString();
 
 			// Cascade soft delete SopSteps
 			foreach (var step in sop.SopSteps)
 			{
 				step.IsDeleted = true;
-				step.LastModified = now;
-				step.LastModifiedBy = "admin-123";
+				step.LastModified = _dateProvider.UtcNow;
+				step.LastModifiedBy = userId.ToString();
 			}
 
 			await _sopRepository.SaveChangesAsync();
 			return true;
 		}
 
-		private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps)
+		private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps, string userId)
 		{
 			var now = DateTime.UtcNow;
 			var allSteps = sop.SopSteps.ToList(); 
@@ -211,8 +215,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			foreach (var step in activeSteps.Where(s => !newStepIds.Contains(s.StepId)))
 			{
 				step.IsDeleted = true;
-				step.LastModified = now;
-				step.LastModifiedBy = "admin-123";
+				step.LastModified = _dateProvider.UtcNow;
+				step.LastModifiedBy = userId.ToString();
 			}
 
 			// 2. Update step còn tồn tại
@@ -221,8 +225,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				var newStep = newSteps.First(s => s.StepId == existing.StepId);
 				existing.StepOrder = newStep.StepOrder;
 				existing.ConfigDetail = newStep.ConfigDetail.GetRawText();
-				existing.LastModified = now;
-				existing.LastModifiedBy = "admin-123";
+				existing.LastModified = _dateProvider.UtcNow;
+				existing.LastModifiedBy = userId;
 			}
 			 
 			foreach (var newStep in newSteps.Where(s => !activeStepIds.Contains(s.StepId)))
@@ -236,8 +240,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					deletedStep.IsDeleted = false;
 					deletedStep.StepOrder = newStep.StepOrder;
 					deletedStep.ConfigDetail = newStep.ConfigDetail.GetRawText();
-					deletedStep.LastModified = now;
-					deletedStep.LastModifiedBy = "admin-123";
+					deletedStep.LastModified = _dateProvider.UtcNow;
+					deletedStep.LastModifiedBy = userId;
 				}
 				else
 				{
@@ -247,8 +251,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 						StepId = newStep.StepId,
 						StepOrder = newStep.StepOrder,
 						ConfigDetail = newStep.ConfigDetail.GetRawText(),
-						CreatedBy = "admin-123",
-						Created = now
+						CreatedBy = userId,
+						Created = _dateProvider.UtcNow
 					});
 				}
 			}

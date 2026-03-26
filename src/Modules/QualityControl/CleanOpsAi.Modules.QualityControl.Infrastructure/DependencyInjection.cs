@@ -1,11 +1,15 @@
-﻿using CleanOpsAi.Modules.QualityControl.Infrastructure.Data;
+﻿using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.QualityControl.Application.Common.Mappings;
+using CleanOpsAi.Modules.QualityControl.Application.Services;
+using CleanOpsAi.Modules.QualityControl.Infrastructure.Data;
+using CleanOpsAi.Modules.QualityControl.Infrastructure.Firebase;
+using CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories;
 using FirebaseAdmin;
-using Google.Apis.Auth.OAuth2;
-using Microsoft.AspNetCore.Builder.Extensions;
+using Google.Apis.Auth.OAuth2; 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System.Text;
+using Microsoft.Extensions.Logging; 
 
 namespace Microsoft.Extensions.DependencyInjection;
 public static class DependencyInjection
@@ -39,6 +43,25 @@ public static class DependencyInjection
 				ProjectId = builder.Configuration["Firebase:ProjectId"]
 			});
 		}
-		//builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
+		builder.Services.AddAutoMapper(cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:Key"], typeof(MappingProfile));
+
+		//Repo
+		builder.Services.AddScoped<IFcmTokenRepository, FcmTokenRepository>();
+		builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+		builder.Services.AddScoped<INotificationRecipientRepository, NotificationRecipientRepository>();
+
+
+
+		//Services
+		builder.Services.AddScoped<IFcmTokenService, FcmTokenService>();
+		builder.Services.AddScoped<INotificationService, NotificationService>();
+		builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
+
+		builder.Services.AddScoped<IFirebaseMessagingService, FirebaseMessagingService>();
+
+
+
+
+
 	}
 }

@@ -1,9 +1,12 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -11,12 +14,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 	{
 		private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 		private readonly IMapper _mapper;
+		private readonly IRecurrenceExpander _expander;
+		private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IIdGenerator _idGenerator; 
 
 		public TaskAssignmentService(ITaskAssignmentRepository taskAssignmentRepository,
-			IMapper mapper)
+			IMapper mapper,
+			IRecurrenceExpander expander, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
 		{
 			_taskAssignmentRepository = taskAssignmentRepository;
 			_mapper = mapper;
+			_expander = expander;
+			_dateTimeProvider = dateTimeProvider;
+			_idGenerator = idGenerator;
 		}
 
 
@@ -85,6 +95,41 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			await _taskAssignmentRepository.SaveChangesAsync(); 
 			return true;
 
+		}
+
+		public async Task GenerateAsync(GenerateTaskAssignmentsRequestedEvent msg)
+		{
+			var scheduledTimes = _expander.Expand(
+					msg.RecurrenceType,
+					msg.RecurrenceConfig,
+					msg.FromDate,
+					msg.ToDate);
+
+			var toInsert = new List<TaskAssignment>();
+
+			foreach (var scheduledAt in scheduledTimes)
+			{
+				if (await _taskAssignmentRepository.ExistsAsync(msg.ScheduleId, scheduledAt))
+					continue;
+
+				toInsert.Add(new TaskAssignment
+				{
+					Id = _idGenerator.Generate(),
+					TaskScheduleId = msg.ScheduleId,
+					AssigneeId = msg.AssigneeId ?? Guid.Empty,
+					OriginalAssigneeId = msg.AssigneeId ?? Guid.Empty,
+					WorkAreaId = msg.WorkAreaId,
+					ScheduledStartAt = scheduledAt,
+					ScheduledEndAt = scheduledAt.AddMinutes(msg.DurationMinutes),
+					Status = TaskAssignmentStatus.NotStarted,
+					IsAdhocTask = false,
+					Created = _dateTimeProvider.UtcNow,
+					CreatedBy = "system"
+				});
+			}
+
+			if (toInsert.Count > 0)
+				await _taskAssignmentRepository.BulkInsertAsync(toInsert);
 		}
 	}
 }
