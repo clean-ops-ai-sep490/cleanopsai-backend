@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Locations;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -16,11 +17,13 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly ILocationRepository _locationRepository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public LocationService(ILocationRepository locationRepository, IUserContext userContext)
+        public LocationService(ILocationRepository locationRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _locationRepository = locationRepository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // Get Location by Id
@@ -115,7 +118,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
                 ClientId = request.ClientId,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -155,7 +158,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             location.Latitude = request.Latitude ?? location.Latitude;
             location.Longitude = request.Longitude ?? location.Longitude;
 
-            location.LastModified = DateTime.UtcNow;
+            location.LastModified = _dateTimeProvider.UtcNow;
             location.LastModifiedBy = _userContext.UserId.ToString();
 
             await _locationRepository.UpdateAsync(location);

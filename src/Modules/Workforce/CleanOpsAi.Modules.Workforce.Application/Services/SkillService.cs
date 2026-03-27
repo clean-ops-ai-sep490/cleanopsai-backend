@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Skills;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
@@ -16,11 +17,13 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     {
         private readonly ISkillRepository _repository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public SkillService(ISkillRepository repository, IUserContext userContext)
+        public SkillService(ISkillRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<List<SkillResponse>?> GetByIdAsync(Guid id)
@@ -81,7 +84,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Id = Uuid7.NewGuid(),
                 Name = request.Name,
                 Description = request.Description,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -105,7 +108,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             skill.Name = string.IsNullOrWhiteSpace(request.Name) ? skill.Name : request.Name;
             skill.Description = request.Description ?? skill.Description;
-            skill.LastModified = DateTime.UtcNow;
+            skill.LastModified = _dateTimeProvider.UtcNow;
             skill.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(skill);

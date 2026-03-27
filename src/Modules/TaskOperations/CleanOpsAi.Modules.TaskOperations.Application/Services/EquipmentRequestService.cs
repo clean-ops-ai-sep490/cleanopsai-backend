@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
@@ -20,15 +21,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IEquipmentRequestRepository _equipmentRequestRepository;
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public EquipmentRequestService(
             IEquipmentRequestRepository equipmentRequestRepository,
             IMapper mapper,
-            IUserContext userContext)
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvider)
         {
             _equipmentRequestRepository = equipmentRequestRepository;
             _mapper = mapper;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<EquipmentRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -92,7 +96,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         {
             var entity = _mapper.Map<EquipmentRequest>(dto);
             entity.Status = EquipmentRequestStatus.Pending;
-            entity.Created = DateTime.UtcNow;
+            entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
             await _equipmentRequestRepository.AddAsync(entity, ct);
@@ -117,7 +121,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             _mapper.Map(dto, entity);
-            entity.LastModified = DateTime.UtcNow;
+            entity.LastModified = _dateTimeProvider.UtcNow;
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _equipmentRequestRepository.UpdateAsync(entity, ct);
@@ -132,7 +136,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.Status = dto.Status;
             entity.ReviewedByUserId = dto.ReviewedByUserId;
             entity.ApprovedAt = dto.Status == EquipmentRequestStatus.Approved
-                ? DateTime.UtcNow
+                ? _dateTimeProvider.UtcNow
                 : null;
 
             await _equipmentRequestRepository.UpdateAsync(entity, ct);

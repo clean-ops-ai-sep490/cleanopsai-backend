@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Slas;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -18,13 +19,15 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IWorkAreaRepository _workAreaRepository;
         private readonly IContractRepository _contractRepository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public SlaService(ISlaRepository slaRepository, IContractRepository contractRepository, IWorkAreaRepository workAreaRepository, IUserContext userContext)
+        public SlaService(ISlaRepository slaRepository, IContractRepository contractRepository, IWorkAreaRepository workAreaRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _slaRepository = slaRepository;
             _contractRepository = contractRepository;
             _workAreaRepository = workAreaRepository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get by id
@@ -152,7 +155,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 ServiceType = request.ServiceType,
                 WorkAreaId = request.WorkAreaId,
                 ContractId = request.ContractId,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -190,7 +193,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             if (request.ServiceType.HasValue)
                 sla.ServiceType = request.ServiceType.Value;
 
-            sla.LastModified = DateTime.UtcNow;
+            sla.LastModified = _dateTimeProvider.UtcNow;
             sla.LastModifiedBy = _userContext.UserId.ToString();
 
             await _slaRepository.UpdateAsync(sla);

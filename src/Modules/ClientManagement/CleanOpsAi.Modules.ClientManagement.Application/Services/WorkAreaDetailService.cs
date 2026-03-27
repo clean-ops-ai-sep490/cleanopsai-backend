@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.WorkareaDetails;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -15,11 +16,13 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly IWorkAreaDetailRepository _repository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public WorkAreaDetailService(IWorkAreaDetailRepository repository, IUserContext userContext)
+        public WorkAreaDetailService(IWorkAreaDetailRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get by id with work area name
@@ -106,7 +109,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Area = request.Area,
                 TotalArea = request.TotalArea,
                 WorkAreaId = request.WorkAreaId,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
             };
 
@@ -132,7 +135,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             entity.Name = request.Name;
             entity.Area = request.Area;
             entity.TotalArea = request.TotalArea;
-            entity.Created = DateTime.UtcNow;
+            entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(entity);

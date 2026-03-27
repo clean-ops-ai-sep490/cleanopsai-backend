@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -16,10 +17,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly IClientRepository _clientRepository;
         private readonly IUserContext _userContext;
-        public ClientService(IClientRepository clientRepository, IUserContext userContext)
+        private readonly IDateTimeProvider _dateTimeProvider;
+        public ClientService(IClientRepository clientRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _clientRepository = clientRepository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get Client by id and return as ClientResponse
@@ -73,7 +76,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = Uuid7.NewGuid(),
                 Name = request.Name,
                 Email = request.Email,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -104,7 +107,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 ? client.Email
                 : request.Email;
 
-            client.LastModified = DateTime.UtcNow;
+            client.LastModified = _dateTimeProvider.UtcNow;
             client.LastModifiedBy = _userContext.UserId.ToString();
 
             await _clientRepository.UpdateAsync(client);

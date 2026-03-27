@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
@@ -21,6 +22,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IFileStorageService _fileStorageService;
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
 
         private const string ContainerName = "contracts";
@@ -30,12 +32,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IEmergencyLeaveRequestRepository emergencyLeaveRequestRepository,
             IFileStorageService fileStorageService,
             IMapper mapper,
-            IUserContext userContext)
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvider)
         {
             _emergencyLeaveRequestRepository = emergencyLeaveRequestRepository;
             _fileStorageService = fileStorageService;
             _mapper = mapper;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<EmergencyLeaveRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -89,7 +93,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         {
             var entity = _mapper.Map<EmergencyLeaveRequest>(dto);
             entity.Status = RequestStatus.Pending;
-            entity.Created = DateTime.UtcNow;
+            entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
             // Upload audio len Azure Blob vao folder ao: audios/{newGuid}.ext
@@ -138,7 +142,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (!string.IsNullOrEmpty(dto.Transcription))
                 entity.Transcription = dto.Transcription;
 
-            entity.LastModified = DateTime.UtcNow;
+            entity.LastModified = _dateTimeProvider.UtcNow;
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
@@ -153,7 +157,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.Status = dto.Status;
             entity.ReviewedByUserId = dto.ReviewedByUserId;
             entity.ApprovedAt = dto.Status == RequestStatus.Approved
-                ? DateTime.UtcNow
+                ? _dateTimeProvider.UtcNow
                 : null;
 
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);

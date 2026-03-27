@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -17,17 +18,20 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IContractRepository _repository;
         private readonly IFileStorageService _fileStorage;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         private const string CONTAINER = "contracts";
 
         public ContractService(
             IContractRepository repository,
             IFileStorageService fileStorage,
-            IUserContext userContext)
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _fileStorage = fileStorage;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get by id
@@ -116,7 +120,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Name = request.Name,
                 ClientId = request.ClientId,
                 UrlFile = fileUrl,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -156,7 +160,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 contract.UrlFile = fileUrl;
             }
 
-            contract.LastModified = DateTime.UtcNow;
+            contract.LastModified = _dateTimeProvider.UtcNow;
             contract.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(contract);
