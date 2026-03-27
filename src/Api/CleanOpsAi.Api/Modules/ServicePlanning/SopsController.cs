@@ -1,9 +1,7 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
-using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
-using CleanOpsAi.Modules.ServicePlanning.Application.Services;
+using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response; 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,13 +14,11 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 	[ApiController]
 	public class SopsController : ControllerBase
 	{
-		private readonly ISopService _sopService;
-		private readonly IUserContext _userContext;
+		private readonly ISopService _sopService; 
 
-		public SopsController(ISopService sopService, IUserContext userContext)
+		public SopsController(ISopService sopService)
 		{
-			_sopService = sopService;
-			_userContext = userContext;
+			_sopService = sopService; 
 		}
 
 		[Authorize]
@@ -74,7 +70,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Create([FromBody] SopCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _sopService.CreateSopAsync(dto, _userContext.UserId, ct);
+			var result = await _sopService.CreateSopAsync(dto, ct);
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -95,7 +91,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Update(Guid id, [FromBody] SopUpdateDto dto, CancellationToken ct = default)
 		{
-			var result = await _sopService.UpdateSopAsync(id, dto, _userContext.UserId, ct);
+			var result = await _sopService.UpdateSopAsync(id, dto, ct);
 			if (result == null) return NotFound();
 			return Ok(result);
 		}
@@ -111,7 +107,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
 		{
-			var result = await _sopService.DeleteSopAsync(id, _userContext.UserId, ct);
+			var result = await _sopService.DeleteSopAsync(id, ct);
 			if (!result) return NotFound();
 			return NoContent();
 		}

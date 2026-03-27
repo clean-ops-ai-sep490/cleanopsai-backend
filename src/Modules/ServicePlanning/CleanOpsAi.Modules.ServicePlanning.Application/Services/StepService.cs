@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -13,22 +14,24 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
+		private readonly IUserContext _userContext;
 
 
-		public StepService(IStepRepository stepRepository, IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
+		public StepService(IStepRepository stepRepository, IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator, IUserContext userContext)
 		{
 			_stepRepository = stepRepository;
 			_mapper = mapper;
 			_dateTimeProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
+			_userContext = userContext;
 		}
 
-		public async Task<StepDto> CreateNewStep(StepCreateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<StepDto> CreateNewStep(StepCreateDto dto, CancellationToken ct = default)
 		{
 			var newStep = _mapper.Map<Step>(dto);
 
 			newStep.Id = _idGenerator.Generate();
-			newStep.CreatedBy = userId.ToString();
+			newStep.CreatedBy = _userContext.UserId.ToString();
 			newStep.Created = _dateTimeProvider.UtcNow;
 			newStep.ConfigSchema = dto.ConfigSchema.GetRawText();
 
@@ -44,14 +47,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<StepDto>(step);
 		}
 
-		public async Task<StepDto> UpdateStep(Guid id, StepUpdateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<StepDto> UpdateStep(Guid id, StepUpdateDto dto, CancellationToken ct = default)
 		{
 			var step = await _stepRepository.GetByIdAsync(id);
 			if (step == null)
 				return null!;
 
 			_mapper.Map(dto, step);
-			step.LastModifiedBy = userId.ToString();
+			step.LastModifiedBy = _userContext.UserId.ToString();
 			step.LastModified = _dateTimeProvider.UtcNow;
 
 			await _stepRepository.SaveChangesAsync(ct); 

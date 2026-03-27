@@ -17,10 +17,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
 
 			CreateMap<TaskSwapRequest, SwapRequestDto>();
 
-			CreateMap<TaskAssignment, SwapTaskInfoDto>();
+			CreateMap<TaskAssignment, SwapTaskInfoDto>()
+	            .ForMember(dest => dest.TaskAssignmentId, opt => opt.MapFrom(src => src.Id)); 
 
-            // EquipmentRequest mappings
-            CreateMap<EquipmentRequest, EquipmentRequestDto>();
+			CreateMap<TaskAssignment, SwapCandidateDto>()
+	            .ForMember(dest => dest.WorkerId, opt => opt.MapFrom(src => src.AssigneeId))
+	            .ForMember(dest => dest.Task, opt => opt.MapFrom(src => src));
+
+			// EquipmentRequest mappings
+			CreateMap<EquipmentRequest, EquipmentRequestDto>();
             CreateMap<CreateEquipmentRequestDto, EquipmentRequest>();
             CreateMap<UpdateEquipmentRequestDto, EquipmentRequest>()
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
@@ -21,14 +22,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IPublishEndpoint _bus;
 		private readonly IIdGenerator _idGenerator;
 		private readonly IDateTimeProvider _dateTimeProvider;
-
-
+		private readonly IUserContext _userContext;
 
 		public TaskScheduleService(
 			ITaskScheduleRepository taskScheduleRepository,
 			ISopStepRepository sopStepRepository,
 			IMapper mapper, IPublishEndpoint publishEndpoint,
-			IIdGenerator idGenerator, IDateTimeProvider dateTimeProvider)
+			IIdGenerator idGenerator, IDateTimeProvider dateTimeProvider, IUserContext userContext)
 		{
 			_taskScheduleRepository = taskScheduleRepository;
 			_sopStepRepository = sopStepRepository;
@@ -36,6 +36,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			_bus = publishEndpoint;
 			_idGenerator = idGenerator;
 			_dateTimeProvider = dateTimeProvider;
+			_userContext = userContext;
 		}
 
 		public async Task<TaskScheduleDto?> GetById(Guid id, CancellationToken ct = default)
@@ -44,7 +45,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
-		public async Task<TaskScheduleDto> Create(TaskScheduleCreateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<TaskScheduleDto> Create(TaskScheduleCreateDto dto, CancellationToken ct = default)
 		{
 			var windowStart = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
 			var windowEnd = windowStart.AddDays(14); 
@@ -67,7 +68,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var taskSchedule = _mapper.Map<TaskSchedule>(dto);
 			taskSchedule.Id = _idGenerator.Generate();
 			taskSchedule.Created = _dateTimeProvider.UtcNow;
-			taskSchedule.CreatedBy = userId.ToString();
+			taskSchedule.CreatedBy = _userContext.UserId.ToString();
 			taskSchedule.Version = 1;
 
 			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
@@ -78,7 +79,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
-		public async Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto, CancellationToken ct = default)
 		{
 			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
 			if (taskSchedule == null)
@@ -116,7 +117,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 				taskSchedule.Version++;
 				taskSchedule.LastModified = _dateTimeProvider.UtcNow;
-				taskSchedule.LastModifiedBy = userId.ToString();
+				taskSchedule.LastModifiedBy = _userContext.UserId.ToString();
 
 				if (dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId)
 				{

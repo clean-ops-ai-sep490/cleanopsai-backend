@@ -10,9 +10,9 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Servic
 
 		Task<NotificationDto?> GetById(Guid id, CancellationToken ct = default);
 
-		Task<NotificationDto> Create(NotificationCreateDto dto, Guid userId, string role, CancellationToken ct = default);
+		Task<NotificationDto> Create(NotificationCreateDto dto, CancellationToken ct = default);
 
-		Task<NotificationDto?> Update(Guid id, NotificationUpdateDto dto, Guid userId, CancellationToken ct = default);
+		Task<NotificationDto?> Update(Guid id, NotificationUpdateDto dto, CancellationToken ct = default);
 
 		Task<bool> Delete(Guid id, CancellationToken ct = default);
 	}

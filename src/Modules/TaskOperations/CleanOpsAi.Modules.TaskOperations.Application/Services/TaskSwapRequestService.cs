@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
@@ -18,16 +19,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
+		private readonly IUserContext _userContext;
 
 		public TaskSwapRequestService(ITaskSwapRequestRepository taskSwapRequestRepository,
 			ITaskAssignmentRepository taskAssignmentRepository,
-			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
+			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator,
+			IUserContext userContext)
 		{
 			_taskSwapRequestRepository = taskSwapRequestRepository;
 			_taskAssignmentRepository = taskAssignmentRepository;
 			_mapper = mapper;
 			_dateTimeProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
+			_userContext = userContext;
 		}
 
 		public async Task<Result<SwapRequestDto?>> GetById(Guid id, CancellationToken ct = default)
@@ -51,7 +55,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return Result.Success();
 		}
 
-		public async Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, CancellationToken ct = default)
 		{ 
 
 			var requesterTask = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
@@ -79,6 +83,24 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (hasPending)
 				return Result<SwapRequestDto>.Failure("Already has pending swap");
 
+			var requesterHasConflict = await _taskAssignmentRepository.HasTimeConflictAsync(
+			   excludeTaskId: dto.TaskAssignmentId,        // bỏ qua chính task đang swap
+			   assigneeId: dto.RequesterId,
+			   scheduledStartAt: targetTask.ScheduledStartAt,
+			   scheduledEndAt: targetTask.ScheduledEndAt,
+			   ct);
+			if (requesterHasConflict)
+				return Result<SwapRequestDto>.Failure("Requester has a conflicting task in that time slot");
+
+			var targetHasConflict = await _taskAssignmentRepository.HasTimeConflictAsync(
+				excludeTaskId: dto.TargetTaskAssignmentId,  // bỏ qua chính task đang swap
+				assigneeId: dto.TargetWorkerId,
+				scheduledStartAt: requesterTask.ScheduledStartAt,
+				scheduledEndAt: requesterTask.ScheduledEndAt,
+				ct);
+			if (targetHasConflict)
+				return Result<SwapRequestDto>.Failure("Target worker has a conflicting task in that time slot");
+
 			var swapRequest = new TaskSwapRequest
 			{
 				Id = _idGenerator.Generate(),
@@ -90,7 +112,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				RequesterNote = dto.RequesterNote,
 				ExpiredAt = _dateTimeProvider.UtcNow.AddHours(12),
 				Created = _dateTimeProvider.UtcNow,
-				CreatedBy = userId.ToString()
+				CreatedBy = _userContext.UserId.ToString()
 			};
 
 			await _taskSwapRequestRepository.InsertAsync(swapRequest, ct);
@@ -101,9 +123,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return Result<SwapRequestDto>.Success(_mapper.Map<SwapRequestDto>(swapRequest));
 		}
 
-		public Task<Result<PaginatedResult<SwapCandidateDto>>> GetSwapCandidatesAsync(GetSwapCandidatesDto dto, PaginationRequest paginationRequest, CancellationToken ct = default)
+		public async Task<Result<PaginatedResult<SwapCandidateDto>>> GetSwapCandidatesAsync(GetSwapCandidatesDto dto, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
-			throw new NotImplementedException();
+			var requesterTask = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
+			if (requesterTask == null)
+				return Result<PaginatedResult<SwapCandidateDto>>.Failure("TaskAssignment not found");
+
+			var today = _dateTimeProvider.UtcNow;
+			var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+			var endOfWeek = startOfWeek.AddDays(7);
+
+			var candidates = await _taskAssignmentRepository.GetSwapCandidatesAsync(
+				workAreaId: requesterTask.WorkAreaId,
+				excludeAssigneeId: requesterTask.AssigneeId,
+				scheduledStartAt: requesterTask.ScheduledStartAt,
+				scheduledEndAt: requesterTask.ScheduledEndAt,
+				weekStart: startOfWeek,
+				weekEnd: endOfWeek,
+				date: dto.Date,
+				preferredStartTime: dto.PreferredStartTime,
+				paginationRequest: paginationRequest,
+				ct: ct);
+
+			return Result<PaginatedResult<SwapCandidateDto>>.Success(
+				_mapper.Map<PaginatedResult<SwapCandidateDto>>(candidates)
+	);
 		}
 
 		public async Task<Result> RespondSwapRequestAsync(RespondSwapRequestDto dto, CancellationToken ct = default)

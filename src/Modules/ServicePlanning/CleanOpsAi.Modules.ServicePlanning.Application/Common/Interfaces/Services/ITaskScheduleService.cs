@@ -7,9 +7,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 	{
 		Task<TaskScheduleDto?> GetById(Guid id, CancellationToken ct = default);
 
-		Task<TaskScheduleDto> Create(TaskScheduleCreateDto createDto, Guid userId, CancellationToken ct = default);
+		Task<TaskScheduleDto> Create(TaskScheduleCreateDto createDto, CancellationToken ct = default);
 
-		Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto, Guid userId, CancellationToken ct = default);
+		Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto, CancellationToken ct = default);
 
 		Task<bool> Delete(Guid id, CancellationToken ct = default);
 

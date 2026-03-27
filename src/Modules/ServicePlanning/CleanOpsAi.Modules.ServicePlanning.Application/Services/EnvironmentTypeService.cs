@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
@@ -11,11 +12,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 	{
 		private readonly IEnvironmentTypeRepository _environmentTypeRepository;
 		private readonly IMapper _mapper;
+		private readonly IUserContext _userContext;
+
 		public EnvironmentTypeService(IEnvironmentTypeRepository environmentTypeRepository,
-			IMapper mapper)
+			IMapper mapper, IUserContext userContext)
 		{
 			_environmentTypeRepository = environmentTypeRepository;
 			_mapper = mapper;
+			_userContext = userContext;
 		}
 
 		public async Task<EnvironmentTypeDto> Create(EnvironmentTypeCreateDto dto, CancellationToken ct = default)
