@@ -2,7 +2,9 @@
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
@@ -42,6 +44,58 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 		public async Task<PaginatedResult<TaskAssignment>> GetsByAssigneeIdPaging(Guid assgineeId, PaginationRequest request, CancellationToken ct = default)
 		{
 			return await _context.TaskAssignments.Where(x=> x.AssigneeId == assgineeId).ToPaginatedResultAsync(request,ct);
+		}
+
+		public async Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(Guid workAreaId,
+			Guid excludeAssigneeId,
+			DateTime scheduledStartAt,
+			DateTime scheduledEndAt,
+			DateTime weekStart,
+			DateTime weekEnd,
+			DateOnly? date,
+			TimeOnly? preferredStartTime,
+			PaginationRequest paginationRequest,
+			CancellationToken ct = default)
+		{
+			var query = _context.TaskAssignments
+				.Where(t =>
+					t.WorkAreaId == workAreaId &&
+					t.AssigneeId != excludeAssigneeId &&
+					t.Status != TaskAssignmentStatus.NotStarted &&
+					t.ScheduledStartAt < scheduledEndAt &&
+					t.ScheduledEndAt > scheduledStartAt &&
+					t.ScheduledStartAt >= weekStart &&
+					t.ScheduledStartAt < weekEnd &&
+					!t.TaskSwapRequests.Any(s =>
+						s.Status == SwapRequestStatus.PendingTargetApproval ||
+						s.Status == SwapRequestStatus.PendingManagerApproval)
+				);
+
+			if (date.HasValue)
+				query = query.Where(t =>
+					DateOnly.FromDateTime(t.ScheduledStartAt) == date.Value);
+
+			if (preferredStartTime.HasValue)
+				query = query.Where(t =>
+					TimeOnly.FromDateTime(t.ScheduledStartAt) >= preferredStartTime.Value);
+
+			return await query
+				.OrderBy(t => t.ScheduledStartAt)
+				.ToPaginatedResultAsync(paginationRequest, ct);
+		}
+
+		public async Task<bool> HasTimeConflictAsync(Guid excludeTaskId, Guid assigneeId, DateTime scheduledStartAt, DateTime scheduledEndAt, CancellationToken ct = default)
+		{
+			return await _context.TaskAssignments
+				.Where(t =>
+					t.Id != excludeTaskId &&          
+					t.AssigneeId == assigneeId &&
+					t.Status != TaskAssignmentStatus.Completed &&
+					t.Status != TaskAssignmentStatus.Block &&
+					t.ScheduledStartAt < scheduledEndAt &&   
+					t.ScheduledEndAt > scheduledStartAt
+				)
+				.AnyAsync(ct);
 		}
 	}
 }

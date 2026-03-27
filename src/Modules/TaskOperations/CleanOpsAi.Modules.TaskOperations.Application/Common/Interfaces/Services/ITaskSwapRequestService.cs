@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 	{
 		Task<Result<SwapRequestDto?>> GetById(Guid id, CancellationToken ct = default);
 
-		Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, Guid userId, CancellationToken ct = default);
+		Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, CancellationToken ct = default);
 
 		Task<Result<PaginatedResult<SwapCandidateDto>>> GetSwapCandidatesAsync(GetSwapCandidatesDto dto, PaginationRequest paginationRequest, CancellationToken ct = default);
 

@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
@@ -15,12 +14,10 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 	public class TaskSchedulesController : ControllerBase
 	{
 		private readonly ITaskScheduleService _taskScheduleService;
-		private readonly IUserContext _userContext;
 
-		public TaskSchedulesController(ITaskScheduleService taskScheduleService, IUserContext userContext)
+		public TaskSchedulesController(ITaskScheduleService taskScheduleService)
 		{
-			_taskScheduleService = taskScheduleService;
-			_userContext = userContext;
+			_taskScheduleService = taskScheduleService; 
 		}
 
 		[Authorize]
@@ -69,7 +66,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> Create([FromBody] TaskScheduleCreateDto createDto, CancellationToken ct = default)
 		{
-			var result = await _taskScheduleService.Create(createDto, _userContext.UserId, ct);
+			var result = await _taskScheduleService.Create(createDto, ct);
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -90,7 +87,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		{
 			try
 			{
-				var result = await _taskScheduleService.Update(id, dto, _userContext.UserId, ct);
+				var result = await _taskScheduleService.Update(id, dto, ct);
 				return Ok(result);
 			}
 			catch (KeyNotFoundException)

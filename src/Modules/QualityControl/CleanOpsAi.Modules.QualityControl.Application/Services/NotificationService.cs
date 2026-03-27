@@ -1,4 +1,5 @@
-﻿using AutoMapper; 
+﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
@@ -18,31 +19,34 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 		private readonly IFirebaseMessagingService _firebaseMessagingService;
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateProvider;
+		private readonly IUserContext _userContext;
 
 		public NotificationService(INotificationRepository notificationRepo,
 			IFcmTokenRepository fcmTokenRepository,
 			IFirebaseMessagingService firebaseMessagingService, IMapper mapper,
-			IDateTimeProvider dateTimeProvider)
+			IDateTimeProvider dateTimeProvider,
+			IUserContext userContext)
 		{
 			_notificationRepository = notificationRepo;
 			_fcmTokenRepository = fcmTokenRepository;
 			_firebaseMessagingService = firebaseMessagingService; 
 			_mapper = mapper;
 			_dateProvider = dateTimeProvider;
+			_userContext = userContext;
 		}
 
-		public async Task<NotificationDto> Create(NotificationCreateDto dto, Guid userId, string role, CancellationToken ct = default)
+		public async Task<NotificationDto> Create(NotificationCreateDto dto, CancellationToken ct = default)
 		{
 			var entity = _mapper.Map<AppNotification>(dto);
 			entity.Id = Uuid7.NewGuid();
 			entity.Created = _dateProvider.UtcNow;
-			entity.SenderId = userId;
-			entity.CreatedBy = userId.ToString();
+			entity.SenderId = _userContext.UserId;
+			entity.CreatedBy = _userContext.UserId.ToString();
 
-			if(role == "Admin")
+			if(_userContext.Role == "Admin")
 			{
 				entity.SenderType = SenderTypeEnum.Admin;
-			}else if(role == "Manager")
+			}else if(_userContext.Role == "Manager")
 			{
 				entity.SenderType = SenderTypeEnum.Manager;
 			}
@@ -58,14 +62,14 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			return _mapper.Map<NotificationDto>(entity);
 		}
 
-		public async Task<NotificationDto?> Update(Guid id, NotificationUpdateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<NotificationDto?> Update(Guid id, NotificationUpdateDto dto, CancellationToken ct = default)
 		{
 			var notification = await _notificationRepository.GetByIdAsync(id, ct);
 			if (notification == null) return null;
 
-			notification.SenderId = userId;
+			notification.SenderId = _userContext.UserId;
 			notification.LastModified = _dateProvider.UtcNow;
-			notification.LastModifiedBy = userId.ToString();
+			notification.LastModifiedBy = _userContext.UserId.ToString();
 
 
 			await _notificationRepository.SaveChangesAsync(ct);

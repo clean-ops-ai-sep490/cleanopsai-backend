@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -20,12 +21,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateProvider;
 		private readonly IIdGenerator _idGenerator;
+		private readonly IUserContext _userContext;
 
 		public SopService(ISopRepository sopRepository, 
 			IStepRepository stepRepository,
 			ISopRequiredSkillRepository skillRequiredRepository,
 			ISopRequiredCertificationRepository certificationRequiredRepository,
-			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
+			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator,
+			IUserContext userContext)
 		{
 			_sopRepository = sopRepository;
 			_stepRepository = stepRepository;
@@ -34,9 +37,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			_mapper = mapper;
 			_dateProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
+			_userContext = userContext;
 		}
 
-		public async Task<SopDto> CreateSopAsync(SopCreateDto dto, Guid userId, CancellationToken ct = default)
+		public async Task<SopDto> CreateSopAsync(SopCreateDto dto, CancellationToken ct = default)
 		{
 			if (dto.Steps == null || dto.Steps.Count == 0)
 				throw new ValidationException("SOP must have at least one step");
@@ -70,7 +74,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var sop = _mapper.Map<Sop>(dto);
 			sop.Id = _idGenerator.Generate();
 			sop.Version = 1;
-			sop.CreatedBy = userId.ToString();
+			sop.CreatedBy = _userContext.UserId.ToString();
 			sop.Created = now;
 
 			sop.SopSteps = dto.Steps.Select(s => new SopStep
@@ -80,7 +84,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				StepId = s.StepId,
 				StepOrder = s.StepOrder,
 				ConfigDetail = s.ConfigDetail.GetRawText(),
-				CreatedBy = userId.ToString(),
+				CreatedBy = _userContext.UserId.ToString(),
 				Created = now
 			}).ToList();
 
@@ -119,7 +123,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(sop);
 		}
 
-		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, Guid userId, CancellationToken cancellationToken = default)
+		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default)
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id, true);
 			if (sop == null) return null;
@@ -158,11 +162,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			_mapper.Map(dto, sop); // map field thường
 
 			if (dto.Steps != null)
-				MergeSopSteps(sop, dto.Steps, userId.ToString());
+				MergeSopSteps(sop, dto.Steps, _userContext.UserId.ToString());
 
 			sop.Version++;
 			sop.LastModified = _dateProvider.UtcNow;
-			sop.LastModifiedBy = userId.ToString();
+			sop.LastModifiedBy = _userContext.UserId.ToString();
 
 			if(dto.RequiredSkillIds != null)
 			{
@@ -180,7 +184,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(updated);
 		}
 
-		public async Task<bool> DeleteSopAsync(Guid id, Guid userId, CancellationToken ct = default)
+		public async Task<bool> DeleteSopAsync(Guid id, CancellationToken ct = default)
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id);
 			if (sop == null) return false;
@@ -189,14 +193,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 			sop.IsDeleted = true;
 			sop.LastModified = _dateProvider.UtcNow;
-			sop.LastModifiedBy = userId.ToString();
+			sop.LastModifiedBy = _userContext.UserId.ToString();
 
 			// Cascade soft delete SopSteps
 			foreach (var step in sop.SopSteps)
 			{
 				step.IsDeleted = true;
 				step.LastModified = _dateProvider.UtcNow;
-				step.LastModifiedBy = userId.ToString();
+				step.LastModifiedBy = _userContext.UserId.ToString();
 			}
 
 			await _sopRepository.SaveChangesAsync();

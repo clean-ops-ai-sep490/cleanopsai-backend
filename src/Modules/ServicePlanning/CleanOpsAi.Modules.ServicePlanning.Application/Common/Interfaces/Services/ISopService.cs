@@ -6,11 +6,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 	{
 		Task<SopDto?> GetSopByIdAsync(Guid id, CancellationToken ct = default);
 
-		Task<SopDto> CreateSopAsync(SopCreateDto dto, Guid userId, CancellationToken ct = default);
+		Task<SopDto> CreateSopAsync(SopCreateDto dto, CancellationToken ct = default);
 
-		Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, Guid userId, CancellationToken cancellationToken = default);
+		Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default);
 
-		Task<bool> DeleteSopAsync(Guid id, Guid userId, CancellationToken ct = default);
+		Task<bool> DeleteSopAsync(Guid id, CancellationToken ct = default);
 
 		Task<SopDto?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default);
 

@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
@@ -15,12 +14,10 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 	public class StepsController : ControllerBase
 	{
 		private readonly IStepService _stepService;
-		private readonly IUserContext _userContext;
 
-		public StepsController(IStepService stepService, IUserContext userContext)
+		public StepsController(IStepService stepService)
 		{
 			_stepService = stepService;
-			_userContext = userContext;
 		}
 
 		[Authorize]
@@ -69,7 +66,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> Create([FromBody] StepCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _stepService.CreateNewStep(dto, _userContext.UserId, ct);
+			var result = await _stepService.CreateNewStep(dto, ct);
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -90,7 +87,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> Update(Guid id, [FromBody] StepUpdateDto dto, CancellationToken ct = default)
 		{
-			var result = await _stepService.UpdateStep(id, dto, _userContext.UserId, ct);
+			var result = await _stepService.UpdateStep(id, dto, ct);
 
 			return Ok(result);
 		}

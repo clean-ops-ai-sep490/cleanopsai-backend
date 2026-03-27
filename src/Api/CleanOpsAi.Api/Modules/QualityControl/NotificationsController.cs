@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
+﻿using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Request;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -13,14 +12,12 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 	[ApiController]
 	public class NotificationsController : ControllerBase
 	{
-		private readonly INotificationService _service;
-		private readonly IUserContext _userContext;
+		private readonly INotificationService _service; 
 
 
-		public NotificationsController(INotificationService notificationService, IUserContext userContext)
+		public NotificationsController(INotificationService notificationService)
 		{
-			_service = notificationService;
-			_userContext = userContext;
+			_service = notificationService; 
 		}
 
 		[Authorize(Policy = "AdminOrManager")]
@@ -63,7 +60,7 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 				return BadRequest("Request body cannot be null.");
 			}
 
-			var result = await _service.Create(dto, _userContext.UserId, _userContext.Role, ct);
+			var result = await _service.Create(dto, ct);
 
 			return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
 		}
@@ -90,7 +87,7 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 				return BadRequest("Request body cannot be null.");
 			}
 
-			var result = await _service.Update(id, dto, _userContext.UserId, ct);
+			var result = await _service.Update(id, dto, ct);
 
 			if (result is null)
 			{

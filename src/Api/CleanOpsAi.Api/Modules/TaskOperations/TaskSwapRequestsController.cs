@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
@@ -15,14 +14,41 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 	[ApiController]
 	public class TaskSwapRequestsController : ControllerBase
 	{
-		private readonly ITaskSwapRequestService _service;
-		private readonly IUserContext _userContext;
+		private readonly ITaskSwapRequestService _service; 
 
-		public TaskSwapRequestsController(ITaskSwapRequestService taskSwapRequestService, IUserContext userContext)
+		public TaskSwapRequestsController(ITaskSwapRequestService taskSwapRequestService)
 		{
-			_service = taskSwapRequestService;
-			_userContext = userContext;
+			_service = taskSwapRequestService; 
 		}
+
+		[Authorize]
+		[HttpGet("{taskAssignmentId}/swap-candidates")]
+		[SwaggerOperation(
+			Summary = "Get Swap Candidates",
+			Description = "Retrieves a paginated list of swap candidates for a specific task assignment within the current week. " +
+						  "Optionally filter by date and preferred start time to narrow down results. " +
+						  "Candidates are workers in the same work area with overlapping schedules and no pending swap requests.",
+			Tags = new[] { "TaskSwapRequest" }
+		)]
+		[ProducesResponseType(typeof(PaginatedResult<SwapCandidateDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		public async Task<IActionResult> GetSwapCandidates([FromRoute] Guid taskAssignmentId, [FromQuery] DateOnly? date, [FromQuery] TimeOnly? preferredStartTime, [FromQuery] PaginationRequest paginationRequest,
+	       CancellationToken ct = default)
+		{
+			var dto = new GetSwapCandidatesDto
+			{
+				TaskAssignmentId = taskAssignmentId,
+				Date = date,
+				PreferredStartTime = preferredStartTime
+			};
+			var result = await _service.GetSwapCandidatesAsync(dto, paginationRequest, ct);
+			if (!result.Succeeded)
+				return BadRequest(result.Errors);
+
+			return Ok(result.Value);
+		}
+
 
 		[Authorize]
 		[HttpGet]
@@ -76,7 +102,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> Create([FromBody] TaskSwapRequestCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _service.CreateSwapRequestAsync(dto, _userContext.UserId, ct);
+			var result = await _service.CreateSwapRequestAsync(dto, ct);
 
 			if (!result.Succeeded)
 				return BadRequest(new { errors = result.Errors });

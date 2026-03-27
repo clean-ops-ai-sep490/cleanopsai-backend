@@ -1,5 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
+﻿using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Request;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -13,13 +12,11 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 	[ApiController]
 	public class FcmTokensController : ControllerBase
 	{
-		private readonly IFcmTokenService _tokenService;
-		private readonly IUserContext _userContext;
+		private readonly IFcmTokenService _tokenService; 
 
-		public FcmTokensController(IFcmTokenService fcmTokenService, IUserContext userContext)
+		public FcmTokensController(IFcmTokenService fcmTokenService)
 		{
-			_tokenService = fcmTokenService;
-			_userContext = userContext;
+			_tokenService = fcmTokenService; 
 		}
 
 		[Authorize]
@@ -34,7 +31,7 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 		public async Task<IActionResult> Register([FromBody] FcmTokenCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _tokenService.CreateOrUpdateAsync(_userContext.UserId, dto, ct);
+			var result = await _tokenService.CreateOrUpdateAsync(dto, ct);
 			return Ok(result);
 		}
 
@@ -49,7 +46,7 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 		public async Task<IActionResult> Deactivate([FromQuery] string uniqueId, CancellationToken ct = default)
 		{
-			await _tokenService.DeactivateTokenAsync(_userContext.UserId, uniqueId, ct);
+			await _tokenService.DeactivateTokenAsync(uniqueId, ct);
 			return NoContent();
 		}
 	}
