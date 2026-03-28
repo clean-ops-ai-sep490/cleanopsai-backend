@@ -21,5 +21,11 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<CertificationResponse> UpdateAsync(Guid id, CertificationUpdateRequest request);
 
         Task<int> DeleteAsync(Guid id);
+
+        Task<List<string>> GetAllCategoriesAsync();
+
+        Task<List<WorkerCertificationResponse>> GetCertificationsByWorkerIdAsync(Guid workerId);
+
+        Task<List<CertificationResponse>> GetByCategoryAsync(string category);
     }
 }

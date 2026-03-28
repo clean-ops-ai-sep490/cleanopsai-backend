@@ -2,6 +2,7 @@
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Certifications;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.Skills;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using Medo;
@@ -40,6 +41,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 {
                     Id = certification.Id,
                     Name = certification.Name,
+                    Category = certification.Category,
                     IssuingOrganization = certification.IssuingOrganization
                 }
             };
@@ -54,6 +56,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 Id = x.Id,
                 Name = x.Name,
+                Category = x.Category,
                 IssuingOrganization = x.IssuingOrganization
             }).ToList();
         }
@@ -67,6 +70,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 Id = x.Id,
                 Name = x.Name,
+                Category = x.Category,
                 IssuingOrganization = x.IssuingOrganization
             }).ToList();
 
@@ -87,6 +91,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 Id = Uuid7.NewGuid(),
                 Name = request.Name,
+                Category = request.Category,
                 IssuingOrganization = request.IssuingOrganization,
                 Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
@@ -99,6 +104,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 Id = certification.Id,
                 Name = certification.Name,
+                Category = certification.Category,
                 IssuingOrganization = certification.IssuingOrganization
             };
         }
@@ -115,6 +121,10 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 ? certification.Name
                 : request.Name;
 
+            certification.Category = string.IsNullOrWhiteSpace(request.Category)
+                ? certification.Category
+                : request.Category;
+
             certification.IssuingOrganization = string.IsNullOrWhiteSpace(request.IssuingOrganization)
                 ? certification.IssuingOrganization
                 : request.IssuingOrganization;
@@ -128,6 +138,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 Id = certification.Id,
                 Name = certification.Name,
+                Category = certification.Category,
                 IssuingOrganization = certification.IssuingOrganization
             };
         }
@@ -142,5 +153,44 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             return await _certificationRepository.DeleteAsync(id);
         }
+
+        // get all categories
+        public async Task<List<string>> GetAllCategoriesAsync()
+        {
+            return await _certificationRepository.GetAllCategoriesAsync();
+        }
+
+        // get certifications by category
+        public async Task<List<CertificationResponse>> GetByCategoryAsync(string category)
+        {
+            var certifications = await _certificationRepository.GetByCategoryAsync(category);
+
+            if (string.IsNullOrWhiteSpace(category))
+                return new List<CertificationResponse>();
+
+            return certifications.Select(x => new CertificationResponse
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Category = x.Category,
+                IssuingOrganization = x.IssuingOrganization
+            }).ToList();
+        }
+
+        public async Task<List<WorkerCertificationResponse>> GetCertificationsByWorkerIdAsync(Guid workerId)
+        {
+            var workerCerts = await _certificationRepository.GetCertificationsByWorkerIdAsync(workerId);
+
+            return workerCerts.Select(x => new WorkerCertificationResponse
+            {
+                CertificationId = x.CertificationId,
+                Name = x.Certification.Name,
+                Category = x.Certification.Category,
+                IssuingOrganization = x.Certification.IssuingOrganization,
+                IssuedDate = x.IssuedDate,
+                ExpiredAt = x.ExpiredAt
+            }).ToList();
+        }
+
     }
 }

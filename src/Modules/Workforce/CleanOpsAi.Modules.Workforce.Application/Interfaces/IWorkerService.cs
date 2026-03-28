@@ -25,5 +25,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> DeleteAsync(Guid id);
 
         Task<List<WorkerResponse>> GetInforAsync();
+
+        Task<List<WorkerResponse>> FilterAsync(WorkerFilterRequest request);
     }
 }

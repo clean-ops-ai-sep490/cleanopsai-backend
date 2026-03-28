@@ -246,5 +246,24 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 }
             };
         }
+
+        public async Task<List<WorkerResponse>> FilterAsync(WorkerFilterRequest request)
+        {
+            var workers = await _workerRepository.FilterAsync(request);
+
+            return workers.Select(x => new WorkerResponse
+            {
+                Id = x.Id,
+                UserId = x.UserId,
+                FullName = x.FullName,
+                DisplayAddress = x.DisplayAddress,
+                Latitude = x.Latitude,
+                Longitude = x.Longitude,
+                AvatarUrl = x.AvatarUrl,
+                TotalSkills = x.WorkerSkills.Count,
+                TotalCertifications = x.WorkerCertifications.Count
+            }).ToList();
+        }
+
     }
 }

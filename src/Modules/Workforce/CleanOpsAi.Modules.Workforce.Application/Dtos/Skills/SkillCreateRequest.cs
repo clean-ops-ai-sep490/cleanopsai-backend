@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Dtos.Skills
     public class SkillCreateRequest
     {
         public string Name { get; set; }
-
+        public string Category { get; set; } = null!;
         public string? Description { get; set; }
     }
 }

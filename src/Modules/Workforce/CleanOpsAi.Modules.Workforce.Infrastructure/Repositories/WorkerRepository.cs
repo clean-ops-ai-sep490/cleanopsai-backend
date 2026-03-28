@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+﻿using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
+using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -97,5 +98,50 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
             return 0;
         }
+
+        public async Task<List<Worker>> FilterAsync(WorkerFilterRequest request)
+        {
+            var query = _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                    .ThenInclude(ws => ws.Skill)
+                .Include(x => x.WorkerCertifications)
+                    .ThenInclude(wc => wc.Certification)
+                .Where(x => !x.IsDeleted);
+
+            double lat = request.Latitude ?? 0;
+            double lon = request.Longitude ?? 0;
+
+            var result = await query
+                .Select(x => new
+                {
+                    Worker = x,
+
+                    MatchCertificate =
+                        (request.CertificateCategories != null && request.CertificateCategories.Any())
+                        ? x.WorkerCertifications.Any(c =>
+                            request.CertificateCategories.Contains(c.Certification.Category)) ? 1 : 0
+                        : 0,
+
+                    MatchSkill =
+                        (request.SkillCategories != null && request.SkillCategories.Any())
+                        ? x.WorkerSkills.Any(s =>
+                            request.SkillCategories.Contains(s.Skill.Category)) ? 1 : 0
+                        : 0,
+
+                    Distance =
+                        (request.Latitude.HasValue && request.Longitude.HasValue)
+                        ? Math.Pow((x.Latitude ?? 0) - lat, 2) +
+                          Math.Pow((x.Longitude ?? 0) - lon, 2)
+                        : 0
+                })
+                .OrderByDescending(x => x.MatchCertificate) // ưu tiên cert
+                .ThenByDescending(x => x.MatchSkill)        // rồi skill
+                .ThenBy(x => x.Distance)                    // rồi gần nhất
+                .Select(x => x.Worker)
+                .ToListAsync();
+
+            return result;
+        }
+
     }
 }

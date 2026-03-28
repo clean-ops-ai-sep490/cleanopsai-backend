@@ -12,6 +12,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Dtos.Certifications
 
         public string Name { get; set; }
 
+        public string Category { get; set; }
+
         public string IssuingOrganization { get; set; }
     }
 }

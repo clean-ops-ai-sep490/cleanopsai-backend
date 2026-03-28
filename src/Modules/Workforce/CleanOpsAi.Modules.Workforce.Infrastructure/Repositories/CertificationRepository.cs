@@ -80,5 +80,36 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
             return 0;
         }
+
+        // get all distinct categories
+        public async Task<List<string>> GetAllCategoriesAsync()
+        {
+            return await _dbContext.Set<Certification>()
+                .Where(x => !x.IsDeleted)
+                .Select(x => x.Category)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+        }
+
+        // get certifications by category
+        public async Task<List<Certification>> GetByCategoryAsync(string category)
+        {
+            return await _dbContext.Set<Certification>()
+                .Include(c => c.WorkerCertifications)
+                .Where(x => !x.IsDeleted && x.Category.ToLower() == category.ToLower())
+                .OrderByDescending(x => x.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<WorkerCertification>> GetCertificationsByWorkerIdAsync(Guid workerId)
+        {
+            return await _dbContext.Set<WorkerCertification>()
+                .Include(x => x.Certification)
+                .Where(x => x.WorkerId == workerId)
+                .OrderByDescending(x => x.IssuedDate)
+                .ToListAsync();
+        }
+
     }
 }
