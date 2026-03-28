@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
@@ -16,11 +17,13 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     {
         private readonly IWorkAreaSupervisorRepository _repository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository, IUserContext userContext)
+        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<WorkAreaSupervisorResponse?> GetByIdAsync(Guid id)
@@ -149,7 +152,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkAreaId = request.WorkAreaId,
                 WorkerId = workerId,
                 UserId = request.SupervisorId,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             }).ToList();
@@ -221,7 +224,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                         WorkAreaId = request.WorkAreaId,
                         WorkerId = workerId,
                         UserId = request.SupervisorId,
-                        Created = DateTime.UtcNow,
+                        Created = _dateTimeProvider.UtcNow,
                         CreatedBy = _userContext.UserId.ToString(),
                         IsDeleted = false
                     });

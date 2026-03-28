@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Zones;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -16,11 +17,13 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly IZoneRepository _repository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public ZoneService(IZoneRepository repository, IUserContext userContext)
+        public ZoneService(IZoneRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get by id
@@ -125,7 +128,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Name = request.Name,
                 Description = request.Description,
                 LocationId = request.LocationId,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -152,7 +155,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             zone.Name = string.IsNullOrWhiteSpace(request.Name) ? zone.Name : request.Name;
             zone.Description = request.Description ?? zone.Description;
 
-            zone.LastModified = DateTime.UtcNow;
+            zone.LastModified = _dateTimeProvider.UtcNow;
             zone.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(zone);

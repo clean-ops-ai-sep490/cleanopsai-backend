@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Workareas;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
@@ -16,11 +17,13 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
     {
         private readonly IWorkAreaRepository _repository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public WorkAreaService(IWorkAreaRepository repository, IUserContext userContext)
+        public WorkAreaService(IWorkAreaRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get by id
@@ -119,7 +122,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = Uuid7.NewGuid(),
                 Name = request.Name,
                 ZoneId = request.ZoneId,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -144,7 +147,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 
             workArea.Name = string.IsNullOrWhiteSpace(request.Name) ? workArea.Name : request.Name;
 
-            workArea.LastModified = DateTime.UtcNow;
+            workArea.LastModified = _dateTimeProvider.UtcNow;
             workArea.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(workArea);

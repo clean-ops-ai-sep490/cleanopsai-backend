@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks.ConfigModels;
@@ -19,6 +20,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly ISlaTaskRepository _repository;
         private readonly ISlaRepository _slaRepository;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         private readonly string[] validRecurrenceTypes =
         {
@@ -27,11 +29,12 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             "Monthly"
         };
 
-        public SlaTaskService(ISlaTaskRepository repository, ISlaRepository slaRepository, IUserContext userContext)
+        public SlaTaskService(ISlaTaskRepository repository, ISlaRepository slaRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _repository = repository;
             _slaRepository = slaRepository;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<SlaTaskResponse> GetByIdAsync(Guid id)
@@ -109,7 +112,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 SlaId = request.SlaId,
                 RecurrenceType = request.RecurrenceType,
                 RecurrenceConfig = request.RecurrenceConfig,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
             };
 
@@ -162,7 +165,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             task.RecurrenceType = finalRecurrenceType;
             task.RecurrenceConfig = finalRecurrenceConfig;
 
-            task.LastModified = DateTime.UtcNow;
+            task.LastModified = _dateTimeProvider.UtcNow;
             task.LastModifiedBy = _userContext.UserId.ToString();
 
             await _repository.UpdateAsync(task);
@@ -245,7 +248,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                         }
 
                         int daysInMonth = DateTime.DaysInMonth(
-                            DateTime.UtcNow.Year,
+                            _dateTimeProvider.UtcNow.Year,
                             monthly.Month
                         );
 

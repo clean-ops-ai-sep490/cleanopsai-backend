@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
@@ -19,12 +20,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private const string CONTAINER = "contracts";
         private const string AVATAR_FOLDER = "avatars";
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
-        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext)
+        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext, IDateTimeProvider dateTimeProvider)
         {
             _workerRepository = workerRepository;
             _fileStorage = fileStorageService;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         // get by id
@@ -136,7 +139,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
                 AvatarUrl = request.AvatarUrl,
-                Created = DateTime.UtcNow,
+                Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
                 IsDeleted = false
             };
@@ -189,7 +192,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 worker.AvatarUrl = fileUrl;
             }
 
-            worker.LastModified = DateTime.UtcNow;
+            worker.LastModified = _dateTimeProvider.UtcNow;
             worker.LastModifiedBy = _userContext.UserId.ToString();
 
             await _workerRepository.UpdateAsync(worker);
