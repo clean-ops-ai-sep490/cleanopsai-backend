@@ -30,8 +30,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 
 		public async Task<PaginatedResult<TaskSwapRequest>> GetSwapRequestsPaging(SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
-			return await _context.TaskSwapRequests.Where(x=>x.Status == status).ToPaginatedResultAsync(paginationRequest, ct);
-			 
+			var query = _context.TaskSwapRequests.AsQueryable();
+
+			if (status.HasValue)
+			{
+				query = query.Where(x => x.Status == status.Value).OrderByDescending(x=>x.Id);
+			}
+
+			return await query.ToPaginatedResultAsync(paginationRequest, ct);
+
 		}
 
 		public async Task<bool> HasPendingSwapAsync(Guid taskAssignmentId)

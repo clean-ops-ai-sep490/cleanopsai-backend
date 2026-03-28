@@ -14,7 +14,8 @@ namespace CleanOpsAi.BuildingBlocks.Domain.Dtos
 		public List<int>? DaysOfMonth { get; set; } 
 		
 		[JsonPropertyName("monthDays")] 
-		public List<MonthDay>? MonthDays { get; set; } }
+		public List<MonthDay>? MonthDays { get; set; } 
+	}
 
 	public record MonthDay(int Month, int Day);
 }
