@@ -26,7 +26,5 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public TaskAssignment TaskAssignment { get; set; } = null!;
 		public TaskAssignment TargetTaskAssignment { get; set; } = null!;
-
-		
 	}
 }

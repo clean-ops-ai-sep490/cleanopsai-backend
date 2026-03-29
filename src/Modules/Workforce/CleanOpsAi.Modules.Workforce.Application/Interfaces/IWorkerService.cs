@@ -1,10 +1,6 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
-using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers; 
 
 namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 {
@@ -27,5 +23,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<List<WorkerResponse>> GetInforAsync();
 
         Task<List<WorkerResponse>> FilterAsync(WorkerFilterRequest request);
-    }
+
+		Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids);
+
+	}
 }

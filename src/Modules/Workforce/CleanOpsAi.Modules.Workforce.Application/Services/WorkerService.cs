@@ -1,15 +1,11 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Medo; 
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -265,5 +261,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             }).ToList();
         }
 
-    }
+		public async Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids)
+		{
+			var workers = await _workerRepository.GetWorkersByIds(ids);
+			return workers.Select(x => new WorkerDto
+			{
+				Id = x.Id,
+				FullName = x.FullName
+			}).ToList();
+		}
+	}
 }
