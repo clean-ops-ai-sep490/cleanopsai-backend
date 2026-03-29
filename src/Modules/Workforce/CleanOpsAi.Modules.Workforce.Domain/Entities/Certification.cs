@@ -7,8 +7,10 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 	{
 		public string Name { get; set; } = null!;
 
-		public string IssuingOrganization { get; set; } = null!; 
+		public string IssuingOrganization { get; set; } = null!;
 
-		public virtual ICollection<WorkerCertification> WorkerCertifications { get; set; } = new List<WorkerCertification>();
+        public string Category { get; set; } = null!;
+
+        public virtual ICollection<WorkerCertification> WorkerCertifications { get; set; } = new List<WorkerCertification>();
 	}
 }

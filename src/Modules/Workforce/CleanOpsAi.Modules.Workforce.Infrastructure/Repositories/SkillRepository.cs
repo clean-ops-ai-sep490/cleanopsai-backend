@@ -75,5 +75,33 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
             return 0;
         }
+
+        public async Task<List<string>> GetAllCategoriesAsync()
+        {
+            return await _dbContext.Set<Skill>()
+                .Where(x => x.IsDeleted == false)
+                .Select(x => x.Category)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+        }
+
+        public async Task<List<Skill>> GetByCategoryAsync(string category)
+        {
+            return await _dbContext.Set<Skill>()
+                .Where(x => x.IsDeleted == false && x.Category == category)
+                .OrderByDescending(x => x.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<WorkerSkill>> GetSkillsByWorkerIdAsync(Guid workerId)
+        {
+            return await _dbContext.Set<WorkerSkill>()
+                .Where(ws => ws.WorkerId == workerId)
+                .Include(ws => ws.Skill)
+                .Where(ws => ws.Skill.IsDeleted == false)
+                .ToListAsync();
+        }
+
     }
 }

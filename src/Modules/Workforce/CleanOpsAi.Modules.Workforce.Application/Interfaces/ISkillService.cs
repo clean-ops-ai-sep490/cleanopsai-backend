@@ -21,5 +21,11 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<SkillResponse?> UpdateAsync(Guid id, SkillUpdateRequest request);
 
         Task<int> DeleteAsync(Guid id);
+
+        Task<List<string>> GetAllCategoriesAsync();
+
+        Task<List<SkillResponse>> GetSkillsByCategoryAsync(string category);
+
+        Task<List<WorkerSkillResponse>> GetSkillsByWorkerIdAsync(Guid workerId);
     }
 }

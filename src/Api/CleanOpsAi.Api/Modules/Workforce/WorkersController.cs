@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Api.Modules.Workforce.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -142,6 +143,18 @@ namespace CleanOpsAi.Api.Modules.Workforce
                 return Ok(result);
 
             return NotFound();
+        }
+
+        [HttpPost("filter")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Filter worker",
+            Description = "Filter worker by certi, skill, location",
+            Tags = new[] { "Workers" })]
+        public async Task<IActionResult> Filter([FromBody] WorkerFilterRequest request)
+        {
+            var result = await _service.FilterAsync(request);
+            return Ok(result);
         }
     }
 }

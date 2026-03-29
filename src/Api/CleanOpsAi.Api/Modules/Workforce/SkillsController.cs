@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.Modules.Workforce.Application.Dtos.Skills;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -95,5 +96,41 @@ namespace CleanOpsAi.Api.Modules.Workforce
 
             return NotFound();
         }
+
+        [HttpGet("categories")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get all categories",
+            Description = "Get all categories",
+            Tags = new[] { "Skills" })]
+        public async Task<IActionResult> GetCategories()
+        {
+            var result = await _service.GetAllCategoriesAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("by-category")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Get all skill by category",
+            Description = "Get skill information using category.",
+            Tags = new[] { "Skills" })]
+        public async Task<IActionResult> GetByCategory([FromQuery] string category)
+        {
+            var result = await _service.GetSkillsByCategoryAsync(category);
+            return Ok(result);
+        }
+
+        [HttpGet("worker/{workerId}/skills")]
+        [SwaggerOperation(
+            Summary = "Get all skill by worker",
+            Description = "Get skill information using worker.",
+            Tags = new[] { "Skills" })]
+        public async Task<IActionResult> GetSkillsByWorker(Guid workerId)
+        {
+            var result = await _service.GetSkillsByWorkerIdAsync(workerId);
+            return Ok(result);
+        }
+
     }
 }

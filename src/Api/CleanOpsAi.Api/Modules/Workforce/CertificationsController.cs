@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.Modules.Workforce.Application.Dtos.Certifications;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -101,5 +102,42 @@ namespace CleanOpsAi.Api.Modules.Workforce
 
             return NotFound();
         }
+
+        [HttpGet("categories")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "Categories certification",
+            Description = "list all category ",
+            Tags = new[] { "Certifications" })]
+        public async Task<IActionResult> GetCategories()
+        {
+            var result = await _service.GetAllCategoriesAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("by-category")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "List all certificate of Category",
+            Description = "list all certificate of category ",
+            Tags = new[] { "Certifications" })]
+        public async Task<IActionResult> GetByCategory([FromQuery] string category)
+        {
+            var result = await _service.GetByCategoryAsync(category);
+            return Ok(result);
+        }
+
+        [HttpGet("worker/{workerId}/certifications")]
+        [Consumes("application/json")]
+        [SwaggerOperation(
+            Summary = "List all certificate of worker",
+            Description = "list all certificate of worker ",
+            Tags = new[] { "Certifications" })]
+        public async Task<IActionResult> GetCertificationsByWorker(Guid workerId)
+        {
+            var result = await _service.GetCertificationsByWorkerIdAsync(workerId);
+            return Ok(result);
+        }
+
     }
 }
