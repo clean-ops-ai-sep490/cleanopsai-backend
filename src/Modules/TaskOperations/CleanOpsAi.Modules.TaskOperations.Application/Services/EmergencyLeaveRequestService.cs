@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
@@ -21,6 +22,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IFileStorageService _fileStorageService;
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
 
         private const string ContainerName = "contracts";
@@ -30,12 +32,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IEmergencyLeaveRequestRepository emergencyLeaveRequestRepository,
             IFileStorageService fileStorageService,
             IMapper mapper,
-            IUserContext userContext)
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvider)
         {
             _emergencyLeaveRequestRepository = emergencyLeaveRequestRepository;
             _fileStorageService = fileStorageService;
             _mapper = mapper;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<EmergencyLeaveRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -85,15 +89,48 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content));
         }
 
+        public async Task<PaginatedResult<EmergencyLeaveRequestDto>> GetsByDateRange(DateTime from, DateTime to, PaginationRequest request, CancellationToken ct = default)
+        {
+            var result = await _emergencyLeaveRequestRepository
+                .GetsByDateRangePagingAsync(from, to, request, ct);
+
+            return new PaginatedResult<EmergencyLeaveRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content)
+            );
+        }
+
         public async Task<EmergencyLeaveRequestDto?> Create(CreateEmergencyLeaveRequestDto dto, CancellationToken ct = default)
         {
             var entity = _mapper.Map<EmergencyLeaveRequest>(dto);
+
+            DateTime leaveDateFrom = default;  // fix: gan gia tri mac dinh
+            DateTime leaveDateTo = default;    // fix: gan gia tri mac dinh
+
+            if (dto.TaskAssignmentId.HasValue)
+            {
+                entity.TaskAssignmentId = dto.TaskAssignmentId.Value;
+            }
+            else
+            {
+                if (!dto.LeaveDateFrom.HasValue || !dto.LeaveDateTo.HasValue)
+                    throw new ArgumentException("Phai truyen LeaveDateFrom va LeaveDateTo khi khong co TaskAssignmentId.");
+
+                leaveDateFrom = dto.LeaveDateFrom.Value;
+                leaveDateTo = dto.LeaveDateTo.Value;
+            }
+
+            if (leaveDateFrom > leaveDateTo)
+                throw new ArgumentException("LeaveDateFrom phai nho hon hoac bang LeaveDateTo.");
+
+            entity.LeaveDateFrom = leaveDateFrom;
+            entity.LeaveDateTo = leaveDateTo;
             entity.Status = RequestStatus.Pending;
-            entity.Created = DateTime.UtcNow;
+            entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
-            // Upload audio len Azure Blob vao folder ao: audios/{newGuid}.ext
-            // SAS URL expiry 1 nam, luu thang vao DB
             if (dto.AudioStream != null && !string.IsNullOrEmpty(dto.AudioFileName))
             {
                 var fileName = $"{AudioFolder}/{dto.AudioFileName}";
@@ -101,22 +138,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             }
 
             if (!string.IsNullOrEmpty(dto.Transcription))
-            {
                 entity.Transcription = dto.Transcription;
-            }
 
             await _emergencyLeaveRequestRepository.AddAsync(entity, ct);
 
-            // notifi to Target - thong bao cho manager co emergency leave request moi
-            // var message = new EmergencyLeaveRequestCreatedEvent
+            // publish event sau khi tich hop RabbitMQ
+            // 
+            // await _publishEndpoint.Publish(new EmergencyLeaveRequestCreatedEvent
             // {
             //     RequestId        = entity.Id,
             //     WorkerId         = entity.WorkerId,
             //     TaskAssignmentId = entity.TaskAssignmentId,
+            //     LeaveDateFrom    = entity.LeaveDateFrom,
+            //     LeaveDateTo      = entity.LeaveDateTo,
             //     AudioUrl         = entity.AudioUrl,
             //     Transcription    = entity.Transcription,
             //     CreatedAt        = entity.Created
-            // };
+            // }, ct);
 
             return _mapper.Map<EmergencyLeaveRequestDto>(entity);
         }
@@ -126,13 +164,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var entity = await _emergencyLeaveRequestRepository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
 
-            // Upload audio moi len Azure Blob, ghi de AudioUrl cu
-            // SAS URL expiry 1 nam, luu thang vao DB
+            var newFrom = dto.LeaveDateFrom ?? entity.LeaveDateFrom;
+            var newTo = dto.LeaveDateTo ?? entity.LeaveDateTo;
+
+            if (newFrom > newTo)
+                throw new ArgumentException("LeaveDateFrom phai nho hon hoac bang LeaveDateTo.");
+
+            // DA XOA: khong check overlap nua
+
+            entity.LeaveDateFrom = newFrom;
+            entity.LeaveDateTo = newTo;
+
             if (dto.AudioStream != null && !string.IsNullOrEmpty(dto.AudioFileName))
             {
                 var fileName = $"{AudioFolder}/{dto.AudioFileName}";
                 entity.AudioUrl = await _fileStorageService.UploadFileAsync(dto.AudioStream, fileName, ContainerName);
-
             }
 
             if (!string.IsNullOrEmpty(dto.Transcription))
@@ -142,6 +188,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
+
+            // publish event sau khi tich hop RabbitMQ
+            // 
+            // await _publishEndpoint.Publish(new EmergencyLeaveRequestUpdatedEvent
+            // {
+            //     RequestId     = entity.Id,
+            //     WorkerId      = entity.WorkerId,
+            //     LeaveDateFrom = entity.LeaveDateFrom,
+            //     LeaveDateTo   = entity.LeaveDateTo,
+            //     Reason        = entity.Reason,
+            //     AudioUrl      = entity.AudioUrl,
+            //     Transcription = entity.Transcription,
+            //     UpdatedAt     = entity.LastModified!.Value
+            // }, ct);
+
             return _mapper.Map<EmergencyLeaveRequestDto>(entity);
         }
 
@@ -151,7 +212,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             entity.Status = dto.Status;
-            entity.ReviewedByUserId = dto.ReviewedByUserId;
+            entity.ReviewedByUserId = _userContext.UserId;
             entity.ApprovedAt = dto.Status == RequestStatus.Approved
                 ? DateTime.UtcNow
                 : null;

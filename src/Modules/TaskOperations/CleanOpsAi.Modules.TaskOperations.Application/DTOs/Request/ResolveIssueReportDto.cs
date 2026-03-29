@@ -9,7 +9,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 {
     public class ResolveIssueReportDto
     {
-        public Guid ResolvedByUserId { get; set; }
         public IssueStatus Status { get; set; } // Approved | Rejected
     }
 }

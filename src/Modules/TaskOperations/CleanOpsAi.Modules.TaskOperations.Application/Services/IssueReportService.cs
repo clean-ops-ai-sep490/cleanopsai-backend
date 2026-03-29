@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
@@ -20,15 +21,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IIssueReportRepository _issueReportRepository;
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
 
         public IssueReportService(
             IIssueReportRepository issueReportRepository,
             IMapper mapper,
-            IUserContext userContext)
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvider)
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
             _userContext = userContext;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         public async Task<IssueReportDto?> GetById(Guid id, CancellationToken ct = default)
@@ -81,7 +85,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         public async Task<IssueReportDto?> Create(CreateIssueReportDto dto, CancellationToken ct = default)
         {
             var entity = _mapper.Map<IssueReport>(dto);
-            entity.Created = DateTime.UtcNow;
+            entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.AddAsync(entity, ct);
@@ -105,7 +109,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             _mapper.Map(dto, entity);
-            entity.LastModified = DateTime.UtcNow;
+            entity.LastModified = _dateTimeProvider.UtcNow;
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.UpdateAsync(entity, ct);
@@ -118,7 +122,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             entity.Status = dto.Status;
-            entity.ResolvedByUserId = dto.ResolvedByUserId;
+            entity.ResolvedByUserId = _userContext.UserId;
             entity.ResolvedAt = dto.Status == IssueStatus.Approved
                 ? DateTime.UtcNow
                 : null;

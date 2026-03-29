@@ -8,6 +8,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 {
     public class UpdateEmergencyLeaveRequestDto
     {
+        public DateTime? LeaveDateFrom { get; set; }  // null = giu nguyen
+        public DateTime? LeaveDateTo { get; set; }    // null = giu nguyen
         public Stream? AudioStream { get; set; }
         public string? AudioFileName { get; set; } // lay tu IFormFile.FileName o controller
         public string? Transcription { get; set; }

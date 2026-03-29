@@ -9,7 +9,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 {
     public class ReviewEmergencyLeaveRequestDto
     {
-        public Guid ReviewedByUserId { get; set; }
         public RequestStatus Status { get; set; } // Approved | Rejected
     }
 }
