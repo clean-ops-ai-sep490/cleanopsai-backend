@@ -1,32 +1,47 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using MassTransit;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
 	public class TaskAssignmentService : ITaskAssignmentService
 	{
 		private readonly ITaskAssignmentRepository _taskAssignmentRepository;
+		private readonly ITaskStepExecutionRepository _taskStepExecutionRepository;
 		private readonly IMapper _mapper;
 		private readonly IRecurrenceExpander _expander;
 		private readonly IDateTimeProvider _dateTimeProvider;
-		private readonly IIdGenerator _idGenerator; 
+		private readonly IIdGenerator _idGenerator;
+		private readonly IRequestClient<SopStepsRequested> _sopStepsClient;
+		//private readonly IPublishEndpoint _publishEndpoint;
 
 		public TaskAssignmentService(ITaskAssignmentRepository taskAssignmentRepository,
+			ITaskStepExecutionRepository taskStepExecutionRepository,
 			IMapper mapper,
-			IRecurrenceExpander expander, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
+			IRecurrenceExpander expander,
+			IDateTimeProvider dateTimeProvider,
+			IIdGenerator idGenerator,
+			IRequestClient<SopStepsRequested> sopClient)
 		{
 			_taskAssignmentRepository = taskAssignmentRepository;
+			_taskStepExecutionRepository = taskStepExecutionRepository;
 			_mapper = mapper;
 			_expander = expander;
 			_dateTimeProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
+			_sopStepsClient = sopClient;
 		}
 
 
@@ -46,28 +61,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (taskAssignment == null) return null;
 
 			return _mapper.Map<TaskAssignmentDto?>(taskAssignment);
-		}
-
-		public async Task<PaginatedResult<TaskAssignmentDto>> Gets(PaginationRequest request, CancellationToken ct = default)
-		{
-			var result = await _taskAssignmentRepository.GetsPaging(request, ct);
-
-			return new PaginatedResult<TaskAssignmentDto>(
-				result.PageNumber,
-				result.PageSize,
-				result.TotalElements,
-				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
-		}
-
-		public async Task<PaginatedResult<TaskAssignmentDto>> GetsByAssigneeId(Guid assgineeId,PaginationRequest request, CancellationToken ct = default)
-		{
-			var result = await _taskAssignmentRepository.GetsByAssigneeIdPaging(assgineeId, request, ct);
-
-			return new PaginatedResult<TaskAssignmentDto>(
-				result.PageNumber,
-				result.PageSize,
-				result.TotalElements,
-				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
 		}
 
 		public async Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentDto dto)
@@ -130,6 +123,93 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 			if (toInsert.Count > 0)
 				await _taskAssignmentRepository.BulkInsertAsync(toInsert);
+		}
+
+		public async Task<StartTaskDto> StartTaskAsync(Guid taskAssignmentId, Guid workerId, CancellationToken ct = default)
+		{
+			var assignment = await _taskAssignmentRepository.GetByIdAsync(taskAssignmentId, ct)
+				?? throw new NotFoundException(nameof(TaskAssignment), taskAssignmentId);
+
+			if (assignment.AssigneeId != workerId)
+				throw new ForbiddenException("Not your task");
+
+			if (assignment.Status != TaskAssignmentStatus.NotStarted)
+				throw new BadRequestException(
+					$"Task was in status {assignment.Status}, can not start");
+
+			if (await _taskStepExecutionRepository.ExistsByAssignmentId(assignment.Id, ct))
+				throw new BadRequestException("Task already started");
+
+			var response = await _sopStepsClient
+				.GetResponse<SopStepsIntegrated>(
+					new SopStepsRequested
+					{
+						TaskScheduleId = assignment.TaskScheduleId
+					}, ct);
+
+			if (!response.Message.Found || string.IsNullOrEmpty(response.Message.Metadata))
+				throw new BadRequestException(
+					$"Can not find sop step for TaskSchedule {assignment.TaskScheduleId}.");
+
+			var sopSteps = JsonSerializer.Deserialize<List<SopStepMetadataDto>>(
+				response.Message.Metadata,
+				new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+				?? throw new BadRequestException("Metadata invalid");
+
+			var validSteps = sopSteps
+				.Where(s => !s.IsDeleted)
+				.OrderBy(s => s.StepOrder)
+				.ToList();
+
+			if (!validSteps.Any())
+				throw new BadRequestException("There are no valid steps in the SOP");
+
+			assignment.Status = TaskAssignmentStatus.InProgress;
+			assignment.LastModified = _dateTimeProvider.UtcNow;
+
+			var stepExecutions = validSteps
+				.Select((s, index) => new TaskStepExecution
+				{
+					Id = _idGenerator.Generate(),
+					TaskAssignmentId = assignment.Id,
+					SopStepId = s.Id,
+					Status = index == 0
+						? TaskStepExecutionStatus.InProgress
+						: TaskStepExecutionStatus.NotStarted,
+					ResultData = s.ConfigDetail,
+					Created = _dateTimeProvider.UtcNow
+				}).ToList();
+
+			await _taskStepExecutionRepository.AddRangeStepExecutionsAsync(stepExecutions, ct);
+			await _taskAssignmentRepository.SaveChangesAsync(ct);
+
+			//publish
+
+			var stepDtos = stepExecutions.Select((s, index) => new TaskStepExecutionDto
+			{
+				Id = s.Id,
+				SopStepId = s.SopStepId,
+				StepOrder = validSteps[index].StepOrder,
+				Status = s.Status.ToString()
+			}).ToList();
+
+			return new StartTaskDto
+			{
+				TaskAssignmentId = assignment.Id,
+				Status = assignment.Status,
+				Steps = stepDtos
+			};
+		}
+
+		public async Task<PaginatedResult<TaskAssignmentDto>> Gets(TaskAssignmentFilter filter, PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _taskAssignmentRepository.Gets(filter, request, ct);
+
+			return new PaginatedResult<TaskAssignmentDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
 		}
 	}
 }

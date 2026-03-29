@@ -38,11 +38,11 @@ public static class DependencyInjection
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));  
 
 		builder.Services.AddScoped<ITaskAssignmentRepository, TaskAssignmentRepository>();
+		builder.Services.AddScoped<ITaskStepExecutionRepository, TaskStepExecutionRepository>();
 		builder.Services.AddScoped<ITaskSwapRequestRepository, TaskSwapRequestRepository>();
 		builder.Services.AddScoped<IEquipmentRequestRepository, EquipmentRequestRepository>();
 		builder.Services.AddScoped<IIssueReportRepository, IssueReportRepository>();
 		builder.Services.AddScoped<IEmergencyLeaveRequestRepository, EmergencyLeaveRequestRepository>();
-		builder.Services.AddScoped<IUserContext, UserContext>();
 		builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
 

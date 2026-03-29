@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -19,32 +20,17 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			_taskAssignmentService = taskAssignmentService;
 		}
 
-		[HttpGet("assignee/{assigneeId:guid}")]
-		[SwaggerOperation(
-			Summary = "Get task assignments by assignee with pagination",
-			Description = "Retrieves a paginated list of task assignments assigned to a specific worker (assignee). This endpoint is typically used to track and manage tasks assigned to an individual, including their execution status and schedule details.",
-			Tags = new[] { "TaskAssignment" }
-		)]
-		[ProducesResponseType(typeof(PaginatedResult<TaskAssignmentDto>), StatusCodes.Status200OK)]
-		public async Task<IActionResult> GetsByAssigneeId(Guid assigneeId, [FromQuery] PaginationRequest request,
-			CancellationToken ct)
-		{
-			var result = await _taskAssignmentService.GetsByAssigneeId(assigneeId, request, ct);
-			return Ok(result);
-		}
-
 		[HttpGet]
 		[SwaggerOperation(
-			Summary = "Get task assignments with pagination",
-			Description = "Retrieves a paginated list of task assignments. Each task assignment represents the allocation of a scheduled task to a specific worker, including assignment status, execution tracking, and related task schedule information.",
+			Summary = "Get task assignments with filtering & pagination",
+			Description = "Retrieves a paginated list of task assignments with optional filters such as assignee, date range, and status.",
 			Tags = new[] { "TaskAssignment" }
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<TaskAssignmentDto>), StatusCodes.Status200OK)]
-		public async Task<IActionResult> Gets(
-		[FromQuery] PaginationRequest request,
-		CancellationToken ct)
+		public async Task<IActionResult> Gets([FromQuery] TaskAssignmentFilter filter,
+		[FromQuery] PaginationRequest request, CancellationToken ct)
 		{
-			var result = await _taskAssignmentService.Gets(request, ct);
+			var result = await _taskAssignmentService.Gets(filter, request, ct);
 			return Ok(result);
 		}
 
@@ -61,6 +47,22 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			var taskAssignment = await _taskAssignmentService.GetById(id, ct);
 			if (taskAssignment == null) return NotFound();
 			return Ok(taskAssignment);
+		}
+
+		[HttpPost("{id:guid}/start")]
+		[SwaggerOperation(
+			Summary = "Start a task assignment",
+			Description = "Starts a task assignment for a specific worker. The task must be in NotStarted status and assigned to the provided workerId.",
+			Tags = new[] { "TaskAssignment" }
+		)]
+		[ProducesResponseType(typeof(StartTaskDto), StatusCodes.Status200OK)]
+		public async Task<IActionResult> StartTask([FromRoute] Guid id, [FromBody] StartTaskRequest request,
+		CancellationToken ct)
+		{
+			var result = await _taskAssignmentService
+				.StartTaskAsync(id, request.WorkerId, ct);
+
+			return Ok(result);
 		}
 
 		[HttpPut("{id:guid}")]

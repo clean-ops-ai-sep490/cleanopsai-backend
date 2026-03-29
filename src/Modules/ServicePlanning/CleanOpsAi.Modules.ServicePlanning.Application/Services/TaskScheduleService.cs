@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
@@ -9,7 +10,6 @@ using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using MassTransit;
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
@@ -39,9 +39,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			_userContext = userContext;
 		}
 
-		public async Task<TaskScheduleDto?> GetById(Guid id, CancellationToken ct = default)
+		public async Task<TaskScheduleDto> GetById(Guid id, CancellationToken ct = default)
 		{
 			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
+			if (taskSchedule == null)
+				throw new NotFoundException(nameof(TaskSchedule), id);
+			
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
@@ -63,7 +66,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			);
 
 			if (hasConflict)
-				throw new ValidationException("Schedule conflict detected");
+				throw new BadRequestException("Schedule conflict detected");
 
 			var taskSchedule = _mapper.Map<TaskSchedule>(dto);
 			taskSchedule.Id = _idGenerator.Generate();
@@ -84,8 +87,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
 			if (taskSchedule == null)
 			{
-
-				throw new KeyNotFoundException($"TaskSchedule with id {id} not found.");
+				throw new NotFoundException(nameof(TaskSchedule), id);
 			}
 			else
 			{
@@ -113,7 +115,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 
 				if (hasConflict)
-					throw new ValidationException("Schedule conflict detected");
+					throw new BadRequestException("Schedule conflict detected");
 
 				taskSchedule.Version++;
 				taskSchedule.LastModified = _dateTimeProvider.UtcNow;
@@ -136,7 +138,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
 			if (taskSchedule == null)
-				return false;
+				throw new NotFoundException(nameof(TaskSchedule), id);
 
 			taskSchedule.IsDeleted = true;
 			await _taskScheduleRepository.SaveChangesAsync(ct);
@@ -163,7 +165,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			CancellationToken cancellationToken = default)
 		{
 			if (windowStart > windowEnd)
-				throw new ArgumentException("windowStart must be earlier than or equal windowEnd", nameof(windowStart));
+				throw new BadRequestException("windowStart must be earlier than or equal windowEnd", nameof(windowStart));
 
 			if (contractStartDate > windowEnd || (contractEndDate.HasValue && contractEndDate < windowStart))
 				return false;
@@ -218,7 +220,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 	RecurrenceType type)
 		{
 			if (string.IsNullOrWhiteSpace(recurrenceConfigJson))
-				throw new ArgumentException("Recurrence config may not be empty");
+				throw new BadRequestException("Recurrence config may not be empty");
 
 			var options = new JsonSerializerOptions
 			{
@@ -227,7 +229,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			};
 
 			var config = JsonSerializer.Deserialize<RecurrenceConfig>(recurrenceConfigJson, options)
-				?? throw new InvalidOperationException("Failed to parse recurrence config");
+				?? throw new BadRequestException("Failed to parse recurrence config");
 
 			ValidateConfig(type, config);
 
@@ -237,23 +239,23 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private static void ValidateConfig(RecurrenceType type, RecurrenceConfig config)
 		{
 			if (config.Times == null || !config.Times.Any())
-				throw new ValidationException("Times is required");
+				throw new BadRequestException("Times is required");
 
 			switch (type)
 			{
 				case RecurrenceType.Weekly:
 					if (config.DaysOfWeek == null || !config.DaysOfWeek.Any())
-						throw new Exception("DaysOfWeek is required for Weekly");
+						throw new BadRequestException("DaysOfWeek is required for Weekly");
 					break;
 
 				case RecurrenceType.Monthly:
 					if (config.DaysOfMonth == null || !config.DaysOfMonth.Any())
-						throw new Exception("DaysOfMonth is required for Monthly");
+						throw new BadRequestException("DaysOfMonth is required for Monthly");
 					break;
 
 				case RecurrenceType.Yearly:
 					if (config.MonthDays == null || !config.MonthDays.Any())
-						throw new Exception("MonthDays is required for Yearly");
+						throw new BadRequestException("MonthDays is required for Yearly");
 					break;
 			}
 		}

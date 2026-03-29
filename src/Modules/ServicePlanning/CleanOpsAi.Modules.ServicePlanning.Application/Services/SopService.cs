@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -7,7 +8,6 @@ using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities; 
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
@@ -43,14 +43,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<SopDto> CreateSopAsync(SopCreateDto dto, CancellationToken ct = default)
 		{
 			if (dto.Steps == null || dto.Steps.Count == 0)
-				throw new ValidationException("SOP must have at least one step");
+				throw new BadRequestException("SOP must have at least one step");
 
 			var orders = dto.Steps.Select(s => s.StepOrder).ToList();
 			if (orders.Distinct().Count() != orders.Count)
-				throw new ValidationException("StepOrder must be unique");
+				throw new BadRequestException("StepOrder must be unique");
 
 			if (orders.Min() != 1 || orders.Max() != orders.Count)
-				throw new ValidationException("StepOrder must be sequential starting from 1");
+				throw new BadRequestException("StepOrder must be sequential starting from 1");
 
 			var stepIds = dto.Steps.Select(x => x.StepId).Distinct().ToList();
 			var steps = await _stepRepository.GetByIdsAsync(stepIds);
@@ -58,7 +58,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			if (steps.Count != stepIds.Count)
 			{
 				var missingIds = stepIds.Except(steps.Select(s => s.Id));
-				throw new ValidationException($"Steps not found: {string.Join(", ", missingIds)}");
+				throw new BadRequestException($"Steps not found: {string.Join(", ", missingIds)}");
 			}
 
 			var stepDict = steps.ToDictionary(x => x.Id);
@@ -131,15 +131,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			if (dto.Steps != null)
 			{
 				if (dto.Steps.Count == 0)
-					throw new ValidationException("SOP must have at least one step");
+					throw new BadRequestException("SOP must have at least one step");
 
 				var orders = dto.Steps.Select(s => s.StepOrder).ToList();
 
 				if (orders.Distinct().Count() != orders.Count)
-					throw new ValidationException("StepOrder must be unique");
+					throw new BadRequestException("StepOrder must be unique");
 
 				if (orders.Min() != 1 || orders.Max() != orders.Count)
-					throw new ValidationException("StepOrder must be sequential starting from 1");
+					throw new BadRequestException("StepOrder must be sequential starting from 1");
 
 				var stepIds = dto.Steps.Select(x => x.StepId).Distinct().ToList();
 				var steps = await _stepRepository.GetByIdsAsync(stepIds);
@@ -147,7 +147,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				if (steps.Count != stepIds.Count)
 				{
 					var missingIds = stepIds.Except(steps.Select(s => s.Id));
-					throw new ValidationException($"Steps not found: {string.Join(", ", missingIds)}");
+					throw new BadRequestException($"Steps not found: {string.Join(", ", missingIds)}");
 				}
 
 				var stepDict = steps.ToDictionary(x => x.Id);
@@ -271,13 +271,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				var isValid = token.IsValid(schema, out IList<string> errors);
 
 				if (!isValid)
-					throw new ValidationException(
+					throw new BadRequestException(
 						$"ConfigDetail for step '{stepName}' is invalid:\n{string.Join("\n", errors)}"
 					);
 			}
 			catch (JsonException ex)
 			{
-				throw new ValidationException($"ConfigDetail for step '{stepName}' is not valid JSON: {ex.Message}");
+				throw new BadRequestException($"ConfigDetail for step '{stepName}' is not valid JSON: {ex.Message}");
 			}
 		}
 

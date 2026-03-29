@@ -1,12 +1,10 @@
-﻿using CleanOpsAi.Api.Middlewares;
+﻿using CleanOpsAi.Api.Common.Exceptions;
+using CleanOpsAi.Api.Middlewares;
 using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
-using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
-using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers;
-using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
 using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using Microsoft.OpenApi.Models;
@@ -60,7 +58,8 @@ public static class DependencyInjection
 			builder.Configuration,
 			typeof(GenerateTaskAssignmentsConsumer).Assembly,
 			typeof(UserRegisteredConsumer).Assembly,
-			typeof(SendNotificationConsumer).Assembly
+			typeof(SendNotificationConsumer).Assembly,
+			typeof(GetSopStepsByScheduleConsumer).Assembly
 		); 
 
 		builder.Services.AddCors(options =>
@@ -76,13 +75,12 @@ public static class DependencyInjection
 			});
 		});
 
-
-        builder.Services.AddHttpContextAccessor();
-		builder.Services.AddScoped<IUserContext, UserContext>();
-
-		builder.Services.AddScoped<GlobalExceptionMiddleware>();
+		builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+		builder.Services.AddProblemDetails(); 
 		builder.Services.AddScoped<PerformanceMiddleware>();
 
+
+		builder.Services.AddHttpContextAccessor();  
 
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -44,6 +45,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<StepDto> GetStepById(Guid id, CancellationToken ct = default)
 		{
 			var step = await _stepRepository.GetByIdAsync(id, ct); 
+			if (step == null)
+				throw new NotFoundException(nameof(Step), id);
+
 			return _mapper.Map<StepDto>(step);
 		}
 
@@ -51,7 +55,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var step = await _stepRepository.GetByIdAsync(id);
 			if (step == null)
-				return null!;
+				throw new NotFoundException(nameof(Step), id);
 
 			_mapper.Map(dto, step);
 			step.LastModifiedBy = _userContext.UserId.ToString();
@@ -65,7 +69,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var step = await _stepRepository.GetByIdAsync(id);
 			if (step == null)
-				return false;
+				throw new NotFoundException(nameof(Step), id);
 
 			step.IsDeleted = true;
 			return await _stepRepository.SaveChangesAsync(ct) > 0;

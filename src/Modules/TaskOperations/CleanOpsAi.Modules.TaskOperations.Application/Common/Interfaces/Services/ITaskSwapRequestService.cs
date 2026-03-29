@@ -7,7 +7,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 {
 	public interface ITaskSwapRequestService
 	{
-		Task<Result<SwapRequestDto?>> GetById(Guid id, CancellationToken ct = default);
+		Task<SwapRequestDto> GetById(Guid id, CancellationToken ct = default);
 
 		Task<Result<SwapRequestDto>> CreateSwapRequestAsync(TaskSwapRequestCreateDto dto, CancellationToken ct = default);
 

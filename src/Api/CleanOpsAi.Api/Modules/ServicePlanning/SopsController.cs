@@ -51,10 +51,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		public async Task<IActionResult> GetById(Guid id)
 		{
 			var result = await _sopService.GetByIdWithStepsAsync(id);
-
-			if (result == null)
-				return NotFound();
-
 			return Ok(result);
 		}
 
@@ -92,7 +88,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		public async Task<IActionResult> Update(Guid id, [FromBody] SopUpdateDto dto, CancellationToken ct = default)
 		{
 			var result = await _sopService.UpdateSopAsync(id, dto, ct);
-			if (result == null) return NotFound();
 			return Ok(result);
 		}
 
@@ -108,7 +103,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
 		{
 			var result = await _sopService.DeleteSopAsync(id, ct);
-			if (!result) return NotFound();
 			return NoContent();
 		}
 	}

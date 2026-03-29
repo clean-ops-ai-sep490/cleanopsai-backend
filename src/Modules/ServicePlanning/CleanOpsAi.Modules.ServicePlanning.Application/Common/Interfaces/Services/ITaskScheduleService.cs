@@ -5,7 +5,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 {
 	public interface ITaskScheduleService
 	{
-		Task<TaskScheduleDto?> GetById(Guid id, CancellationToken ct = default);
+		Task<TaskScheduleDto> GetById(Guid id, CancellationToken ct = default);
 
 		Task<TaskScheduleDto> Create(TaskScheduleCreateDto createDto, CancellationToken ct = default);
 

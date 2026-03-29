@@ -47,10 +47,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> GetById(Guid id)
 		{
-			var result = await _taskScheduleService.GetById(id);
-
-			if (result == null)
-				return NotFound();
+			var result = await _taskScheduleService.GetById(id); 
 
 			return Ok(result);
 		}
@@ -85,15 +82,9 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Update(Guid id, [FromBody] TaskScheduleUpdateDto dto, CancellationToken ct = default)
 		{
-			try
-			{
-				var result = await _taskScheduleService.Update(id, dto, ct);
-				return Ok(result);
-			}
-			catch (KeyNotFoundException)
-			{
-				return NotFound();
-			}
+			var result = await _taskScheduleService.Update(id, dto, ct);
+			return Ok(result);
+			 
 		}
 
 
