@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
@@ -37,17 +38,23 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<bool> Delete(Guid id, CancellationToken ct = default)
 		{
 			var environmentType = await _environmentTypeRepository.GetByIdAsync(id, ct);
-			if (environmentType == null) return false;
+			if (environmentType == null)
+				throw new NotFoundException(nameof(EnvironmentType), id);
+
 
 			environmentType.IsDeleted = true;
 			await _environmentTypeRepository.SaveChangesAsync(ct);
 			return true;
 		}
 
-		public async Task<EnvironmentTypeDto?> GetById(Guid id, CancellationToken ct = default)
+		public async Task<EnvironmentTypeDto> GetById(Guid id, CancellationToken ct = default)
 		{
 			var environmentType =  await _environmentTypeRepository.GetByIdAsync(id, ct);
-			return _mapper.Map<EnvironmentTypeDto?>(environmentType);
+
+			if (environmentType == null)
+				throw new NotFoundException(nameof(EnvironmentType), id);
+
+			return _mapper.Map<EnvironmentTypeDto>(environmentType);
 		}
 
 		public async Task<PaginatedResult<EnvironmentTypeDto>> Gets(PaginationRequest request, CancellationToken ct = default)
@@ -64,7 +71,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<EnvironmentTypeDto?> Update(Guid id,EnvironmentTypeUpdateDto dto, CancellationToken ct = default)
 		{
 			var environmentType = await _environmentTypeRepository.GetByIdAsync(id, ct);
-			if (environmentType == null) return null;
+			if (environmentType == null)
+				throw new NotFoundException(nameof(EnvironmentType), id);
+
 
 			_mapper.Map(dto, environmentType);
 			environmentType.LastModified = DateTime.UtcNow;

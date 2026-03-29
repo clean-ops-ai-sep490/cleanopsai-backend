@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 
@@ -13,12 +14,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 
 		Task<bool> Delete(Guid id);
 
-		Task<bool> UpdateStatus(Guid id, TaskAssignmentStatus status);
-
-		Task<PaginatedResult<TaskAssignmentDto>> Gets(PaginationRequest request, CancellationToken ct = default);
-
-		Task<PaginatedResult<TaskAssignmentDto>> GetsByAssigneeId(Guid assgineeId, PaginationRequest request, CancellationToken ct = default);
+		Task<bool> UpdateStatus(Guid id, TaskAssignmentStatus status); 
 
 		Task GenerateAsync(GenerateTaskAssignmentsRequestedEvent msg);
+
+		Task<StartTaskDto> StartTaskAsync(
+			Guid taskAssignmentId,
+			Guid workerId,
+			CancellationToken ct = default);
+
+		Task<PaginatedResult<TaskAssignmentDto>> Gets(TaskAssignmentFilter filter, PaginationRequest request,
+			CancellationToken ct = default);
 	}
 }

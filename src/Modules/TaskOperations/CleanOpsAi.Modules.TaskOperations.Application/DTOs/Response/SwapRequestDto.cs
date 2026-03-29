@@ -15,6 +15,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 		public Guid RequesterId { get; set; } 
 
 		// Task of B
-		public Guid TargetWorkerId { get; set; } 
+		public Guid TargetWorkerId { get; set; }
+
+		public string RequesterName { get; set; } = null!;
+		public string TargetWorkerName { get; set; } = null!;
+		public string? ReviewerName { get; set; }
 	}
 }

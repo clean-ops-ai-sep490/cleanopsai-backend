@@ -45,9 +45,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		{
 			var result = await _environmentTypeService.GetById(id, ct);
 
-			if (result == null)
-				return NotFound();
-
 			return Ok(result);
 		}
 
@@ -81,9 +78,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		{
 			var result = await _environmentTypeService.Update(id, dto, ct);
 
-			if (result == null)
-				return NotFound();
-
 			return Ok(result);
 		}
 
@@ -97,11 +91,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
 		{
-			var isDeleted = await _environmentTypeService.Delete(id, ct);
-
-			if (!isDeleted)
-				return NotFound();
-
+			var isDeleted = await _environmentTypeService.Delete(id, ct); 
 			return NoContent();
 		}
 

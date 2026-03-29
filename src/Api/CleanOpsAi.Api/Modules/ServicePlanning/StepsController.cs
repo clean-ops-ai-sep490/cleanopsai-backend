@@ -49,9 +49,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		{
 			var step = await _stepService.GetStepById(id);
 
-			if (step == null)
-				return NotFound();
-
 			return Ok(step);
 		}
 
@@ -104,8 +101,6 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		public async Task<IActionResult> Delete(Guid id)
 		{
 			var result = await _stepService.DeleteStep(id);
-			if (!result)
-				return NotFound();
 
 			return NoContent();
 		}

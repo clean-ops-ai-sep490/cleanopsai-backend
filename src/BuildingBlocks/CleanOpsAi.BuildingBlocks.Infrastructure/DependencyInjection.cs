@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using Microsoft.Extensions.Hosting;
@@ -18,6 +20,9 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IDateTimeProvider, DateTimeProvider>();
 
 		builder.Services.AddScoped<IIdGenerator, Uuid7Generator>();
+
+		builder.Services.AddScoped<IUserContext, UserContext>();
+
 	}
 
 }

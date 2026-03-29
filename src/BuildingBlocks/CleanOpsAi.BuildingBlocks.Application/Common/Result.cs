@@ -47,4 +47,5 @@
 		public static new Result<T> Failure(IEnumerable<string> errors)
 			=> new Result<T>(false, default, errors);
 	}
+	 
 }

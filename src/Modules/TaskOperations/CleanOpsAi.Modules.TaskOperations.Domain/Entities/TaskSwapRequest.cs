@@ -20,7 +20,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 		public string? ReviewNote { get; set; }
 		public DateTime ExpiredAt { get; set; }
 
+		public string RequesterName { get; set; } = null!;
+		public string TargetWorkerName { get; set; } = null!;
+		public string? ReviewerName { get; set; }
+
 		public TaskAssignment TaskAssignment { get; set; } = null!;
 		public TaskAssignment TargetTaskAssignment { get; set; } = null!;
+
+		
 	}
 }

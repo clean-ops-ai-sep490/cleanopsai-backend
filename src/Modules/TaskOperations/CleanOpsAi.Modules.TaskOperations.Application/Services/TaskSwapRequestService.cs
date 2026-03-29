@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Common;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -34,20 +35,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_userContext = userContext;
 		}
 
-		public async Task<Result<SwapRequestDto?>> GetById(Guid id, CancellationToken ct = default)
+		public async Task<SwapRequestDto> GetById(Guid id, CancellationToken ct = default)
 		{
 			var swapRequest = await _taskSwapRequestRepository.GetByIdWithDetailsAsync(id, ct);
 			if (swapRequest == null)
-				return Result<SwapRequestDto?>.Success(null);
+				throw new NotFoundException(nameof(TaskSwapRequest), id);
 
-			return Result<SwapRequestDto?>.Success(_mapper.Map<SwapRequestDto>(swapRequest));
+			return _mapper.Map<SwapRequestDto>(swapRequest);
 		}
 
 		public async Task<Result> CancelSwapRequestAsync(Guid swapRequestId, Guid requesterId, CancellationToken ct = default)
 		{
 			var swapRequest = await _taskSwapRequestRepository.GetByIdWithDetailsAsync(swapRequestId, ct);
 			if (swapRequest == null)
-				return Result.Failure("No swap requests found");
+				throw new NotFoundException(nameof(TaskSwapRequest), swapRequestId);
 
 			swapRequest.Status = SwapRequestStatus.CancelledByRequester;
 			await _taskSwapRequestRepository.SaveChangesAsync(ct);
@@ -60,28 +61,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 			var requesterTask = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
 			if (requesterTask == null)
-				return Result<SwapRequestDto>.Failure("TaskAssignment not exists");
+				throw new NotFoundException(nameof(TaskAssignment), dto.TaskAssignmentId);
 
-			var requesterValidation = ValidateRequesterTask(requesterTask, dto.RequesterId);
-			if (!requesterValidation.Succeeded)
-				return Result<SwapRequestDto>.Failure(requesterValidation.Errors);
+			ValidateRequesterTask(requesterTask, dto.RequesterId);
 
 			var targetTask = await _taskAssignmentRepository.GetByIdAsync(dto.TargetTaskAssignmentId, ct);
 			if (targetTask == null)
-				return Result<SwapRequestDto>.Failure("Target task not exists");
+				throw new NotFoundException(nameof(TaskAssignment), dto.TargetTaskAssignmentId);
 
 
-			var targetValidation = ValidateTargetTask(targetTask, dto.TargetWorkerId);
-			if (!targetValidation.Succeeded)
-				return Result<SwapRequestDto>.Failure(targetValidation.Errors);
+			ValidateTargetTask(targetTask, dto.TargetWorkerId); 
 
-			var swapValidation = ValidateSwapRules(requesterTask, targetTask);
-			if (!swapValidation.Succeeded)
-				return Result<SwapRequestDto>.Failure(swapValidation.Errors);
+			ValidateSwapRules(requesterTask, targetTask); 
 
 			var hasPending = await _taskSwapRequestRepository.HasPendingSwapAsync(dto.TaskAssignmentId);
 			if (hasPending)
-				return Result<SwapRequestDto>.Failure("Already has pending swap");
+				throw new BadRequestException("Already has pending swap");
 
 			var requesterHasConflict = await _taskAssignmentRepository.HasTimeConflictAsync(
 			   excludeTaskId: dto.TaskAssignmentId,        // bỏ qua chính task đang swap
@@ -90,7 +85,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			   scheduledEndAt: targetTask.ScheduledEndAt,
 			   ct);
 			if (requesterHasConflict)
-				return Result<SwapRequestDto>.Failure("Requester has a conflicting task in that time slot");
+				throw new BadRequestException("Requester has a conflicting task in that time slot");
 
 			var targetHasConflict = await _taskAssignmentRepository.HasTimeConflictAsync(
 				excludeTaskId: dto.TargetTaskAssignmentId,  // bỏ qua chính task đang swap
@@ -99,7 +94,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				scheduledEndAt: requesterTask.ScheduledEndAt,
 				ct);
 			if (targetHasConflict)
-				return Result<SwapRequestDto>.Failure("Target worker has a conflicting task in that time slot");
+				throw new BadRequestException("Target worker has a conflicting task in that time slot");
 
 			var swapRequest = new TaskSwapRequest
 			{
@@ -127,7 +122,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		{
 			var requesterTask = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
 			if (requesterTask == null)
-				return Result<PaginatedResult<SwapCandidateDto>>.Failure("TaskAssignment not found");
+				throw new NotFoundException(nameof(TaskAssignment), dto.TaskAssignmentId);
+
 
 			var today = _dateTimeProvider.UtcNow;
 			var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
@@ -154,19 +150,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		{
 			var swapRequest = await _taskSwapRequestRepository.GetByIdWithDetailsAsync(dto.SwapRequestId);
 			if (swapRequest == null)
-				return Result.Failure("No swap requests found");
+				throw new NotFoundException(nameof(TaskSwapRequest), dto.SwapRequestId);
 
 			if (swapRequest.TargetWorkerId != dto.ResponderId)
-				return Result.Failure("You are not the one who was asked to swap");
+				throw new ForbiddenException("You are not the one who was asked to swap");
 
 			if(swapRequest.Status != SwapRequestStatus.PendingTargetApproval)
-				return Result.Failure("The request is not in a pending confirmation state");
+				throw new BadRequestException("The request is not in a pending confirmation state");
 
 			if (DateTime.UtcNow > swapRequest.ExpiredAt)
 			{
 				swapRequest.Status = SwapRequestStatus.Expired;
 				await _taskSwapRequestRepository.SaveChangesAsync(ct);
-				return Result.Failure("The request has expired.");
+				throw new BadRequestException("The request has expired.");
 			}
 
 			if (!dto.IsAccepted)
@@ -191,10 +187,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 			var swapRequest = await _taskSwapRequestRepository.GetByIdWithDetailsAsync(dto.TaskSwapRequestId, ct);
 			if (swapRequest == null)
-				return Result.Failure("No swap requests found");
+				throw new NotFoundException(nameof(TaskSwapRequest), dto.TaskSwapRequestId); 
 
 			if (swapRequest.Status != SwapRequestStatus.PendingManagerApproval)
-				return Result.Failure("The request is not in a pending state");
+				throw new BadRequestException("The request is not in a pending state");
 
 			swapRequest.ReviewedByUserId = reviewerId;
 			swapRequest.ReviewNote = dto.ReviewNote;
@@ -222,44 +218,38 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return Result.Success();
 		}
 
-		private Result ValidateRequesterTask(TaskAssignment task, Guid requesterId)
+		private void ValidateRequesterTask(TaskAssignment task, Guid requesterId)
 		{
 			if (task.AssigneeId != requesterId)
-				return Result.Failure("Not your task");
+				throw new BadRequestException("Not your task");
 
 			if (task.Status != TaskAssignmentStatus.NotStarted)
-				return Result.Failure("Task was started or completed");
+				throw new BadRequestException("Task was started or completed");
 
 			if (task.ScheduledStartAt - DateTime.UtcNow < TimeSpan.FromHours(12))
-				return Result.Failure("Task must be at least 12 hours away");
-
-			return Result.Success();
+				throw new BadRequestException("Task must be at least 12 hours away");
 		}
 
-		private Result ValidateTargetTask(TaskAssignment task, Guid targetWorkerId)
+		private void ValidateTargetTask(TaskAssignment task, Guid targetWorkerId)
 		{
 			if (task.AssigneeId != targetWorkerId)
-				return Result.Failure("This task does not belong to this worker");
+				throw new BadRequestException("This task does not belong to this worker");
 
 			if (task.Status != TaskAssignmentStatus.NotStarted)
-				return Result.Failure("Target task already started/completed");
+				throw new BadRequestException("Target task already started/completed");
 
 			if (task.ScheduledStartAt - DateTime.UtcNow < TimeSpan.FromHours(12))
-				return Result.Failure("Target task too close");
-
-			return Result.Success();
+				throw new BadRequestException("Target task too close");
 		}
 
-		private Result ValidateSwapRules(TaskAssignment a, TaskAssignment b)
+		private void ValidateSwapRules(TaskAssignment a, TaskAssignment b)
 		{
 			if (a.WorkAreaId != b.WorkAreaId)
-				return Result.Failure("Different work areas");
+				throw new BadRequestException("Different work areas");
 
 			var daysDiff = Math.Abs((a.ScheduledStartAt.Date - b.ScheduledStartAt.Date).Days);
 			if (daysDiff > 7)
-				return Result.Failure("Tasks must be within same week");
-
-			return Result.Success();
+				throw new BadRequestException("Tasks must be within same week");
 		}
 
 		public async Task<PaginatedResult<SwapRequestDto>> GetSwapRequestsAsync(GetSwapRequestsDto dto, PaginationRequest paginationRequest, CancellationToken ct = default)

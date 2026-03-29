@@ -50,7 +50,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		}
 
 
-		[Authorize]
+		//[Authorize]
 		[HttpGet]
 		[SwaggerOperation(
 			Summary = "Get Task Swap Requests List",
@@ -61,13 +61,13 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<TaskSwapRequestDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> GetList([FromQuery] GetSwapRequestsDto dto,[FromQuery] PaginationRequest paginationRequest, CancellationToken ct = default)
+		public async Task<IActionResult> Gets([FromQuery] GetSwapRequestsDto dto,[FromQuery] PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
 			var result = await _service.GetSwapRequestsAsync(dto, paginationRequest, ct);
 			return Ok(result);
 		}
 
-		[Authorize]
+		//[Authorize]
 		[HttpGet("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Get Task Swap Request by Id",
@@ -79,15 +79,8 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
 		{
-			var result = await _service.GetById(id, ct);
-
-			if (!result.Succeeded)
-				return BadRequest(result.Errors);
-
-			if (result.Value == null)
-				return NotFound();
-
-			return Ok(result.Value);
+			var swapDto= await _service.GetById(id, ct);
+			return Ok(swapDto);
 		}
 
 		[Authorize]
@@ -102,10 +95,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> Create([FromBody] TaskSwapRequestCreateDto dto, CancellationToken ct = default)
 		{
-			var result = await _service.CreateSwapRequestAsync(dto, ct);
-
-			if (!result.Succeeded)
-				return BadRequest(new { errors = result.Errors });
+			var result = await _service.CreateSwapRequestAsync(dto, ct); 
 
 			return CreatedAtAction(
 				nameof(GetById),
@@ -128,11 +118,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Respond([FromBody] RespondSwapRequestDto dto, CancellationToken ct)
 		{ 
-			var result = await _service.RespondSwapRequestAsync(dto, ct);
-
-			if (!result.Succeeded)
-				return BadRequest(new { errors = result.Errors });
-
+			var result = await _service.RespondSwapRequestAsync(dto, ct); 
 			return Ok();
 		}
 
@@ -149,10 +135,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Review([FromBody] ReviewSwapRequestDto dto, CancellationToken ct)
 		{
-			var result = await _service.ReviewSwapRequestAsync(dto, ct);
-
-			if (!result.Succeeded)
-				return BadRequest(new { errors = result.Errors });
+			var result = await _service.ReviewSwapRequestAsync(dto, ct); 
 
 			return Ok();
 		}
@@ -171,10 +154,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelSwapRequestDto dto, CancellationToken ct = default)
 		{
-			var result = await _service.CancelSwapRequestAsync(id, dto.RequesterId, ct);
-
-			if (!result.Succeeded)
-				return BadRequest(new { errors = result.Errors });
+			var result = await _service.CancelSwapRequestAsync(id, dto.RequesterId, ct); 
 
 			return Ok();
 		}

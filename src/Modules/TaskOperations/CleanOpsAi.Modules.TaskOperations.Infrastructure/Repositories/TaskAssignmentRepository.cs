@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
@@ -34,16 +35,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 		public async Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct)
 		{
 			return await _context.TaskAssignments.FirstOrDefaultAsync(x=>x.Id == id, ct);
-		}
-
-		public async Task<PaginatedResult<TaskAssignment>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
-		{
-			return await _context.TaskAssignments.ToPaginatedResultAsync(request, ct);
-		}
-
-		public async Task<PaginatedResult<TaskAssignment>> GetsByAssigneeIdPaging(Guid assgineeId, PaginationRequest request, CancellationToken ct = default)
-		{
-			return await _context.TaskAssignments.Where(x=> x.AssigneeId == assgineeId).ToPaginatedResultAsync(request,ct);
 		}
 
 		public async Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(Guid workAreaId,
@@ -96,6 +87,25 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 					t.ScheduledEndAt > scheduledStartAt
 				)
 				.AnyAsync(ct);
+		}
+
+		public async Task<PaginatedResult<TaskAssignment>> Gets(TaskAssignmentFilter filter, PaginationRequest request, CancellationToken ct = default)
+		{
+			var query = _context.TaskAssignments.AsQueryable();
+
+			if (filter.AssigneeId.HasValue)
+				query = query.Where(x => x.AssigneeId == filter.AssigneeId.Value);
+
+			if (filter.Status.HasValue)
+				query = query.Where(x => x.Status == filter.Status.Value);
+
+			if (filter.FromDate.HasValue)
+				query = query.Where(x => x.ScheduledStartAt >= filter.FromDate.Value.Date);
+
+			if (filter.ToDate.HasValue)
+				query = query.Where(x => x.ScheduledEndAt <= filter.ToDate.Value.Date.AddDays(1).AddTicks(-1));
+
+			return await query.ToPaginatedResultAsync(request, ct);
 		}
 	}
 }

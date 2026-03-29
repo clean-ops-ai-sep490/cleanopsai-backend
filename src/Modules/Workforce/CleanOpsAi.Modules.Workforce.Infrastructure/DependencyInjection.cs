@@ -41,8 +41,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkerCertificationRepository, WorkerCertificationRepository>();
 		builder.Services.AddScoped<IWorkerSkillRepository, WorkerSkillRepository>();
 		builder.Services.AddScoped<IWorkerGpsRepository, WorkerGpsRepository>();
-		builder.Services.AddScoped<IWorkAreaSupervisorRepository, WorkAreaSupervisorRepository>();
-		builder.Services.AddScoped<IUserContext, UserContext>();
+		builder.Services.AddScoped<IWorkAreaSupervisorRepository, WorkAreaSupervisorRepository>(); 
 
         // Services
         builder.Services.AddScoped<IWorkerService, WorkerService>();

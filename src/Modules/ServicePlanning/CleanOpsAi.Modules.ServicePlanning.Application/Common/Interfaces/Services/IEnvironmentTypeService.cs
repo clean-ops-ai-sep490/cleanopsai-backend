@@ -4,7 +4,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 {
 	public interface IEnvironmentTypeService
 	{
-		Task<EnvironmentTypeDto?> GetById(Guid id, CancellationToken ct = default);
+		Task<EnvironmentTypeDto> GetById(Guid id, CancellationToken ct = default);
 
 		Task<EnvironmentTypeDto> Create(EnvironmentTypeCreateDto dto, CancellationToken ct = default);
 
