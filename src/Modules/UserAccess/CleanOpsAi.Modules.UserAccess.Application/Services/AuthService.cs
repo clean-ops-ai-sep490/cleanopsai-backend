@@ -37,18 +37,28 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Services
             string email,
             string password,
             string fullName,
-        UserRole role)
+            UserRole role)
         {
             var result = await _authRepository.Register(email, password, fullName, role);
 
-            await _publishEndpoint.Publish(
-                new UserRegisteredIntegrationEvent
-                {
-                    UserId = result.UserId.ToString(),
-                    Role = role.ToString(),
-                    FullName = fullName,
-                    AvatarUrl = null
-                });
+            Console.WriteLine("BEFORE PUBLISH");
+            try
+            {
+                await _publishEndpoint.Publish(
+                    new UserRegisteredIntegrationEvent
+                    {
+                        UserId = result.UserId.ToString(),
+                        Role = role.ToString(),
+                        FullName = fullName,
+                        AvatarUrl = null
+                    });
+                Console.WriteLine($"PUBLISHED SUCCESSFULLY - Role: {role.ToString()}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"PUBLISH FAILED: {ex.Message}");
+                throw;
+            }
 
             return result;
         }

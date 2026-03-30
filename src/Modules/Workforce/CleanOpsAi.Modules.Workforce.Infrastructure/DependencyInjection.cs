@@ -1,7 +1,6 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
 using CleanOpsAi.Modules.Workforce.Application.Configurations;
-using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Application.Services;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Data;

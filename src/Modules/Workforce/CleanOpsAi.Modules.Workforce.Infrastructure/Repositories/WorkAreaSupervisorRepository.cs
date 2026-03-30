@@ -21,11 +21,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .FirstOrDefaultAsync(x => x.Id == id && x.IsDeleted == false);
         }
 
-        public async Task<WorkAreaSupervisor?> GetByUserIdAsync(string userId)
+        public async Task<List<WorkAreaSupervisor>> GetByUserIdAsync(Guid userId)
         {
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
-                .FirstOrDefaultAsync(x => x.UserId == userId && x.IsDeleted == false);
+                .Where(x => x.UserId == userId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created)
+                .ToListAsync();
         }
 
         public async Task<WorkAreaSupervisor?> GetByWorkerIdAsync(Guid workerId)
@@ -115,7 +117,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         }
 
         // Kiểm tra đã tồn tại chưa (tránh duplicate)
-        public async Task<bool> ExistsAsync(Guid workAreaId, string userId, Guid workerId)
+        public async Task<bool> ExistsAsync(Guid workAreaId, Guid userId, Guid workerId)
         {
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .AnyAsync(x => x.WorkAreaId == workAreaId
@@ -132,7 +134,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         }
 
         public async Task<WorkAreaSupervisor?> GetByWorkAreaUserWorkerAsync(
-            Guid workAreaId, string userId, Guid workerId)
+            Guid workAreaId, Guid userId, Guid workerId)
         {
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .FirstOrDefaultAsync(x => x.WorkAreaId == workAreaId
@@ -142,7 +144,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         }
 
         // Xoa khi update
-        public async Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, string supervisorId)
+        public async Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, Guid supervisorId)
         {
             var entities = await _dbContext.Set<WorkAreaSupervisor>()
                 .Where(x => x.WorkAreaId == workAreaId
