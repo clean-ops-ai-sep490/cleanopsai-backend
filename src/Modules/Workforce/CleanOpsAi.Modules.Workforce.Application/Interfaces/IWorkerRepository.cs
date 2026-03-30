@@ -1,10 +1,5 @@
 ﻿using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 {
@@ -27,5 +22,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> DeleteAsync(Guid id);
 
         Task<List<Worker>> FilterAsync(WorkerFilterRequest request);
-    }
+
+        Task<List<Worker>> GetWorkersByIds(List<Guid> ids);
+
+	}
 }

@@ -3,12 +3,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
 {

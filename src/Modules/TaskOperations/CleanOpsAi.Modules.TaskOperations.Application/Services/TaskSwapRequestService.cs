@@ -20,12 +20,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
-		private readonly IUserContext _userContext;
+		private readonly IUserContext _userContext; 
+		private readonly IWorkerQueryService _workerQueryService;
 
 		public TaskSwapRequestService(ITaskSwapRequestRepository taskSwapRequestRepository,
 			ITaskAssignmentRepository taskAssignmentRepository,
 			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator,
-			IUserContext userContext)
+			IUserContext userContext, IWorkerQueryService workerQueryService)
 		{
 			_taskSwapRequestRepository = taskSwapRequestRepository;
 			_taskAssignmentRepository = taskAssignmentRepository;
@@ -33,6 +34,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_dateTimeProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
 			_userContext = userContext;
+			_workerQueryService = workerQueryService;
 		}
 
 		public async Task<SwapRequestDto> GetById(Guid id, CancellationToken ct = default)
@@ -96,6 +98,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (targetHasConflict)
 				throw new BadRequestException("Target worker has a conflicting task in that time slot");
 
+			var userIds = new List<Guid> { dto.RequesterId, dto.TargetWorkerId };
+			var userDict = await _workerQueryService.GetUserNames(userIds);
+
+			if (!userDict.TryGetValue(dto.RequesterId, out var requesterName))
+				throw new BadRequestException("Requester not found");
+
+			if (!userDict.TryGetValue(dto.TargetWorkerId, out var targetName))
+				throw new BadRequestException("Target worker not found");
+
 			var swapRequest = new TaskSwapRequest
 			{
 				Id = _idGenerator.Generate(),
@@ -103,6 +114,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				TargetTaskAssignmentId = dto.TargetTaskAssignmentId,
 				RequesterId = dto.RequesterId,
 				TargetWorkerId = dto.TargetWorkerId,
+				RequesterName = userDict[dto.RequesterId],
+				TargetWorkerName = userDict[dto.TargetWorkerId],
 				Status = SwapRequestStatus.PendingTargetApproval,
 				RequesterNote = dto.RequesterNote,
 				ExpiredAt = _dateTimeProvider.UtcNow.AddHours(12),
@@ -183,7 +196,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task<Result> ReviewSwapRequestAsync(ReviewSwapRequestDto dto, CancellationToken ct = default)
 		{
-			Guid reviewerId = Guid.Parse("512f80aa-4204-48c8-b983-efb6b88efbaa");
 
 			var swapRequest = await _taskSwapRequestRepository.GetByIdWithDetailsAsync(dto.TaskSwapRequestId, ct);
 			if (swapRequest == null)
@@ -192,7 +204,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (swapRequest.Status != SwapRequestStatus.PendingManagerApproval)
 				throw new BadRequestException("The request is not in a pending state");
 
-			swapRequest.ReviewedByUserId = reviewerId;
+			swapRequest.ReviewedByUserId = _userContext.UserId;
+			swapRequest.ReviewerName = _userContext.FullName;
 			swapRequest.ReviewNote = dto.ReviewNote;
 
 			if (!dto.IsApproved)

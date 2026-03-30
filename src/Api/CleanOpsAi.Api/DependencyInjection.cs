@@ -7,6 +7,7 @@ using CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
 using CleanOpsAi.Modules.Workforce.Application.Consumers;
+using CleanOpsAi.Modules.Workforce.Infrastructure.Consumers;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
@@ -59,7 +60,9 @@ public static class DependencyInjection
 			typeof(GenerateTaskAssignmentsConsumer).Assembly,
 			typeof(UserRegisteredConsumer).Assembly,
 			typeof(SendNotificationConsumer).Assembly,
-			typeof(GetSopStepsByScheduleConsumer).Assembly
+			typeof(GetSopStepsByScheduleConsumer).Assembly,
+			typeof(GetWorkersByIdsConsumer).Assembly
+
 		); 
 
 		builder.Services.AddCors(options =>
