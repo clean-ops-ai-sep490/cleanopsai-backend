@@ -61,9 +61,12 @@ public static class DependencyInjection
 			typeof(UserRegisteredConsumer).Assembly,
 			typeof(SendNotificationConsumer).Assembly,
 			typeof(GetSopStepsByScheduleConsumer).Assembly,
-			typeof(GetWorkersByIdsConsumer).Assembly
+			typeof(GetWorkersByIdsConsumer).Assembly,
+			typeof(CheckSingleWorkerCompetencyConsumer).Assembly,
+			typeof(FindQualifiedWorkersConsumer).Assembly,
+			typeof(GetSopRequirementsByScheduleConsumer).Assembly
 
-		); 
+		);
 
 		builder.Services.AddCors(options =>
 		{
@@ -83,7 +86,10 @@ public static class DependencyInjection
 		builder.Services.AddScoped<PerformanceMiddleware>();
 
 
-		builder.Services.AddHttpContextAccessor();  
+		builder.Services.AddHttpContextAccessor();
+
+		builder.Services.AddMemoryCache();
+
 
 	}
 }

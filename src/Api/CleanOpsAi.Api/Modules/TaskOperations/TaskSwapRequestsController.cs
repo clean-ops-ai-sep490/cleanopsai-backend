@@ -25,9 +25,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[HttpGet("{taskAssignmentId}/swap-candidates")]
 		[SwaggerOperation(
 			Summary = "Get Swap Candidates",
-			Description = "Retrieves a paginated list of swap candidates for a specific task assignment within the current week. " +
-						  "Optionally filter by date and preferred start time to narrow down results. " +
-						  "Candidates are workers in the same work area with overlapping schedules and no pending swap requests.",
+			Description = "Finds eligible swap partners within the current week. Candidates must: 1. Be in the same work area. 2. Meet requirements for your task. 3. Have no schedule conflicts. Supports date/time filtering.",
 			Tags = new[] { "TaskSwapRequest" }
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<SwapCandidateDto>), StatusCodes.Status200OK)]
@@ -42,9 +40,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 				Date = date,
 				PreferredStartTime = preferredStartTime
 			};
-			var result = await _service.GetSwapCandidatesAsync(dto, paginationRequest, ct);
-			if (!result.Succeeded)
-				return BadRequest(result.Errors);
+			var result = await _service.GetSwapCandidatesAsync(dto, paginationRequest, ct); 
 
 			return Ok(result.Value);
 		}
@@ -87,8 +83,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[HttpPost]
 		[SwaggerOperation(
 			Summary = "Create Task Swap Request",
-			Description = "Creates a new task swap request. The requester initiates a swap with another worker (target worker). " +
-				  "The request will be pending until the target worker responds.",
+			Description = "Initiates a swap. Validates: 1. Dual-competency (both must be qualified for each other's tasks). 2. Post-swap schedule conflicts. 3. Existing pending requests. Request expires in 2h.",
 			Tags = new[] { "TaskSwapRequest" }
 		)]
 		[ProducesResponseType(typeof(TaskSwapRequestDto), StatusCodes.Status201Created)]

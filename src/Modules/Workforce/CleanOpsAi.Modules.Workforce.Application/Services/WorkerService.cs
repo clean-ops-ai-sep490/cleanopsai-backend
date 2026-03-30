@@ -5,7 +5,7 @@ using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
-using Medo; 
+using Medo;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -269,6 +269,21 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 				Id = x.Id,
 				FullName = x.FullName
 			}).ToList();
+		}
+
+		public async Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(List<Guid> workerIds, List<Guid> requiredSkillIds, List<Guid> requiredCertIds, CancellationToken ct)
+		{
+			return await _workerRepository.GetWorkersWithAllSkillsAndCertsAsync(workerIds, requiredSkillIds, requiredCertIds, ct);
+		}
+
+		public async Task<List<Guid>> GetQualifiedWorkersAsync(List<Guid> requiredSkillIds, List<Guid> requiredCertificationIds, CancellationToken ct = default)
+		{
+			return await _workerRepository.GetQualifiedWorkersAsync(requiredSkillIds, requiredCertificationIds, ct);
+		}
+
+		public async Task<bool> IsWorkerQualifiedAsync(Guid workerId, List<Guid> requiredSkillIds, List<Guid> requiredCertificationIds, CancellationToken ct = default)
+		{
+			return await _workerRepository.IsWorkerQualifiedAsync(workerId, requiredSkillIds, requiredCertificationIds, ct);
 		}
 	}
 }

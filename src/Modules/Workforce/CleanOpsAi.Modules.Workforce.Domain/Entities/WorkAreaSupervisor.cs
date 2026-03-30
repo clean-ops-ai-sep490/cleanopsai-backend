@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 {
@@ -14,7 +9,7 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 
         public Guid? WorkerId { get; set; }     // từ Workforce
 
-        public string UserId { get; set; } = null!; // từ Identity
+        public string UserId { get; set; } = null!; // Suppervisor id from userId
 
         // chỉ navigation nội bộ module
         public virtual Worker Worker { get; set; } = null!;

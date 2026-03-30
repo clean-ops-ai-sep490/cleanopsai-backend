@@ -25,5 +25,22 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 
         Task<List<Worker>> GetWorkersByIds(List<Guid> ids);
 
+        Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(
+           List<Guid> workerIds,
+           List<Guid> requiredSkillIds,
+           List<Guid> requiredCertIds,
+           CancellationToken ct);
+
+
+		Task<List<Guid>> GetQualifiedWorkersAsync(
+	        List<Guid> requiredSkillIds,
+	        List<Guid> requiredCertificationIds,
+	        CancellationToken ct = default);
+
+		Task<bool> IsWorkerQualifiedAsync(
+			Guid workerId,
+			List<Guid> requiredSkillIds,
+			List<Guid> requiredCertificationIds,
+			CancellationToken ct = default);
 	}
 }

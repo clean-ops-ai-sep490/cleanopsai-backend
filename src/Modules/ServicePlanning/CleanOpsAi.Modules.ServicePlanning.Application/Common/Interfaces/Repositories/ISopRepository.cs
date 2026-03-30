@@ -12,5 +12,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 
 		Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
 
+		Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default);
 	}
 }
