@@ -122,7 +122,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             entity.Status = dto.Status;
-            entity.ResolvedByUserId = dto.ResolvedByUserId;
+            entity.ResolvedByUserId = _userContext.UserId;
             entity.ResolvedAt = dto.Status == IssueStatus.Approved
                 ? _dateTimeProvider.UtcNow
                 : null;

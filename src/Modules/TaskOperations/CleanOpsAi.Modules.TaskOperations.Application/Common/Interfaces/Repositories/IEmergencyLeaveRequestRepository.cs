@@ -16,6 +16,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
         Task<PaginatedResult<EmergencyLeaveRequest>> GetsByWorkerIdPagingAsync(Guid workerId, PaginationRequest request, CancellationToken ct = default);
         Task<PaginatedResult<EmergencyLeaveRequest>> GetsByTaskAssignmentIdPagingAsync(Guid taskAssignmentId, PaginationRequest request, CancellationToken ct = default);
         Task<PaginatedResult<EmergencyLeaveRequest>> GetsByStatusPagingAsync(RequestStatus status, PaginationRequest request, CancellationToken ct = default);
+        Task<PaginatedResult<EmergencyLeaveRequest>> GetsByDateRangePagingAsync(DateTime from, DateTime to, PaginationRequest request, CancellationToken ct = default);
         Task<bool> ExistsAsync(Guid taskAssignmentId, Guid workerId, CancellationToken ct = default);
         Task AddAsync(EmergencyLeaveRequest request, CancellationToken ct = default);
         Task UpdateAsync(EmergencyLeaveRequest request, CancellationToken ct = default);

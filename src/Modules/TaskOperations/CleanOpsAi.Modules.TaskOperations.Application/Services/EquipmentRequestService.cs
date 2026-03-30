@@ -134,7 +134,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             entity.Status = dto.Status;
-            entity.ReviewedByUserId = dto.ReviewedByUserId;
+            entity.ReviewedByUserId = _userContext.UserId;
             entity.ApprovedAt = dto.Status == EquipmentRequestStatus.Approved
                 ? _dateTimeProvider.UtcNow
                 : null;

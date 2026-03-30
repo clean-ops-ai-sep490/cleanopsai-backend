@@ -3,6 +3,7 @@ using System;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 {
     [DbContext(typeof(TaskOperationsDbContext))]
-    partial class TaskOperationsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329183651_AddLeaveFromToDate")]
+    partial class AddLeaveFromToDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -652,12 +655,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("requester_id");
 
-                    b.Property<string>("RequesterName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("requester_name");
-
                     b.Property<string>("RequesterNote")
                         .HasColumnType("text")
                         .HasColumnName("requester_note");
@@ -670,11 +667,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("reviewed_by_user_id");
 
-                    b.Property<string>("ReviewerName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("reviewer_name");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -686,12 +678,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<Guid>("TargetWorkerId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_worker_id");
-
-                    b.Property<string>("TargetWorkerName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("target_worker_name");
 
                     b.Property<Guid>("TaskAssignmentId")
                         .HasColumnType("uuid")
