@@ -9,7 +9,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager, Admin")]
     public class SlaTasksController : ControllerBase
     {
         private readonly ISlaTaskService _service;
