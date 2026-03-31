@@ -1,6 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application;
-using CleanOpsAi.BuildingBlocks.Infrastructure;
-using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
 using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
@@ -8,6 +6,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Queries;
 using Microsoft.EntityFrameworkCore; 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging; 
@@ -53,7 +52,9 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IIssueReportService, IssueReportService>();
         builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>();
 		builder.Services.AddScoped<IWorkerQueryService, WorkerQueryService>();
-
+		 
+		builder.Services.AddScoped<IWorkerCertificationSkillQueryService, WorkerCertificationSkillQueryService>();
+		builder.Services.AddScoped<ISopRequirementsQueryService, SopRequirementsQueryService>();
 
 	}
 }

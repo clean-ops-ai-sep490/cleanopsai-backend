@@ -33,6 +33,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 				.FirstOrDefaultAsync(cancellationToken);
 		}
 
+		public async Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default)
+		{
+			var sop = await _context.Sops
+				.Include(x => x.SopRequiredCertifications)  
+				.Include(x => x.SopRequiredSkills)
+				.FirstOrDefaultAsync(x => x.Id == id, ct);
+			return sop;
+		}
+
 		public async Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
 		{
 			return await _context.Sops.ToPaginatedResultAsync(request, ct);

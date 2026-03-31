@@ -1,9 +1,8 @@
-﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
-using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
+﻿using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore; 
+using Microsoft.EntityFrameworkCore;
 
 namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 {
@@ -144,6 +143,77 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 			return _dbContext.Set<Worker>()
 				.Where(x => ids.Contains(x.Id))
 				.ToListAsync();
+		}
+
+		public async Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(List<Guid> workerIds, List<Guid> requiredSkillIds, List<Guid> requiredCertIds, CancellationToken ct)
+		{
+			var query = _dbContext.Set<Worker>().AsQueryable();
+
+			if (workerIds.Any())
+				query = query.Where(w => workerIds.Contains(w.Id));
+
+			if (requiredSkillIds.Any())
+				query = query.Where(w =>
+					requiredSkillIds.All(skillId =>
+						w.WorkerSkills.Any(ws => ws.SkillId == skillId)));
+
+			if (requiredCertIds.Any())
+				query = query.Where(w =>
+					requiredCertIds.All(certId =>
+						w.WorkerCertifications.Any(wc =>
+							wc.CertificationId == certId &&
+							wc.ExpiredAt > DateTime.UtcNow)));
+
+			return await query.Select(w => w.Id).ToListAsync(ct);
+		}
+
+		public async Task<List<Guid>> GetQualifiedWorkersAsync(List<Guid> requiredSkillIds, List<Guid> requiredCertificationIds, CancellationToken ct = default)
+		{
+			var query = _dbContext.Set<Worker>().AsNoTracking().AsQueryable();
+
+			// Filter theo skills (All skills required)
+			if (requiredSkillIds.Any())
+			{
+				query = query.Where(w => requiredSkillIds.All(skillId =>
+					w.WorkerSkills.Any(ws => ws.SkillId == skillId)));
+			}
+
+			// Filter theo certifications (All certs required + not expired)
+			if (requiredCertificationIds.Any())
+			{
+				query = query.Where(w => requiredCertificationIds.All(certId =>
+					w.WorkerCertifications.Any(wc =>
+						wc.CertificationId == certId &&
+						wc.ExpiredAt > DateTime.UtcNow)));
+			}
+
+			return await query
+				.Select(w => w.Id)
+				.ToListAsync(ct);
+		}
+
+		public async Task<bool> IsWorkerQualifiedAsync(Guid workerId, List<Guid> requiredSkillIds, List<Guid> requiredCertificationIds, CancellationToken ct = default)
+		{
+			var query = _dbContext.Set<Worker>()
+		.AsNoTracking()
+		.Where(w => w.Id == workerId);
+
+			if (requiredSkillIds.Any())
+			{
+				query = query.Where(w => requiredSkillIds.All(skillId =>
+					w.WorkerSkills.Any(ws => ws.SkillId == skillId)));
+			}
+
+			if (requiredCertificationIds.Any())
+			{
+				query = query.Where(w => requiredCertificationIds.All(certId =>
+					w.WorkerCertifications.Any(wc =>
+						wc.CertificationId == certId &&
+						wc.ExpiredAt > DateTime.UtcNow)));
+			}
+
+			// Chỉ cần kiểm tra tồn tại
+			return await query.AnyAsync(ct);
 		}
 	}
 }

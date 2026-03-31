@@ -297,5 +297,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				result.TotalElements,
 				_mapper.Map<List<SopDto>>(result.Content));
 		}
+
+		public async Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default)
+		{
+			return await _sopRepository.GetSopWithDetail(id, ct);
+		}
 	}
 }
