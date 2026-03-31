@@ -19,6 +19,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 
 			builder.Property(x => x.AssigneeId);
 
+			builder.Property(x => x.AssigneeName);
+			builder.Property(x => x.DisplayLocation);
+
+
 			builder.Property(x => x.WorkAreaId);
 			builder.Property(x => x.WorkAreaDetailId);
 

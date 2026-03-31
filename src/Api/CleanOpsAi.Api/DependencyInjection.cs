@@ -86,10 +86,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<PerformanceMiddleware>();
 
 
-		builder.Services.AddHttpContextAccessor();
-
-		builder.Services.AddMemoryCache();
-
-
+		builder.Services.AddHttpContextAccessor(); 
+		builder.Services.AddMemoryCache(); 
 	}
 }

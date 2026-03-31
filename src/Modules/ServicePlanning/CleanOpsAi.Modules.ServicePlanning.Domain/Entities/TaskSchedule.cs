@@ -23,6 +23,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public Guid? AssigneeId { get; set; }
 
+		public string? AssigneeName { get; set; } 
+		public string? DisplayLocation { get; set; }
+
 		public int Version { get; set; }
 
 		public string Metadata { get; set; } = null!;
