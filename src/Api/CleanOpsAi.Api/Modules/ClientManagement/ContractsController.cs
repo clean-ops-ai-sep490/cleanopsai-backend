@@ -66,6 +66,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             {
                 Name = request.Name,
                 ClientId = request.ClientId,
+                ContractStartDate = request.ContractStartDate,
+                ContractEndDate = request.ContractEndDate,
                 FileStream = request.File?.OpenReadStream(),
                 FileName = request.File?.FileName
             };
@@ -91,6 +93,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             var command = new ContractUpdateRequest
             {
                 Name = request.Name,
+                ContractStartDate = request.ContractStartDate,
+                ContractEndDate = request.ContractEndDate,
                 FileStream = request.File?.OpenReadStream(),
                 FileName = request.File?.FileName
             };

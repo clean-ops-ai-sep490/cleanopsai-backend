@@ -3,6 +3,7 @@ using System;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 {
     [DbContext(typeof(TaskOperationsDbContext))]
-    partial class TaskOperationsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260331182016_AddDateToAdhocReq")]
+    partial class AddDateToAdhocReq
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -88,7 +91,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("TaskAssignmentId")
+                    b.Property<Guid>("TaskAssignmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_assignment_id");
 
@@ -723,6 +726,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .WithMany("AdHocRequests")
                         .HasForeignKey("TaskAssignmentId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
                         .HasConstraintName("fk_adhoc_requests_task_assignments_task_assignment_id");
 
                     b.Navigation("TaskAssignment");

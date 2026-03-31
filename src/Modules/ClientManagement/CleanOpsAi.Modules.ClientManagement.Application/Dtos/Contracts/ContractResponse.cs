@@ -13,6 +13,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts
         public string UrlFile { get; set; } = null!;
         public Guid ClientId { get; set; }
         public string? ClientName { get; set; }
+        public DateTime ContractStartDate { get; set; }
+        public DateTime ContractEndDate { get; set; }
         public DateTime Created { get; set; }
         public DateTime? LastModified { get; set; }
     }

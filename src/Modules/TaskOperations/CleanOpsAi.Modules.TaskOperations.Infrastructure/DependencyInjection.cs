@@ -43,6 +43,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IEquipmentRequestRepository, EquipmentRequestRepository>();
 		builder.Services.AddScoped<IIssueReportRepository, IssueReportRepository>();
 		builder.Services.AddScoped<IEmergencyLeaveRequestRepository, EmergencyLeaveRequestRepository>();
+		builder.Services.AddScoped<IAdHocRequestRepository, AdHocRequestRepository>();
 		builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
 
@@ -52,8 +53,9 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IEquipmentRequestService, EquipmentRequestService>();
 		builder.Services.AddScoped<IIssueReportService, IssueReportService>();
         builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>();
-		builder.Services.AddScoped<IWorkerQueryService, WorkerQueryService>();
+        builder.Services.AddScoped<IAdHocRequestService, AdHocRequestService>();
+        builder.Services.AddScoped<IWorkerQueryService, WorkerQueryService>();
 
 
-	}
+    }
 }
