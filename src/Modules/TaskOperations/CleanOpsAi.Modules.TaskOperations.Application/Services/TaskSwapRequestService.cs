@@ -24,11 +24,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IWorkerQueryService _workerQueryService;
 		private readonly ISopRequirementsQueryService _sopRequirementsQueryService;
 		private readonly IWorkerCertificationSkillQueryService _workerCertificationSkillQueryService;
+		private readonly ISupervisorQueryService _supervisorQueryService;
 
-		public TaskSwapRequestService(ITaskSwapRequestRepository taskSwapRequestRepository,
+		public TaskSwapRequestService(
+			ITaskSwapRequestRepository taskSwapRequestRepository,
 			ITaskAssignmentRepository taskAssignmentRepository,
-			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator,
-			IUserContext userContext, IWorkerQueryService workerQueryService, ISopRequirementsQueryService sopRequirementsQueryService, IWorkerCertificationSkillQueryService workerCertificationSkillQueryService)
+			IMapper mapper, 
+			IDateTimeProvider dateTimeProvider, 
+			IIdGenerator idGenerator,
+			IUserContext userContext, 
+			IWorkerQueryService workerQueryService, 
+			ISopRequirementsQueryService sopRequirementsQueryService, 
+			IWorkerCertificationSkillQueryService workerCertificationSkillQueryService,
+			ISupervisorQueryService supervisorQueryService)
 		{
 			_taskSwapRequestRepository = taskSwapRequestRepository;
 			_taskAssignmentRepository = taskAssignmentRepository;
@@ -39,6 +47,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_workerQueryService = workerQueryService;
 			_sopRequirementsQueryService = sopRequirementsQueryService;
 			_workerCertificationSkillQueryService = workerCertificationSkillQueryService;
+			_supervisorQueryService = supervisorQueryService;
 		}
 
 		public async Task<SwapRequestDto> GetById(Guid id, CancellationToken ct = default)
@@ -207,6 +216,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			}
 
 			swapRequest.Status = SwapRequestStatus.PendingManagerApproval;
+			var workAreaId = swapRequest.TaskAssignment.WorkAreaId;
+			var supervisorResp = await _supervisorQueryService.GetSupervisorWorkAreasAsync(
+				workerId: swapRequest.RequesterId,
+				workerIdTarget: swapRequest.TargetWorkerId,
+				workAreaId: workAreaId,
+				ct: ct);
+
+			if(!supervisorResp.Found || supervisorResp.SupervisorUserId == null)
+				throw new BadRequestException("No common supervisor found for approval in same area with worker and target worker");
+			
+			swapRequest.ReviewedByUserId = supervisorResp.SupervisorUserId.Value;
+
 			await _taskSwapRequestRepository.SaveChangesAsync(ct);
 
 			// Notify manager
@@ -286,7 +307,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task<PaginatedResult<SwapRequestDto>> GetSwapRequestsAsync(GetSwapRequestsDto dto, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
-			var result = await _taskSwapRequestRepository.GetSwapRequestsPaging(dto.Status, paginationRequest, ct);
+			if(_userContext.Role != "Supervisor")
+			{
+				throw new ForbiddenException("Only supervisors can view swap requests list");
+			}
+			var result = await _taskSwapRequestRepository.GetSwapRequestsPaging(_userContext.UserId , dto.Status, paginationRequest, ct);
 
 			return new PaginatedResult<SwapRequestDto>(
 				result.PageNumber,
@@ -339,5 +364,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					throw new BadRequestException("Worker A does not meet requirements for Worker B's task");
 			}
 		}
+
+		//my swap requests: cả sent và received
+		public async Task<PaginatedResult<SwapRequestDto>> GetMySwapRequestsAsync(GetMySwapRequestsDto dto, SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
+		{
+			var result = await _taskSwapRequestRepository.GetMySwapRequestsPaging(
+			dto.WorkerId,
+			dto.Perspective,
+			dto.Status,
+			paginationRequest,
+			ct);
+
+			return new PaginatedResult<SwapRequestDto>(
+			result.PageNumber,
+			result.PageSize,
+			result.TotalElements,
+			_mapper.Map<List<SwapRequestDto>>(result.Content));
+		} 
 	}
 }

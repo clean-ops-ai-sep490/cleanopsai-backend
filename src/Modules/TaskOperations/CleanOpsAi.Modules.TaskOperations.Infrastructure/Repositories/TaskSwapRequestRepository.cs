@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
@@ -23,18 +24,33 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 						.FirstOrDefaultAsync(x => x.Id == id, ct);
 		}
 
-		public Task<PaginatedResult<TaskSwapRequest>> GetSwapCandidatesAsync(Guid taskAssignmentId, DateOnly? date, PaginationRequest paginationRequest, CancellationToken ct = default)
+		public async Task<PaginatedResult<TaskSwapRequest>> GetMySwapRequestsPaging(Guid WorkerId, SwapPerspective perspective, SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
-			throw new NotImplementedException();
+			var query = _context.TaskSwapRequests.AsQueryable();
+
+			query = perspective switch
+			{
+				SwapPerspective.Sent => query.Where(x => x.RequesterId == WorkerId),
+				SwapPerspective.Received => query.Where(x => x.TargetWorkerId == WorkerId),
+				_ => query.Where(x => x.RequesterId == WorkerId
+														  || x.TargetWorkerId == WorkerId)
+			};
+
+			if (status.HasValue)
+				query = query.Where(x => x.Status == status.Value);
+
+			query = query.OrderByDescending(x => x.Id);
+
+			return await query.ToPaginatedResultAsync(paginationRequest, ct);
 		}
 
-		public async Task<PaginatedResult<TaskSwapRequest>> GetSwapRequestsPaging(SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
+		public async Task<PaginatedResult<TaskSwapRequest>> GetSwapRequestsPaging(Guid supervisorId, SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
 			var query = _context.TaskSwapRequests.AsQueryable();
 
 			if (status.HasValue)
 			{
-				query = query.Where(x => x.Status == status.Value).OrderByDescending(x=>x.Id);
+				query = query.Where(x => x.Status == status.Value && x.ReviewedByUserId == supervisorId).OrderByDescending(x=>x.Id);
 			}
 
 			return await query.ToPaginatedResultAsync(paginationRequest, ct);

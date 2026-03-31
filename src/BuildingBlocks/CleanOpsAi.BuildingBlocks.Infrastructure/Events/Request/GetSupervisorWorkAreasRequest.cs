@@ -2,11 +2,15 @@
 {
 	public record GetSupervisorWorkAreasRequest
 	{
-		public string UserId { get; init; } = null!;
+		public Guid WorkerId { get; init; }  
+		public Guid WorkerIdTarget { get; init; }  
+		public Guid WorkAreaId { get; init; } 
+
 	}
 
 	public record GetSupervisorWorkAreasResponse
 	{
-		public List<Guid> WorkAreaIds { get; init; } = new List<Guid>();
+		public bool Found { get; init; }
+		public Guid? SupervisorUserId { get; init; }
 	}
 }
