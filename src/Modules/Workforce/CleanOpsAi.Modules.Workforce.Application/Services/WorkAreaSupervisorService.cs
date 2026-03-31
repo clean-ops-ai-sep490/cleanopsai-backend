@@ -44,14 +44,11 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
-        public async Task<WorkAreaSupervisorResponse?> GetByUserIdAsync(string userId)
+        public async Task<List<WorkAreaSupervisorResponse>> GetByUserIdAsync(Guid userId)
         {
-            var entity = await _repository.GetByUserIdAsync(userId);
+            var items = await _repository.GetByUserIdAsync(userId);
 
-            if (entity == null)
-                return null;
-
-            return new WorkAreaSupervisorResponse
+            return items.Select(entity => new WorkAreaSupervisorResponse
             {
                 Id = entity.Id,
                 WorkAreaId = entity.WorkAreaId,
@@ -59,7 +56,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 WorkerName = entity.Worker?.FullName,
                 SupervisorId = entity.UserId,
                 Created = entity.Created
-            };
+            }).ToList();
         }
 
         public async Task<WorkAreaSupervisorResponse?> GetByWorkerIdAsync(Guid workerId)
@@ -259,7 +256,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         }
 
         // Service — UnassignWorkerAsync
-        public async Task<int> UnassignWorkerAsync(Guid workAreaId, string userId, Guid workerId)
+        public async Task<int> UnassignWorkerAsync(Guid workAreaId, Guid userId, Guid workerId)
         {
             var entity = await _repository.GetByWorkAreaUserWorkerAsync(
                 workAreaId, userId, workerId);

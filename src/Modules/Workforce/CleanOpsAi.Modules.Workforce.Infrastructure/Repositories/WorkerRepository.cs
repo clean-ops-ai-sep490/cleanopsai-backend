@@ -26,7 +26,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return worker;
         }
 
-        public async Task<Worker?> GetByUserIdAsync(string userId)
+        public async Task<Worker?> GetByUserIdAsync(Guid userId)
         {
             var worker = await _dbContext.Set<Worker>()
                 .Include(x => x.WorkerSkills)

@@ -39,12 +39,9 @@ namespace CleanOpsAi.Api.Modules.Workforce
             Summary = "Get WorkAreaSupervisor by user id",
             Description = "Get supervisor using userId.",
             Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetByUserId(string userId)
+        public async Task<IActionResult> GetByUserId(Guid userId)
         {
             var result = await _service.GetByUserIdAsync(userId);
-
-            if (result == null)
-                return NotFound();
 
             return Ok(result);
         }
@@ -163,7 +160,7 @@ namespace CleanOpsAi.Api.Modules.Workforce
             Tags = new[] { "WorkAreaSupervisors" })]
         public async Task<IActionResult> UnassignWorker(
             [FromQuery] Guid workAreaId,
-            [FromQuery] string userId,
+            [FromQuery] Guid userId,
             [FromQuery] Guid workerId)
         {
             var result = await _service.UnassignWorkerAsync(workAreaId, userId, workerId);

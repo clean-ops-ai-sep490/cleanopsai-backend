@@ -6,7 +6,6 @@ using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
-using CleanOpsAi.Modules.Workforce.Application.Consumers;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Consumers;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;

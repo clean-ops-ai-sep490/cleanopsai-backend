@@ -41,7 +41,7 @@ namespace CleanOpsAi.Api.Modules.Workforce
             Summary = "Get Worker by user id",
             Description = "Get worker information using userId.",
             Tags = new[] { "Workers" })]
-        public async Task<IActionResult> GetByUserId(string userId)
+        public async Task<IActionResult> GetByUserId(Guid userId)
         {
             var worker = await _service.GetByUserIdAsync(userId);
 

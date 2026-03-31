@@ -11,7 +11,7 @@ using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
@@ -22,64 +22,91 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IWorkerQueryService _workerQueryService;
 
         public IssueReportService(
             IIssueReportRepository issueReportRepository,
             IMapper mapper,
             IUserContext userContext,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IWorkerQueryService workerQueryService)
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
+            _workerQueryService = workerQueryService;
         }
 
         public async Task<IssueReportDto?> GetById(Guid id, CancellationToken ct = default)
         {
             var entity = await _issueReportRepository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
-            return _mapper.Map<IssueReportDto>(entity);
+
+            var dto = _mapper.Map<IssueReportDto>(entity);
+            dto.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+
+            return dto;
         }
 
         public async Task<PaginatedResult<IssueReportDto>> Gets(PaginationRequest request, CancellationToken ct = default)
         {
             var result = await _issueReportRepository.GetsPagingAsync(request, ct);
+
+            var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
+
+            await EnrichWorkerNamesAsync(dtos);
+
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
                 result.PageSize,
                 result.TotalElements,
-                _mapper.Map<List<IssueReportDto>>(result.Content));
+                dtos);
         }
 
         public async Task<PaginatedResult<IssueReportDto>> GetsByWorkerId(Guid workerId, PaginationRequest request, CancellationToken ct = default)
         {
             var result = await _issueReportRepository.GetsByWorkerIdPagingAsync(workerId, request, ct);
+
+            var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
+
+            await EnrichWorkerNamesAsync(dtos);
+
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
                 result.PageSize,
                 result.TotalElements,
-                _mapper.Map<List<IssueReportDto>>(result.Content));
+                dtos);
         }
 
         public async Task<PaginatedResult<IssueReportDto>> GetsByTaskAssignmentId(Guid taskAssignmentId, PaginationRequest request, CancellationToken ct = default)
         {
             var result = await _issueReportRepository.GetsByTaskAssignmentIdPagingAsync(taskAssignmentId, request, ct);
+
+            var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
+
+            await EnrichWorkerNamesAsync(dtos);
+
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
                 result.PageSize,
                 result.TotalElements,
-                _mapper.Map<List<IssueReportDto>>(result.Content));
+                dtos);
         }
 
         public async Task<PaginatedResult<IssueReportDto>> GetsByStatus(IssueStatus status, PaginationRequest request, CancellationToken ct = default)
         {
             var result = await _issueReportRepository.GetsByStatusPagingAsync(status, request, ct);
+
+            var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
+
+            await EnrichWorkerNamesAsync(dtos);
+
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
                 result.PageSize,
                 result.TotalElements,
-                _mapper.Map<List<IssueReportDto>>(result.Content));
+                dtos);
         }
 
         public async Task<IssueReportDto?> Create(CreateIssueReportDto dto, CancellationToken ct = default)
@@ -100,7 +127,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             //     CreatedAt           = entity.Created
             // };
 
-            return _mapper.Map<IssueReportDto>(entity);
+            var dtoResult = _mapper.Map<IssueReportDto>(entity);
+            dtoResult.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+
+            return dtoResult;
         }
 
         public async Task<IssueReportDto?> Update(Guid id, UpdateIssueReportDto dto, CancellationToken ct = default)
@@ -113,7 +143,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.UpdateAsync(entity, ct);
-            return _mapper.Map<IssueReportDto>(entity);
+
+            // notifi to Target - thong bao cho manager/supervisor co issue report moi can xu ly
+            // var message = new IssueReportCreatedEvent
+            // {
+            //     ReportId            = entity.Id,
+            //     TaskAssignmentId    = entity.TaskAssignmentId,
+            //     ReportedByWorkerId  = entity.ReportedByWorkerId,
+            //     Description         = entity.Description,
+            //     CreatedAt           = entity.Created
+            // };
+
+            var dtoResult = _mapper.Map<IssueReportDto>(entity);
+            dtoResult.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+
+            return dtoResult;
         }
 
         public async Task<IssueReportDto?> Resolve(Guid id, ResolveIssueReportDto dto, CancellationToken ct = default)
@@ -122,10 +166,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (entity == null) return null;
 
             entity.Status = dto.Status;
-            entity.ResolvedByUserId = dto.ResolvedByUserId;
+            entity.ResolvedByUserId = _userContext.UserId;
             entity.ResolvedAt = dto.Status == IssueStatus.Approved
                 ? _dateTimeProvider.UtcNow
                 : null;
+
+            var resolverUserName = _userContext.FullName;
 
             await _issueReportRepository.UpdateAsync(entity, ct);
 
@@ -143,7 +189,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             //     ? "issue-report.approved"
             //     : "issue-report.rejected";
 
-            return _mapper.Map<IssueReportDto>(entity);
+            var dtoResult = _mapper.Map<IssueReportDto>(entity);
+            dtoResult.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+            dtoResult.ResolvedByUserName = resolverUserName;
+
+            return dtoResult;
         }
 
         public async Task<bool> Delete(Guid id, CancellationToken ct = default)
@@ -153,6 +203,29 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await _issueReportRepository.DeleteAsync(entity, ct);
             return true;
+        }
+
+        private async Task<string?> GetWorkerNameAsync(Guid workerId)
+        {
+            var dict = await _workerQueryService.GetUserNames(new List<Guid> { workerId });
+            return dict.GetValueOrDefault(workerId);
+        }
+
+        private async Task EnrichWorkerNamesAsync(List<IssueReportDto> dtos)
+        {
+            var workerIds = dtos
+                .Select(x => x.ReportedByWorkerId)
+                .Distinct()
+                .ToList();
+
+            if (!workerIds.Any()) return;
+
+            var dict = await _workerQueryService.GetUserNames(workerIds);
+
+            foreach (var dto in dtos)
+            {
+                dto.ReportedByWorkerName = dict.GetValueOrDefault(dto.ReportedByWorkerId);
+            }
         }
     }
 }

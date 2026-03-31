@@ -9,7 +9,7 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 
         public Guid? WorkerId { get; set; }     // từ Workforce
 
-        public string UserId { get; set; } = null!; // Suppervisor id from userId
+        public Guid UserId { get; set; } // từ Identity
 
         // chỉ navigation nội bộ module
         public virtual Worker Worker { get; set; } = null!;

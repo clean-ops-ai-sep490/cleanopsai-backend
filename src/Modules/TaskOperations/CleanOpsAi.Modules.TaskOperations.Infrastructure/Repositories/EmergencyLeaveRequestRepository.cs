@@ -53,6 +53,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .ToPaginatedResultAsync(request, ct);
         }
 
+        public async Task<PaginatedResult<EmergencyLeaveRequest>> GetsByDateRangePagingAsync(
+            DateTime from, DateTime to, PaginationRequest request, CancellationToken ct = default)
+        {
+            return await _context.EmergencyLeaveRequests
+                .Where(x => !x.IsDeleted
+                    && x.LeaveDateFrom <= to
+                    && x.LeaveDateTo >= from)
+                .OrderByDescending(x => x.LeaveDateFrom)
+                .ToPaginatedResultAsync(request, ct);
+        }
+
         public async Task<bool> ExistsAsync(Guid taskAssignmentId, Guid workerId, CancellationToken ct = default)
         {
             return await _context.EmergencyLeaveRequests

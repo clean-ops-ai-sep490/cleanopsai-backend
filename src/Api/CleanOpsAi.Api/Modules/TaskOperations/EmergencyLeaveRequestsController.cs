@@ -112,7 +112,9 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(
             [FromForm] Guid workerId,
-            [FromForm] Guid taskAssignmentId,
+            [FromForm] Guid? taskAssignmentId,
+            [FromForm] DateTime? leaveDateFrom,
+            [FromForm] DateTime? leaveDateTo,
             [FromForm] string? transcription,
             IFormFile? audioFile,
             CancellationToken ct)
@@ -121,6 +123,8 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             {
                 WorkerId = workerId,
                 TaskAssignmentId = taskAssignmentId,
+                LeaveDateFrom = leaveDateFrom,
+                LeaveDateTo = leaveDateTo,
                 Transcription = transcription,
                 AudioStream = audioFile?.OpenReadStream(),
                 AudioFileName = audioFile?.FileName  // lay thang tu IFormFile
@@ -145,12 +149,16 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(
             Guid id,
+            [FromForm] DateTime? leaveDateFrom,
+            [FromForm] DateTime? leaveDateTo,
             [FromForm] string? transcription,
             IFormFile? audioFile,
             CancellationToken ct)
         {
             var dto = new UpdateEmergencyLeaveRequestDto
             {
+                LeaveDateFrom = leaveDateFrom,
+                LeaveDateTo = leaveDateTo,
                 Transcription = transcription,
                 AudioStream = audioFile?.OpenReadStream(),
                 AudioFileName = audioFile?.FileName  // lay thang tu IFormFile

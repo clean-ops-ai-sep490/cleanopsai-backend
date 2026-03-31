@@ -11,7 +11,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
     public interface IWorkAreaSupervisorService
     {
         Task<WorkAreaSupervisorResponse?> GetByIdAsync(Guid id);
-        Task<WorkAreaSupervisorResponse?> GetByUserIdAsync(string userId);
+        Task<List<WorkAreaSupervisorResponse>> GetByUserIdAsync(Guid userId);
         Task<WorkAreaSupervisorResponse?> GetByWorkerIdAsync(Guid workerId);
         Task<List<WorkAreaSupervisorResponse>> GetAllAsync();
         Task<PagedResponse<WorkAreaSupervisorResponse>> GetAllPaginationAsync(int pageNumber, int pageSize);
@@ -20,6 +20,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> DeleteAsync(Guid id);
         Task<List<WorkerGpsSimpleResponse>> GetWorkersLatestGpsByWorkAreaIdAsync(Guid workAreaId);
         Task<WorkAreaSupervisorAssignResponse> AssignWorkersAsync(WorkAreaSupervisorAssignRequest request);
-        Task<int> UnassignWorkerAsync(Guid workAreaId, string userId, Guid workerId);
+        Task<int> UnassignWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
     }
 }
