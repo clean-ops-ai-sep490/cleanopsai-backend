@@ -52,7 +52,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         }
 
         // get by user id
-        public async Task<List<WorkerResponse>> GetByUserIdAsync(string userId)
+        public async Task<List<WorkerResponse>> GetByUserIdAsync(Guid userId)
         {
             var worker = await _workerRepository.GetByUserIdAsync(userId);
 
@@ -221,7 +221,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         // get information of current worker by user id from user context
         public async Task<List<WorkerResponse>> GetInforAsync()
         {
-            var worker = await _workerRepository.GetByUserIdAsync(_userContext.UserId.ToString());
+            var worker = await _workerRepository.GetByUserIdAsync(_userContext.UserId);
 
             if (worker == null)
                 return null;

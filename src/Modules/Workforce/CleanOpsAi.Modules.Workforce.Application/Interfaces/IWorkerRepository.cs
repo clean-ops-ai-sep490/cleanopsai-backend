@@ -7,7 +7,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
     {
         Task<Worker?> GetByIdAsync(Guid id);
 
-        Task<Worker?> GetByUserIdAsync(string userId);
+        Task<Worker?> GetByUserIdAsync(Guid userId);
 
         Task<List<Worker>> GetAllAsync();
 

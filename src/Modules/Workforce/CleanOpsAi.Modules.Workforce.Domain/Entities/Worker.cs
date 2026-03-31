@@ -5,7 +5,7 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 	[Table("workers")]
 	public class Worker : BaseAuditableEntity
 	{
-		public string UserId { get; set; } = null!;
+		public Guid UserId { get; set; }
 
 		public string FullName { get; set; } = null!;
 

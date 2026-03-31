@@ -10,7 +10,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Dtos.Workers
     {
         public Guid Id { get; set; }
 
-        public string UserId { get; set; } = null!;
+        public Guid UserId { get; set; }
 
         public string FullName { get; set; } = null!;
 

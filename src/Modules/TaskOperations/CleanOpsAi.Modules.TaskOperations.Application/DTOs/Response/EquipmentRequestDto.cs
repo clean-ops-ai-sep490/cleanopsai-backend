@@ -12,8 +12,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
         public Guid Id { get; set; }
         public Guid TaskAssignmentId { get; set; }
         public Guid WorkerId { get; set; }
+        public string? WorkerName { get; set; }
         public Guid EquipmentId { get; set; }
         public Guid? ReviewedByUserId { get; set; }
+        public string? ReviewedByUserName { get; set; }
         public int Quantity { get; set; }
         public string? Reason { get; set; }
         public DateTime? ApprovedAt { get; set; }
