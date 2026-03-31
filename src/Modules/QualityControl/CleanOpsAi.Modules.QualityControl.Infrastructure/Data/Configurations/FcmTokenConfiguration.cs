@@ -10,6 +10,8 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Data.Configurations
 		{
 			builder.HasKey(x => x.Id);
 
+			builder.Property(x => x.WorkerId);
+
 			builder.Property(x => x.Token)
 			   .IsRequired()
 			   .HasMaxLength(500);
