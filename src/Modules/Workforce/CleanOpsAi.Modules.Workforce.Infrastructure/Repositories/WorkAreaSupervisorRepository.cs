@@ -161,5 +161,15 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.SaveChangesAsync();
         }
 
+        // get WorkAreaSupervisor by WorkAreaId + WorkerId 
+        public async Task<WorkAreaSupervisor?> GetByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId)
+        {
+            return await _dbContext.Set<WorkAreaSupervisor>()
+                .Include(x => x.Worker)
+                .FirstOrDefaultAsync(x => x.WorkAreaId == workAreaId
+                                      && x.WorkerId == workerId
+                                      && x.IsDeleted == false);
+        }
+
     }
 }

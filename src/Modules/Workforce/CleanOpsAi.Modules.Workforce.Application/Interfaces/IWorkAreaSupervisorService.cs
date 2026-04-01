@@ -21,5 +21,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<List<WorkerGpsSimpleResponse>> GetWorkersLatestGpsByWorkAreaIdAsync(Guid workAreaId);
         Task<WorkAreaSupervisorAssignResponse> AssignWorkersAsync(WorkAreaSupervisorAssignRequest request);
         Task<int> UnassignWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
+        Task<WorkAreaSupervisorResponse?> GetSupervisorByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
     }
 }

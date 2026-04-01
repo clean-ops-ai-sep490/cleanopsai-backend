@@ -24,13 +24,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
+        private readonly ISupervisorQueryService _supervisorQueryService;
 
         public AdHocRequestService(
             IAdHocRequestRepository repository,
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
-            IWorkerQueryService workerQueryService
+            IWorkerQueryService workerQueryService,
+            ISupervisorQueryService supervisorQueryService
         )
         {
             _repository = repository;
@@ -38,6 +40,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
+            _supervisorQueryService = supervisorQueryService;
         }
 
         public async Task<AdHocRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -128,28 +131,34 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
         public async Task<AdHocRequestDto?> Create(CreateAdHocRequestDto dto, CancellationToken ct = default)
         {
-            var entity = _mapper.Map<AdHocRequest>(dto);
+            // 1. Resolve WorkerId từ UserId hiện tại
+            var workerId = await _workerQueryService.GetWorkerIdByUserIdAsync(_userContext.UserId, ct);
+            if (workerId == null)
+                throw new BadRequestException("Worker profile not found for current user.");
 
+            // 2. Validate dates
             if (dto.RequestDateFrom == null)
-            {
                 throw new BadRequestException("RequestDateFrom is required.");
-            }
 
             var from = dto.RequestDateFrom;
-            var to = dto.RequestDateTo ?? from; // nếu null thì = from
+            var to = dto.RequestDateTo ?? from;
 
             if (from > to)
-            {
                 throw new BadRequestException("RequestDateFrom must be <= RequestDateTo.");
-            }
 
-            entity.RequestedByWorkerId = _userContext.UserId;
+            // 3. Map + gán fields
+            var entity = _mapper.Map<AdHocRequest>(dto);
+            entity.RequestedByWorkerId = workerId.Value; // ← từ RabbitMQ
             entity.RequestDateFrom = from;
             entity.RequestDateTo = to;
-
             entity.Status = AdHocRequestStatus.Pending;
             entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
+
+            // 4. Resolve ReviewerId (Supervisor) từ WorkAreaId + WorkerId
+            var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(
+                dto.WorkAreaId, workerId.Value, ct);
+            entity.ReviewedByUserId = supervisorId;
 
             await _repository.AddAsync(entity, ct);
 
@@ -167,7 +176,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = _mapper.Map<AdHocRequestDto>(entity);
             result.WorkerName = await GetWorkerNameAsync(entity.RequestedByWorkerId);
-
             return result;
         }
 
@@ -177,7 +185,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var entity = await _repository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
 
-            // chặn update khi đã Approved
             if (entity.Status == AdHocRequestStatus.Approved)
                 throw new BadRequestException("Cannot update approved request.");
 
@@ -190,18 +197,29 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (!string.IsNullOrEmpty(dto.Description))
                 entity.Description = dto.Description;
 
-            //  XỬ LÝ DATE (QUAN TRỌNG)
-            var newFrom = dto.RequestDateFrom ?? entity.RequestDateFrom;
-            var newTo = dto.RequestDateTo ?? entity.RequestDateTo;
+            // ← bỏ qua nếu là default/MinValue (do gửi "" từ client)
+            var newFrom = (dto.RequestDateFrom.HasValue && dto.RequestDateFrom > DateTime.MinValue)
+                ? dto.RequestDateFrom
+                : entity.RequestDateFrom;
 
-            // nếu vẫn null hết → cho phép (tùy business)
+            var newTo = (dto.RequestDateTo.HasValue && dto.RequestDateTo > DateTime.MinValue)
+                ? dto.RequestDateTo
+                : entity.RequestDateTo;
+
             if (newFrom.HasValue && newTo.HasValue && newFrom > newTo)
-            {
                 throw new BadRequestException("RequestDateFrom must be <= RequestDateTo.");
-            }
 
             entity.RequestDateFrom = newFrom;
             entity.RequestDateTo = newTo;
+
+            if (dto.WorkAreaId.HasValue && dto.WorkAreaId != Guid.Empty) // ← tương tự cho Guid
+            {
+                var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(
+                    dto.WorkAreaId.Value,
+                    entity.RequestedByWorkerId,
+                    ct);
+                entity.ReviewedByUserId = supervisorId;
+            }
 
             entity.LastModified = _dateTimeProvider.UtcNow;
             entity.LastModifiedBy = _userContext.UserId.ToString();
@@ -222,17 +240,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = _mapper.Map<AdHocRequestDto>(entity);
             result.WorkerName = await GetWorkerNameAsync(entity.RequestedByWorkerId);
-
             return result;
         }
-
+        
         public async Task<AdHocRequestDto?> Review(Guid id, ReviewAdHocRequestDto dto, CancellationToken ct = default)
         {
             var entity = await _repository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
 
             entity.Status = dto.Status;
-            entity.ReviewedByUserId = _userContext.UserId;
             entity.ApprovedAt = dto.Status == AdHocRequestStatus.Approved
                 ? _dateTimeProvider.UtcNow
                 : null;

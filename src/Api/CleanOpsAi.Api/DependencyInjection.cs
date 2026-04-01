@@ -60,9 +60,10 @@ public static class DependencyInjection
 			typeof(UserRegisteredConsumer).Assembly,
 			typeof(SendNotificationConsumer).Assembly,
 			typeof(GetSopStepsByScheduleConsumer).Assembly,
-			typeof(GetWorkersByIdsConsumer).Assembly
+			typeof(GetWorkersByIdsConsumer).Assembly,
+            typeof(GetSupervisorByWorkerConsumer).Assembly
 
-		); 
+        ); 
 
 		builder.Services.AddCors(options =>
 		{

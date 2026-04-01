@@ -267,5 +267,24 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             return await _repository.DeleteAsync(entity.Id);
         }
 
+        //Lấy supervisor của một worker trong một work area cụ thể 
+        public async Task<WorkAreaSupervisorResponse?> GetSupervisorByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId)
+        {
+            var entity = await _repository.GetByWorkAreaAndWorkerAsync(workAreaId, workerId);
+
+            if (entity == null)
+                return null;
+
+            return new WorkAreaSupervisorResponse
+            {
+                Id = entity.Id,
+                WorkAreaId = entity.WorkAreaId,
+                WorkerId = entity.WorkerId,
+                WorkerName = entity.Worker?.FullName,
+                SupervisorId = entity.UserId,
+                Created = entity.Created
+            };
+        }
+
     }
 }

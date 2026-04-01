@@ -21,5 +21,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> CreateRangeAsync(List<WorkAreaSupervisor> entities);
         Task<WorkAreaSupervisor?> GetByWorkAreaUserWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
         Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, Guid supervisorId);
+        Task<WorkAreaSupervisor?> GetByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
     }
 }

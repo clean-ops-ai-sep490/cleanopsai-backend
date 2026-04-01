@@ -168,5 +168,20 @@ namespace CleanOpsAi.Api.Modules.Workforce
                 return Ok();
             return NotFound();
         }
+
+        [HttpGet("by-workarea-worker")]
+        [SwaggerOperation(
+            Summary = "Get supervisors by work area",
+            Description = "Get all supervisors in a work area.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> GetByWorkAreaAndWorker(Guid workAreaId, Guid workerId)
+        {
+            var result = await _service.GetSupervisorByWorkAreaAndWorkerAsync(workAreaId, workerId);
+
+            if (result == null)
+                return NotFound("Không tìm thấy supervisor.");
+
+            return Ok(result);
+        }
     }
 }

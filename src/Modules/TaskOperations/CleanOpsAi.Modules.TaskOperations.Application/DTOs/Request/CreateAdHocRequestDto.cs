@@ -9,6 +9,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 {
     public class CreateAdHocRequestDto
     {
+        public Guid WorkAreaId { get; set; }
+
         public AdHocRequestType RequestType { get; set; }
 
         public DateTime RequestDateFrom { get; set; }

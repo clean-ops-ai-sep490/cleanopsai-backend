@@ -117,7 +117,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [HttpPost]
         [SwaggerOperation(
             Summary = "Create adhoc request",
-            Description = "Creates a new adhoc request. Status is set to Pending automatically.",
+            Description = "Creates a new adhoc request. Status is set to Pending automatically. The requestType are: General, Urgent, HighPriority or you can see in get by type",
             Tags = new[] { "AdHocRequest" }
         )]
         [ProducesResponseType(typeof(AdHocRequestDto), StatusCodes.Status201Created)]
@@ -133,7 +133,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [HttpPut("{id:guid}")]
         [SwaggerOperation(
             Summary = "Update adhoc request",
-            Description = "Updates request type, reason or description.",
+            Description = "Updates request type, reason or description. The requestType are: General, Urgent, HighPriority or you can see in get by type",
             Tags = new[] { "AdHocRequest" }
         )]
         [ProducesResponseType(typeof(AdHocRequestDto), StatusCodes.Status200OK)]

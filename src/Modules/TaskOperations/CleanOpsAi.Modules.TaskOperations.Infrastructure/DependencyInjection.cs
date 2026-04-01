@@ -55,6 +55,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>();
         builder.Services.AddScoped<IAdHocRequestService, AdHocRequestService>();
         builder.Services.AddScoped<IWorkerQueryService, WorkerQueryService>();
+        builder.Services.AddScoped<ISupervisorQueryService, SupervisorQueryService>();
 
 
     }
