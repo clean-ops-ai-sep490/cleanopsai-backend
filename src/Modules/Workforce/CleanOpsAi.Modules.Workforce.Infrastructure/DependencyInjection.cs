@@ -32,8 +32,15 @@ public static class DependencyInjection
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
-        // Repositories
-        builder.Services.AddScoped<IWorkerRepository, WorkerRepository>();
+		builder.Services.AddHttpClient<IAddressKitService, AddressKitService>(client =>
+		{
+			client.BaseAddress = new Uri("https://production.cas.so/address-kit/2025-07-01/");
+			client.Timeout = TimeSpan.FromSeconds(30);
+		});
+
+
+		// Repositories
+		builder.Services.AddScoped<IWorkerRepository, WorkerRepository>();
 		builder.Services.AddScoped<ICertificationRepository, CertificationRepository>();
 		builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 		builder.Services.AddScoped<ISkillRepository, SkillRepository>();

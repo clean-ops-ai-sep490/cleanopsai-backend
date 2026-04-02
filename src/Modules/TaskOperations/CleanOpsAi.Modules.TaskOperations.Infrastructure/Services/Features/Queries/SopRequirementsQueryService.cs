@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
+﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
@@ -7,32 +8,25 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Que
 {
 	public class SopRequirementsQueryService : ISopRequirementsQueryService
 	{
-		private readonly IRequestClient<SopRequirementsRequested> _client;
+		private readonly IIntegrationBus _bus; 
 		private readonly IMemoryCache _cache;
 
-		public SopRequirementsQueryService(
-			IRequestClient<SopRequirementsRequested> client,
-			IMemoryCache cache)
+		public SopRequirementsQueryService(IIntegrationBus bus, IMemoryCache cache)
 		{
-			_client = client;
+			_bus = bus;
 			_cache = cache;
 		}
 
-		public async Task<SopRequirementsIntegrated> GetSopRequirementsByScheduleId(
-			Guid taskScheduleId,
-			CancellationToken ct)
+		public async Task<SopRequirementsIntegrated> GetSopRequirementsByScheduleId(Guid taskScheduleId, CancellationToken ct)
 		{
 			var cacheKey = $"sop-requirements-{taskScheduleId}";
-
-			if (_cache.TryGetValue(cacheKey, out SopRequirementsIntegrated? cached))
-				return cached!;
-
-			var response = await _client.GetResponse<SopRequirementsIntegrated>(
+			if (_cache.TryGetValue(cacheKey, out SopRequirementsIntegrated? cached)) return cached!;
+			 
+			var response = await _bus.RequestAsync<SopRequirementsRequested, SopRequirementsIntegrated>(
 				new SopRequirementsRequested { TaskScheduleId = taskScheduleId }, ct);
 
-			_cache.Set(cacheKey, response.Message, TimeSpan.FromMinutes(30));
-
-			return response.Message;
+			_cache.Set(cacheKey, response, TimeSpan.FromMinutes(30));
+			return response;
 		}
 	}
 }

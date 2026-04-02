@@ -309,17 +309,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				var config = JsonSerializer.Deserialize<RecurrenceConfig>(
 					schedule.RecurrenceConfig)!;
 
-				await _bus.Publish(new GenerateTaskAssignmentsRequestedEvent(
-					ScheduleId: schedule.Id,
-					AssigneeId: schedule.AssigneeId,
-					WorkAreaId: schedule.WorkAreaId,
-					FromDate: request.FromDate,
-					ToDate: request.ToDate,
-					RecurrenceType: schedule.RecurrenceType,
-					RecurrenceConfig: config,
-					DurationMinutes: schedule.DurationMinutes,
-					Source: "manual"
-				), ct);
+				await _bus.Publish(new GenerateTaskAssignmentsRequestedEvent
+				{
+					ScheduleId = schedule.Id,
+					AssigneeId = schedule.AssigneeId,
+					WorkAreaId = schedule.WorkAreaId,
+					FromDate = request.FromDate,
+					ToDate = request.ToDate,
+					RecurrenceType = schedule.RecurrenceType,
+					RecurrenceConfig = config,
+					DurationMinutes = schedule.DurationMinutes,
+					AssigneeName = schedule.AssigneeName!,
+					DisplayLocation = schedule.DisplayLocation!,
+					Source = "manual"
+				});
 			}
 
 			//throw new NotImplementedException();

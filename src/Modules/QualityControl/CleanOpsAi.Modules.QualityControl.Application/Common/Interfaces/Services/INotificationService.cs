@@ -15,5 +15,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Servic
 		Task<NotificationDto?> Update(Guid id, NotificationUpdateDto dto, CancellationToken ct = default);
 
 		Task<bool> Delete(Guid id, CancellationToken ct = default);
+
+		Task HandleSendNotificationAsync(SendNotificationEvent message, CancellationToken ct = default);
 	}
 }

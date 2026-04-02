@@ -14,6 +14,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 			Console.WriteLine("CONSUMER START");
 			var msg = context.Message;
 
+
+			Console.WriteLine($"CONSUMER START - Assignee: {msg.AssigneeName}, Location: {msg.DisplayLocation}, Id: {msg.ScheduleId}");
+
 			await taskAssignmentService.GenerateAsync(context.Message);
 		}
 	}

@@ -9,6 +9,7 @@ using CleanOpsAi.Modules.QualityControl.Application.DTOs.Request;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Response;
 using CleanOpsAi.Modules.QualityControl.Domain.Entities;
 using Medo;
+using Microsoft.Extensions.Logging;
 
 namespace CleanOpsAi.Modules.QualityControl.Application.Services
 {
@@ -20,12 +21,14 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateProvider;
 		private readonly IUserContext _userContext;
+		private readonly ILogger<NotificationService> _logger;
 
 		public NotificationService(INotificationRepository notificationRepo,
 			IFcmTokenRepository fcmTokenRepository,
 			IFirebaseMessagingService firebaseMessagingService, IMapper mapper,
 			IDateTimeProvider dateTimeProvider,
-			IUserContext userContext)
+			IUserContext userContext,
+			ILogger<NotificationService> logger)
 		{
 			_notificationRepository = notificationRepo;
 			_fcmTokenRepository = fcmTokenRepository;
@@ -33,6 +36,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			_mapper = mapper;
 			_dateProvider = dateTimeProvider;
 			_userContext = userContext;
+			_logger = logger;
 		}
 
 		public async Task<NotificationDto> Create(NotificationCreateDto dto, CancellationToken ct = default)
@@ -125,6 +129,45 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			tokens: activeTokens.Select(t => t.Token).ToList(), title: message.Title, body: message.Body, payload: message.Payload);
 		}
 
-		
+		public async Task HandleSendNotificationAsync(SendNotificationEvent message, CancellationToken ct = default)
+		{
+			if (message.Recipients == null || !message.Recipients.Any())
+				return;
+
+			// Chỉ push cho Worker và Supervisor
+			var pushRecipients = message.Recipients
+				.Where(r => r.RecipientType == RecipientTypeEnum.Worker ||
+							r.RecipientType == RecipientTypeEnum.Supervisor)
+				.ToList();
+
+			if (!pushRecipients.Any())
+				return;
+
+			try
+			{
+				var activeTokens = await _fcmTokenRepository.GetActiveTokensForPushAsync(pushRecipients, ct);
+
+				if (!activeTokens.Any())
+				{
+					_logger.LogInformation("No active FCM tokens found for notification: {Title}", message.Title);
+					return;
+				}
+
+				await _firebaseMessagingService.SendMulticastAsync(
+					tokens: activeTokens.Select(t => t.Token).ToList(),
+					title: message.Title,
+					body: message.Body,
+					payload: message.Payload,
+					cancellationToken: ct);
+
+				_logger.LogInformation("Successfully sent push notification '{Title}' to {Count} devices",
+					message.Title, activeTokens.Count);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to send FCM notification. Title: {Title}", message.Title);
+				throw;
+			}
+		}
 	}
 }

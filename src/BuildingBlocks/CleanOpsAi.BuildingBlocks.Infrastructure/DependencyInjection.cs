@@ -1,7 +1,9 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.BuildingBlocks.Infrastructure;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Messaging;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using Microsoft.Extensions.Hosting;
 
@@ -23,6 +25,7 @@ public static class DependencyInjection
 
 		builder.Services.AddScoped<IUserContext, UserContext>();
 
+		builder.Services.AddScoped<IIntegrationBus, MassTransitIntegrationBus>();
 	}
 
 }
