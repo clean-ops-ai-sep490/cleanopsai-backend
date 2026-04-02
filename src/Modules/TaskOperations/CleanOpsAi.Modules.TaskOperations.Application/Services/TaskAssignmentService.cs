@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
@@ -25,15 +26,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
 		private readonly IRequestClient<SopStepsRequested> _sopStepsClient;
-		//private readonly IPublishEndpoint _publishEndpoint;
+		private readonly IUserContext _userContext;
+        //private readonly IPublishEndpoint _publishEndpoint;
 
-		public TaskAssignmentService(ITaskAssignmentRepository taskAssignmentRepository,
+        public TaskAssignmentService(ITaskAssignmentRepository taskAssignmentRepository,
 			ITaskStepExecutionRepository taskStepExecutionRepository,
 			IMapper mapper,
 			IRecurrenceExpander expander,
 			IDateTimeProvider dateTimeProvider,
 			IIdGenerator idGenerator,
-			IRequestClient<SopStepsRequested> sopClient)
+			IRequestClient<SopStepsRequested> sopClient,
+			IUserContext userContext)
 		{
 			_taskAssignmentRepository = taskAssignmentRepository;
 			_taskStepExecutionRepository = taskStepExecutionRepository;
@@ -42,10 +45,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_dateTimeProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
 			_sopStepsClient = sopClient;
-		}
+			_userContext = userContext;
+        }
 
 
-		public async Task<bool> Delete(Guid id)
+        public async Task<bool> Delete(Guid id)
 		{
 			var taskAssignment = await _taskAssignmentRepository.GetByIdAsync(id); 
 			if (taskAssignment == null) return false;
@@ -211,5 +215,37 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				result.TotalElements,
 				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
 		}
-	}
+
+        // create adhoc task without schedule, step
+        public async Task<TaskAssignmentDto> CreateAdhocTask(CreateAdhocTaskDto dto)
+        {
+            var task = new TaskAssignment
+            {
+                Id = _idGenerator.Generate(),
+
+                // fake schedule
+                TaskScheduleId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+
+                AssigneeId = dto.AssigneeId,
+                OriginalAssigneeId = dto.AssigneeId,
+                WorkAreaId = dto.WorkAreaId,
+
+                ScheduledStartAt = dto.StartAt,
+                ScheduledEndAt = dto.StartAt.AddMinutes(dto.DurationMinutes),
+
+                Status = TaskAssignmentStatus.NotStarted,
+                IsAdhocTask = true,
+                NameAdhocTask = dto.Name,
+
+                Created = _dateTimeProvider.UtcNow,
+                CreatedBy = _userContext.UserId.ToString()
+            };
+
+            await _taskAssignmentRepository.InsertAsync(task);
+            await _taskAssignmentRepository.SaveChangesAsync();
+
+            return _mapper.Map<TaskAssignmentDto>(task);
+        }
+
+    }
 }
