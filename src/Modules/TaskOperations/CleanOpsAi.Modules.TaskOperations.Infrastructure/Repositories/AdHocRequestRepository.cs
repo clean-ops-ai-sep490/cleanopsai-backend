@@ -31,6 +31,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.AdHocRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -39,6 +40,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.AdHocRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.RequestedByWorkerId == workerId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -47,6 +49,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.AdHocRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.TaskAssignmentId == taskAssignmentId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -55,6 +58,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.AdHocRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.Status == status && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -63,6 +67,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.AdHocRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.RequestType == type && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 

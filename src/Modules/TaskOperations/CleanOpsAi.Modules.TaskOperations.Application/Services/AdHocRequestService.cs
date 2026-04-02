@@ -25,6 +25,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
         private readonly ISupervisorQueryService _supervisorQueryService;
+        private readonly IWorkAreaQueryService _workAreaQueryService;
 
         public AdHocRequestService(
             IAdHocRequestRepository repository,
@@ -32,7 +33,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
-            ISupervisorQueryService supervisorQueryService
+            ISupervisorQueryService supervisorQueryService,
+            IWorkAreaQueryService workAreaQueryService
         )
         {
             _repository = repository;
@@ -41,6 +43,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
             _supervisorQueryService = supervisorQueryService;
+            _workAreaQueryService = workAreaQueryService;
         }
 
         public async Task<AdHocRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -148,7 +151,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             // 3. Map + gán fields
             var entity = _mapper.Map<AdHocRequest>(dto);
-            entity.RequestedByWorkerId = workerId.Value; // ← từ RabbitMQ
+            entity.RequestedByWorkerId = workerId.Value;
             entity.RequestDateFrom = from;
             entity.RequestDateTo = to;
             entity.Status = AdHocRequestStatus.Pending;
@@ -159,6 +162,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(
                 dto.WorkAreaId, workerId.Value, ct);
             entity.ReviewedByUserId = supervisorId;
+
+            Console.WriteLine($"DEBUG - WorkAreaId: {dto.WorkAreaId}");
+            Console.WriteLine($"DEBUG - WorkerId: {workerId.Value}");
+            Console.WriteLine($"DEBUG - SupervisorId resolved: {supervisorId}");
 
             await _repository.AddAsync(entity, ct);
 
@@ -176,9 +183,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = _mapper.Map<AdHocRequestDto>(entity);
             result.WorkerName = await GetWorkerNameAsync(entity.RequestedByWorkerId);
+            result.WorkAreaName = await _workAreaQueryService.GetWorkAreaNameAsync(dto.WorkAreaId, ct); 
+            result.WorkAreaId = dto.WorkAreaId; 
+            if (entity.ReviewedByUserId.HasValue)
+                result.ReviewedByUserName = await _supervisorQueryService.GetSupervisorNameAsync(
+                    entity.ReviewedByUserId.Value, ct);
+
             return result;
         }
-
 
         public async Task<AdHocRequestDto?> Update(Guid id, UpdateAdHocRequestDto dto, CancellationToken ct = default)
         {
@@ -197,7 +209,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (!string.IsNullOrEmpty(dto.Description))
                 entity.Description = dto.Description;
 
-            // ← bỏ qua nếu là default/MinValue (do gửi "" từ client)
             var newFrom = (dto.RequestDateFrom.HasValue && dto.RequestDateFrom > DateTime.MinValue)
                 ? dto.RequestDateFrom
                 : entity.RequestDateFrom;
@@ -212,7 +223,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.RequestDateFrom = newFrom;
             entity.RequestDateTo = newTo;
 
-            if (dto.WorkAreaId.HasValue && dto.WorkAreaId != Guid.Empty) // ← tương tự cho Guid
+            if (dto.WorkAreaId.HasValue && dto.WorkAreaId != Guid.Empty)
             {
                 var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(
                     dto.WorkAreaId.Value,
@@ -240,9 +251,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = _mapper.Map<AdHocRequestDto>(entity);
             result.WorkerName = await GetWorkerNameAsync(entity.RequestedByWorkerId);
+
+            // ← thêm: enrich WorkAreaName + SupervisorName
+            if (dto.WorkAreaId.HasValue && dto.WorkAreaId != Guid.Empty)
+                result.WorkAreaName = await _workAreaQueryService.GetWorkAreaNameAsync(
+                    dto.WorkAreaId.Value, ct);
+
+            if (entity.ReviewedByUserId.HasValue)
+                result.ReviewedByUserName = await _supervisorQueryService.GetSupervisorNameAsync(
+                    entity.ReviewedByUserId.Value, ct);
+
             return result;
         }
-        
+
         public async Task<AdHocRequestDto?> Review(Guid id, ReviewAdHocRequestDto dto, CancellationToken ct = default)
         {
             var entity = await _repository.GetByIdExistAsync(id, ct);
@@ -253,7 +274,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? _dateTimeProvider.UtcNow
                 : null;
 
-            var reviewerName = _userContext.FullName;
 
             await _repository.UpdateAsync(entity, ct);
 
@@ -270,7 +290,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = _mapper.Map<AdHocRequestDto>(entity);
             result.WorkerName = await GetWorkerNameAsync(entity.RequestedByWorkerId);
-            result.ReviewedByUserName = reviewerName;
 
             return result;
         }

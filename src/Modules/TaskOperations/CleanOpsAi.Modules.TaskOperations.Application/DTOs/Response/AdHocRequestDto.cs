@@ -21,6 +21,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 
         public string? WorkerName { get; set; }
 
+        public Guid WorkAreaId { get; set; }  
+
+        public string? WorkAreaName { get; set; }
+
         public AdHocRequestType RequestType { get; set; }
 
         public string? Reason { get; set; }
