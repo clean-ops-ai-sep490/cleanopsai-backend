@@ -4,12 +4,7 @@ using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Zones;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -18,12 +13,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IZoneRepository _repository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
-        public ZoneService(IZoneRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+		public ZoneService(IZoneRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
         {
             _repository = repository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
+            _idGenerator = idGenerator;
         }
 
         // get by id
@@ -124,7 +121,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var zone = new Zone
             {
-                Id = Uuid7.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 Description = request.Description,
                 LocationId = request.LocationId,

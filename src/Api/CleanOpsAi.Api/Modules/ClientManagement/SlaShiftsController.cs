@@ -63,7 +63,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(result);
         }
 
-        [HttpPost]
+		[Authorize]
+		[HttpPost]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Create SLA Shift",
@@ -81,7 +82,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return BadRequest();
         }
 
-        [HttpPut("{id}")]
+		[Authorize]
+		[HttpPut("{id}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Update SLA Shift",
@@ -99,7 +101,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return NotFound();
         }
 
-        [HttpDelete("{id}")]
+        [Authorize]
+		[HttpDelete("{id}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Delete SLA Shift",

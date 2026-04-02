@@ -1,17 +1,12 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks.ConfigModels;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
+using System.Text.Json; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -21,35 +16,43 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly ISlaRepository _slaRepository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
-        private readonly string[] validRecurrenceTypes =
+		private readonly string[] validRecurrenceTypes =
         {
             "Daily",
             "Weekly",
             "Monthly"
         };
 
-        public SlaTaskService(ISlaTaskRepository repository, ISlaRepository slaRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+        public SlaTaskService(
+            ISlaTaskRepository repository, 
+            ISlaRepository slaRepository, 
+            IUserContext userContext, 
+            IDateTimeProvider dateTimeProvider,
+            IIdGenerator idGenerator
+			)
         {
             _repository = repository;
             _slaRepository = slaRepository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
-        }
+            _idGenerator = idGenerator;
+		}
 
         public async Task<SlaTaskResponse> GetByIdAsync(Guid id)
         {
             var task = await _repository.GetByIdAsync(id);
 
             if (task == null)
-                return null;
+				throw new NotFoundException(nameof(SlaTask), id);
 
-            return new SlaTaskResponse
+			return new SlaTaskResponse
             {
                 Id = task.Id,
                 Name = task.Name,
                 SlaId = task.SlaId,
-                SlaName = task.Sla?.Name,
+                SlaName = task.Sla?.Name!,
                 RecurrenceType = task.RecurrenceType,
                 RecurrenceConfig = task.RecurrenceConfig
             };
@@ -65,7 +68,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 SlaId = x.SlaId,
-                SlaName = x.Sla?.Name,
+                SlaName = x.Sla?.Name!,
                 RecurrenceType = x.RecurrenceType,
                 RecurrenceConfig = x.RecurrenceConfig
             }).ToList();
@@ -89,7 +92,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 SlaId = x.SlaId,
-                SlaName = x.Sla?.Name,
+                SlaName = x.Sla?.Name!,
                 RecurrenceType = x.RecurrenceType,
                 RecurrenceConfig = x.RecurrenceConfig
             }).ToList();
@@ -107,7 +110,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 
             var task = new SlaTask
             {
-                Id = Guid.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 SlaId = request.SlaId,
                 RecurrenceType = request.RecurrenceType,
@@ -175,7 +178,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = task.Id,
                 Name = task.Name,
                 SlaId = task.SlaId,
-                SlaName = task.Sla?.Name,
+                SlaName = task.Sla?.Name!,
                 RecurrenceType = task.RecurrenceType,
                 RecurrenceConfig = task.RecurrenceConfig
             };

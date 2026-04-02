@@ -68,7 +68,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(result);
         }
 
-        [HttpPost]
+		[Authorize]
+		[HttpPost]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Create work area detail",
@@ -83,7 +84,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(result);
         }
 
-        [HttpPut("{id:guid}")]
+		[Authorize]
+		[HttpPut("{id:guid}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Update work area detail",
@@ -101,7 +103,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(result);
         }
 
-        [HttpDelete("{id:guid}")]
+		[Authorize]
+		[HttpDelete("{id:guid}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Delete work area detail",

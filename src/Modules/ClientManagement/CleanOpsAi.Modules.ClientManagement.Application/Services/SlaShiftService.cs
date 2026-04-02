@@ -1,14 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaShifts;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -39,7 +35,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = shift.Id,
                 Name = shift.Name,
                 SlaId = shift.SlaId,
-                SlaName = shift.Sla?.Name,
+                SlaName = shift.Sla?.Name!,
                 StartTime = shift.StartTime,
                 EndTime = shift.EndTime,
                 RequiredWorker = shift.RequiredWorker,
@@ -56,7 +52,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 SlaId = x.SlaId,
-                SlaName = x.Sla?.Name,
+                SlaName = x.Sla?.Name!,
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
                 RequiredWorker = x.RequiredWorker,
@@ -73,7 +69,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = x.Id,
                 Name = x.Name,
                 SlaId = x.SlaId,
-                SlaName = x.Sla?.Name,
+                SlaName = x.Sla?.Name!,
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
                 RequiredWorker = x.RequiredWorker,
@@ -95,9 +91,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var sla = await _slaRepository.GetByIdAsync(request.SlaId);
 
             if (sla == null)
-                throw new Exception("SLA not found");
+				throw new NotFoundException(nameof(Sla), request.SlaId);
 
-            var entity = new SlaShift
+			var entity = new SlaShift
             {
                 Id = Medo.Uuid7.NewGuid(),
                 Name = request.Name,

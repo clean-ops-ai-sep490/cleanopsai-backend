@@ -49,6 +49,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(clients);
         }
 
+        [Authorize]
         [HttpPost]
         [Consumes("application/json")]
         [SwaggerOperation(
@@ -67,7 +68,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return BadRequest();
         }
 
-        [HttpPut("{id}")]
+		[Authorize]
+		[HttpPut("{id}")]
         [Consumes("application/json")]
         [SwaggerOperation(
     Summary = "Update user",
@@ -85,7 +87,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return NotFound();
         }
 
-        [HttpDelete("{id}")]
+		[Authorize]
+		[HttpDelete("{id}")]
         [Consumes("application/json")]
         [SwaggerOperation(
     Summary = "Delete user",

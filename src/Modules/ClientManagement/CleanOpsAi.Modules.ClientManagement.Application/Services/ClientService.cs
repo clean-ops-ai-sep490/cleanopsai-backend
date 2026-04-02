@@ -1,15 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Clients;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -18,22 +13,25 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IClientRepository _clientRepository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
-        public ClientService(IClientRepository clientRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+        private readonly IIdGenerator _idGenerator; 
+
+		public ClientService(IClientRepository clientRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider,
+            IIdGenerator idGenerator)
         {
             _clientRepository = clientRepository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
-        }
+            _idGenerator = idGenerator;
+		}
 
         // get Client by id and return as ClientResponse
         public async Task<List<ClientResponse>> GetByIdAsync(Guid id)
         {
             var client = await _clientRepository.GetByIdAsync(id);
             if (client == null)
-            {
-                return null;
-            }
-            return new List<ClientResponse> { new ClientResponse { Id = client.Id, Name = client.Name, Email = client.Email } };
+				throw new NotFoundException(nameof(Client), id);
+
+			return new List<ClientResponse> { new ClientResponse { Id = client.Id, Name = client.Name, Email = client.Email } };
         }
 
         // get all Clients and return as List of ClientResponse
@@ -73,7 +71,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var client = new Client
             {
-                Id = Uuid7.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 Email = request.Email,
                 Created = _dateTimeProvider.UtcNow,
@@ -97,7 +95,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var client = await _clientRepository.GetByIdAsync(id);
 
             if (client == null)
-                throw new KeyNotFoundException($"Client with id {id} not found.");
+                throw new NotFoundException(nameof(Client), id);
 
             client.Name = string.IsNullOrWhiteSpace(request.Name)
                 ? client.Name
@@ -118,16 +116,19 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Name = client.Name,
                 Email = client.Email
             };
-        }
+        } 
 
-        // delete Client and return the number of rows affected
         public async Task<int> DeleteAsync(Guid id)
         {
             var client = await _clientRepository.GetByIdAsync(id);
 
             if (client == null)
-                throw new KeyNotFoundException($"Client with id {id} not found.");
-            return await _clientRepository.DeleteAsync(id);
-        }
+				throw new NotFoundException(nameof(Client), id);
+
+            client.IsDeleted = true;
+            await _clientRepository.UpdateAsync(client);
+
+			return await _clientRepository.UpdateAsync(client);
+		}
     }
 }

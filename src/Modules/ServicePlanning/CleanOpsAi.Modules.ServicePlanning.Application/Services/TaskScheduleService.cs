@@ -73,6 +73,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			taskSchedule.Created = _dateTimeProvider.UtcNow;
 			taskSchedule.CreatedBy = _userContext.UserId.ToString();
 			taskSchedule.Version = 1;
+			taskSchedule.IsActive = false;
 
 			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
 			taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
@@ -216,8 +217,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		}
 
 		private static RecurrenceConfig ParseRecurrenceConfig(
-	string recurrenceConfigJson,
-	RecurrenceType type)
+		string recurrenceConfigJson,
+		RecurrenceType type)
 		{
 			if (string.IsNullOrWhiteSpace(recurrenceConfigJson))
 				throw new BadRequestException("Recurrence config may not be empty");
@@ -338,6 +339,58 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				result.TotalElements,
 				_mapper.Map<List<TaskScheduleDto>>(result.Content));
 		}
+
+		public async Task<bool> Activate(Guid id, CancellationToken ct = default)
+		{
+			var schedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
+
+			if (schedule == null)
+				throw new NotFoundException(nameof(TaskSchedule), id);
+
+			ValidateForActivation(schedule);
+
+			schedule.IsActive = true;
+			schedule.LastModified = _dateTimeProvider.UtcNow;
+			schedule.LastModifiedBy = _userContext.UserId.ToString();
+			await _taskScheduleRepository.SaveChangesAsync(ct);
+			return true;
+		}
+
+		public async Task<bool> Deactivate(Guid id, CancellationToken ct = default)
+		{
+			var schedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
+
+			if (schedule == null)
+				throw new NotFoundException(nameof(TaskSchedule), id);
+
+
+			schedule.IsActive = false;
+			schedule.LastModified = _dateTimeProvider.UtcNow;
+			schedule.LastModifiedBy = _userContext.UserId.ToString();
+			await _taskScheduleRepository.SaveChangesAsync(ct);
+			return true;
+		}
+
+		private void ValidateForActivation(TaskSchedule schedule)
+		{
+			if (schedule.WorkAreaDetailId == null)
+				throw new BadRequestException("WorkAreaDetailId is required");
+
+			if (string.IsNullOrWhiteSpace(schedule.DisplayLocation))
+				throw new BadRequestException("DisplayLocation is required");
+
+			if (schedule.AssigneeId == null)
+				throw new BadRequestException("AssigneeId is required");
+
+			if (string.IsNullOrEmpty(schedule.AssigneeName))
+			{
+				throw new BadRequestException("AssigneeName is required");
+			}
+
+			if (schedule.RecurrenceConfig == null)
+				throw new BadRequestException("RecurrenceConfig is required");
+		}
+		
 	}
 }
 

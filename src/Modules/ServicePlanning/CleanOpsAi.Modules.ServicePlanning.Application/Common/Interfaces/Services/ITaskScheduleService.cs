@@ -19,5 +19,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 
 		Task<PaginatedResult<TaskScheduleDto>> Gets(PaginationRequest request, CancellationToken ct = default);
 
+		Task<bool> Activate(Guid id, CancellationToken ct = default);
+		Task<bool> Deactivate(Guid id, CancellationToken ct = default);
 	}
 }

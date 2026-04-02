@@ -1,15 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -19,20 +14,23 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IFileStorageService _fileStorage;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
-        private const string CONTAINER = "contracts";
+		private const string CONTAINER = "contracts";
 
         public ContractService(
             IContractRepository repository,
             IFileStorageService fileStorage,
             IUserContext userContext,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            IIdGenerator idGenerator)
         {
             _repository = repository;
             _fileStorage = fileStorage;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
-        }
+            _idGenerator = idGenerator;
+		}
 
         // get by id
         public async Task<ContractResponse?> GetByIdAsync(Guid id)
@@ -40,9 +38,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var contract = await _repository.GetByIdAsync(id);
 
             if (contract == null)
-                return null;
+				throw new NotFoundException(nameof(Contract), id);
 
-            return new ContractResponse
+			return new ContractResponse
             {
                 Id = contract.Id,
                 Name = contract.Name,
@@ -116,7 +114,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 
             var contract = new Contract
             {
-                Id = Uuid7.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 ClientId = request.ClientId,
                 UrlFile = fileUrl,
@@ -142,9 +140,10 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var contract = await _repository.GetByIdAsync(id);
 
             if (contract == null)
-                throw new KeyNotFoundException($"Contract with id {id} not found.");
+				throw new NotFoundException(nameof(Contract), id);
 
-            if (!string.IsNullOrWhiteSpace(request.Name))
+
+			if (!string.IsNullOrWhiteSpace(request.Name))
             {
                 contract.Name = request.Name;
             }
@@ -180,8 +179,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var contract = await _repository.GetByIdAsync(id);
 
             if (contract == null)
-                throw new KeyNotFoundException($"Contract with id {id} not found.");
-            return await _repository.DeleteAsync(id);
+				throw new NotFoundException(nameof(Contract), id);
+
+			return await _repository.DeleteAsync(id);
         }
 
         // get contracts by clientId
