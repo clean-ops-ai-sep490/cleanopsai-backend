@@ -11,6 +11,13 @@
 		TrashBag = 7,
 		Gloves = 8,
 		Bucket = 9,
-		Squeegee = 10
+		Squeegee = 10,
+		PressureWasher = 11,
+		FloorScrubber = 12,
+		SteamCleaner = 13,
+		DisinfectantSprayer = 14,
+		PolishingMachine = 15,
+		AirBlower = 16,
+		Ladder = 17
 	}
 }

@@ -182,7 +182,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					Status = index == 0
 						? TaskStepExecutionStatus.InProgress
 						: TaskStepExecutionStatus.NotStarted,
-					ResultData = s.ConfigDetail,
+					ResultData = "{}",
 					Created = _dateTimeProvider.UtcNow
 				}).ToList();
 

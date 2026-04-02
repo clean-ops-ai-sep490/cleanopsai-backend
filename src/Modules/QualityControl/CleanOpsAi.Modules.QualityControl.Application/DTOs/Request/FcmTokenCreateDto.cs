@@ -8,5 +8,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.DTOs.Request
 		public string UniqueId { get; set; } = null!;
 		public DevicePlatform Platform { get; set; }
 		public string? DeviceName { get; set; }
+
+		public Guid? WorkerId { get; set; }
 	}
 }

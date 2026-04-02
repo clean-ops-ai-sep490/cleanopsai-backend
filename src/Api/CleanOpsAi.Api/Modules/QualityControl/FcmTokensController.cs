@@ -23,7 +23,7 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[HttpPost("register")]
 		[SwaggerOperation(
 			Summary = "Register FCM Token",
-			Description = "Creates or updates an FCM token for the current user's device. If the device already has an active token, it will be updated. If the token is used by another device, that device will be deactivated.",
+			Description = "Creates or updates an FCM token for the current user's device. If the device already has an active token, it will be updated. If the token is used by another device, that device will be deactivated. Supports both User and Worker",
 			Tags = new[] { "FcmToken" }
 		)]
 		[ProducesResponseType(typeof(FcmTokenDto), StatusCodes.Status200OK)]
