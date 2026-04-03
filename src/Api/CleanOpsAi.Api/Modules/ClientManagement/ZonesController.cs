@@ -67,7 +67,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(zones);
         }
 
-        [HttpPost]
+		[Authorize]
+		[HttpPost]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Create zone",
@@ -85,7 +86,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return BadRequest();
         }
 
-        [HttpPut("{id}")]
+		[Authorize]
+		[HttpPut("{id}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Update zone",
@@ -103,7 +105,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return NotFound();
         }
 
-        [HttpDelete("{id}")]
+		[Authorize]
+		[HttpDelete("{id}")]
         [Consumes("application/json")]
         [SwaggerOperation(
             Summary = "Delete zone",

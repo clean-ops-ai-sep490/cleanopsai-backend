@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks
 {
@@ -10,8 +6,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks
     {
         public string? Name { get; set; }
 
-        public string? RecurrenceType { get; set; }
-
-        public string? RecurrenceConfig { get; set; }
-    }
+		public RecurrenceType? RecurrenceType { get; set; }
+		public RecurrenceConfigSlaTask? RecurrenceConfig { get; set; }
+	}
 }

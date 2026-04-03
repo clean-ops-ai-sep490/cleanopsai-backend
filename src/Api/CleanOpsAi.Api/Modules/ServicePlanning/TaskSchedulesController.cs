@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application.Common;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response;
@@ -26,7 +27,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		Summary = "Get task schedules with pagination",
 		Description = "Retrieves a paginated list of task schedules. Each task schedule represents a planned cleaning or service task associated with a specific SOP, including recurrence configuration, assigned worker, and execution metadata.",
 		Tags = new[] { "TaskSchedule" }
-	)]
+		)]
 		[ProducesResponseType(typeof(PaginatedResult<TaskScheduleDto>), StatusCodes.Status200OK)]
 		public async Task<IActionResult> Gets(
 		[FromQuery] PaginationRequest request,
@@ -80,6 +81,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			Tags = new[] { "TaskSchedule" })]
 		[ProducesResponseType(typeof(TaskScheduleDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 		public async Task<IActionResult> Update(Guid id, [FromBody] TaskScheduleUpdateDto dto, CancellationToken ct = default)
 		{
 			var result = await _taskScheduleService.Update(id, dto, ct);
@@ -97,6 +99,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		)]
 		[ProducesResponseType(StatusCodes.Status204NoContent)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 		public async Task<IActionResult> Delete(Guid id)
 		{
 			var deleted = await _taskScheduleService.Delete(id);
@@ -113,6 +116,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			Tags = new[] { "TaskAssignment" })]
 		[ProducesResponseType(StatusCodes.Status202Accepted)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 		public async Task<IActionResult> Generate([FromBody] GenerateTaskAssignmentsRequest request,
 		CancellationToken ct)
 		{
@@ -125,6 +129,38 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			await _taskScheduleService.GenerateTaskAssigmentsAsync(request, ct); 
 
 			return Accepted(new { message = "Đang xử lý." });
+		}
+
+		[Authorize]
+		[HttpPatch("{id}/activate")]
+		[SwaggerOperation(
+			Summary = "Activate task schedule",
+			Description = "Activates a specific task schedule by setting IsActive = true",
+			Tags = new[] { "TaskSchedule" }
+		)]
+		[ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)] 
+		public async Task<IActionResult> Activate(Guid id, CancellationToken ct)
+		{
+			var result = await _taskScheduleService.Activate(id, ct);
+			return Ok(result);
+		}
+
+		[Authorize]
+		[HttpPatch("{id}/deactivate")]
+		[SwaggerOperation(
+			Summary = "Deactivate task schedule",
+			Description = "Deactivates a specific task schedule by setting IsActive = false",
+			Tags = new[] { "TaskSchedule" }
+		)]
+		[ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
+		{
+			var result = await _taskScheduleService.Deactivate(id, ct);
+			return Ok(result);
 		}
 	}
 }

@@ -8,5 +8,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 		public DateTime? FromDate { get; set; }
 		public DateTime? ToDate { get; set; }
 		public TaskAssignmentStatus? Status { get; set; }
+		public bool? IsAdhocTask { get; set; } = false;
 	}
 }

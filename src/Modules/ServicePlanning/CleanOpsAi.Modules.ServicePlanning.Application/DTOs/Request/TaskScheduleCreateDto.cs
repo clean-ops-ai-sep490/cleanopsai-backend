@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos; 
+﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos;
+using System.ComponentModel;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 {
@@ -32,5 +33,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public DateOnly ContractStartDate { get; set; }
 		public DateOnly? ContractEndDate { get; set; }
+
+		[DefaultValue(false)]
+		public bool IsActive { get; set; } = false;
 	}
 }

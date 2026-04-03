@@ -1,12 +1,7 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
 {
@@ -110,5 +105,22 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
 
             return (items, totalCount);
         }
-    }
+
+		public async Task<int> SoftDeleteAsync(Guid id)
+		{
+			var item = _dbContext.Set<Location>()
+                .FirstOrDefault(c => c.Id == id);
+
+			if (item == null)
+			{
+				return 0;
+			}
+
+			item.IsDeleted = true;
+
+			_dbContext.Set<Location>().Update(item);
+
+			return await _dbContext.SaveChangesAsync();
+		}
+	}
 }

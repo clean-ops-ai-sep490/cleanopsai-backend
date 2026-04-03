@@ -26,6 +26,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 		Task<PaginatedResult<TaskAssignmentDto>> Gets(TaskAssignmentFilter filter, PaginationRequest request,
 			CancellationToken ct = default);
 
+		Task<StartTaskDto> CompleteTaskAsync(Guid taskAssignmentId, TaskCompletedDto dto, CancellationToken ct = default);
 		Task<TaskAssignmentDto> CreateAdhocTask(CreateAdhocTaskDto dto);
 
     }

@@ -3,12 +3,7 @@ using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.WorkareaDetails;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -17,13 +12,19 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IWorkAreaDetailRepository _repository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
-        public WorkAreaDetailService(IWorkAreaDetailRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+		public WorkAreaDetailService(
+            IWorkAreaDetailRepository repository, 
+            IUserContext userContext, 
+            IDateTimeProvider dateTimeProvider,
+            IIdGenerator idGenerator)
         {
             _repository = repository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
-        }
+            _idGenerator = idGenerator;
+		}
 
         // get by id with work area name
         public async Task<WorkAreaDetailResponse?> GetByIdAsync(Guid id)
@@ -105,7 +106,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var entity = new WorkAreaDetail
             {
-                Name = request.Name,
+                Id = _idGenerator.Generate(),
+				Name = request.Name,
                 Area = request.Area,
                 TotalArea = request.TotalArea,
                 WorkAreaId = request.WorkAreaId,

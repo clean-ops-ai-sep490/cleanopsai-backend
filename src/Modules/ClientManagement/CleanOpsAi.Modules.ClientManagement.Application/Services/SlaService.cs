@@ -1,15 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Slas;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -20,14 +15,17 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IContractRepository _contractRepository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IIdGenerator _idGenerator;
 
-        public SlaService(ISlaRepository slaRepository, IContractRepository contractRepository, IWorkAreaRepository workAreaRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+
+		public SlaService(ISlaRepository slaRepository, IContractRepository contractRepository, IWorkAreaRepository workAreaRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator)
         {
             _slaRepository = slaRepository;
             _contractRepository = contractRepository;
             _workAreaRepository = workAreaRepository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
+			_idGenerator = idGenerator;
         }
 
         // get by id
@@ -140,15 +138,15 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var workArea = await _workAreaRepository.GetByIdAsync(request.WorkAreaId);
             if (workArea == null)
-                throw new Exception("WorkArea not found");
+				throw new NotFoundException(nameof(WorkArea), request.WorkAreaId);
 
-            var contract = await _contractRepository.GetByIdAsync(request.ContractId);
+			var contract = await _contractRepository.GetByIdAsync(request.ContractId);
             if (contract == null)
-                throw new Exception("Contract not found");
+				throw new NotFoundException(nameof(Contract), request.ContractId);
 
-            var sla = new Sla
+			var sla = new Sla
             {
-                Id = Uuid7.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 Description = request.Description,
                 EnvironmentTypeId = request.EnvironmentTypeId,
@@ -182,9 +180,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var sla = await _slaRepository.GetByIdAsync(id);
 
             if (sla == null)
-                throw new KeyNotFoundException($"Sla with id {id} not found.");
+				throw new NotFoundException(nameof(Sla), id);
 
-            sla.Name = string.IsNullOrWhiteSpace(request.Name) ? sla.Name : request.Name;
+			sla.Name = string.IsNullOrWhiteSpace(request.Name) ? sla.Name : request.Name;
             sla.Description = string.IsNullOrWhiteSpace(request.Description) ? sla.Description : request.Description;
 
             if (request.EnvironmentTypeId.HasValue)
@@ -218,7 +216,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var sla = await _slaRepository.GetByIdAsync(id);
 
             if (sla == null)
-                throw new KeyNotFoundException($"Sla with id {id} not found.");
+                throw new NotFoundException(nameof(Sla), id);
 
             return await _slaRepository.DeleteAsync(id);
         }

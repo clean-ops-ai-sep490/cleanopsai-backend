@@ -7,12 +7,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {

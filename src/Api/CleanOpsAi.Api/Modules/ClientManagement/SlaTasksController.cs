@@ -49,7 +49,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(result);
         }
 
-        [HttpPost]
+		[Authorize]
+		[HttpPost]
         [SwaggerOperation(Summary = "Create SLA Task",
             Description = "recurrenceType have Daily, Weekly, Monthly. And recurrenceConfig have fix with the recurrenceType must read the docs for know json config", 
             Tags = new[] { "SlaTasks" })]
@@ -69,7 +70,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             }
         }
 
-        [HttpPut("{id}")]
+		[Authorize]
+		[HttpPut("{id}")]
         [SwaggerOperation(Summary = "Update SLA Task",
             Description = "recurrenceType have Daily, Weekly, Monthly. And recurrenceConfig have fix with the recurrenceType must read the docs for know json config", 
             Tags = new[] { "SlaTasks" })]
@@ -96,7 +98,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             }
         }
 
-        [HttpDelete("{id}")]
+		[Authorize]
+		[HttpDelete("{id}")]
         [SwaggerOperation(Summary = "Delete SLA Task", Tags = new[] { "SlaTasks" })]
         public async Task<IActionResult> Delete(Guid id)
         {

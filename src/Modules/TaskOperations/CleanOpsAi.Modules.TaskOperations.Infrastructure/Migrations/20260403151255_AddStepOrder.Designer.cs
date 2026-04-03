@@ -3,6 +3,7 @@ using System;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 {
     [DbContext(typeof(TaskOperationsDbContext))]
-    partial class TaskOperationsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403151255_AddStepOrder")]
+    partial class AddStepOrder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -63,14 +66,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("reason");
 
-                    b.Property<DateTime?>("RequestDateFrom")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("request_date_from");
-
-                    b.Property<DateTime?>("RequestDateTo")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("request_date_to");
-
                     b.Property<int>("RequestType")
                         .HasColumnType("integer")
                         .HasColumnName("request_type");
@@ -88,7 +83,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("TaskAssignmentId")
+                    b.Property<Guid>("TaskAssignmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_assignment_id");
 
@@ -739,6 +734,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .WithMany("AdHocRequests")
                         .HasForeignKey("TaskAssignmentId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
                         .HasConstraintName("fk_adhoc_requests_task_assignments_task_assignment_id");
 
                     b.Navigation("TaskAssignment");

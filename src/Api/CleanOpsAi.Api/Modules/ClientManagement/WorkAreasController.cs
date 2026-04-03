@@ -63,7 +63,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return Ok(result);
         }
 
-        [HttpPost]
+		[Authorize]
+		[HttpPost]
         [SwaggerOperation(
             Summary = "Create work area",
             Description = "Create a new work area.",
@@ -78,7 +79,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return BadRequest();
         }
 
-        [HttpPut("{id}")]
+		[Authorize]
+		[HttpPut("{id}")]
         [SwaggerOperation(
             Summary = "Update work area",
             Description = "Update work area name.",
@@ -93,7 +95,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             return NotFound();
         }
 
-        [HttpDelete("{id}")]
+		[Authorize]
+		[HttpDelete("{id}")]
         [SwaggerOperation(
             Summary = "Delete work area",
             Description = "Soft delete work area.",

@@ -1,15 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Locations;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -18,13 +13,16 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly ILocationRepository _locationRepository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
-        public LocationService(ILocationRepository locationRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+		public LocationService(ILocationRepository locationRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider,
+			IIdGenerator idGenerator)
         {
             _locationRepository = locationRepository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
-        }
+            _idGenerator = idGenerator;
+		}
 
         // Get Location by Id
         public async Task<List<LocationResponse>> GetByIdAsync(Guid id)
@@ -47,7 +45,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                     Latitude = location.Latitude,
                     Longitude = location.Longitude,
                     ClientId = location.ClientId,
-                    ClientName = location.Client?.Name
+                    ClientName = location.Client?.Name!
                 }
             };
         }
@@ -68,7 +66,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = l.Latitude,
                 Longitude = l.Longitude,
                 ClientId = l.ClientId,
-                ClientName = l.Client?.Name
+                ClientName = l.Client?.Name!
             }).ToList();
         }
 
@@ -91,7 +89,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = l.Latitude,
                 Longitude = l.Longitude,
                 ClientId = l.ClientId,
-                ClientName = l.Client?.Name
+                ClientName = l.Client?.Name!
             }).ToList();
 
             return new PagedResponse<LocationResponse>
@@ -109,7 +107,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var location = new Location
             {
-                Id = Uuid7.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 Address = request.Address,
                 Street = request.Street,
@@ -136,7 +134,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = location.Latitude,
                 Longitude = location.Longitude,
                 ClientId = location.ClientId,
-                ClientName = location.Client?.Name
+                ClientName = location.Client?.Name!
             };
         }
 
@@ -146,9 +144,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var location = await _locationRepository.GetByIdAsync(id);
 
             if (location == null)
-                throw new KeyNotFoundException($"Location with id {id} not found.");
+				throw new NotFoundException(nameof(Location), id);
 
-            location.Name = string.IsNullOrWhiteSpace(request.Name) ? location.Name : request.Name;
+			location.Name = string.IsNullOrWhiteSpace(request.Name) ? location.Name : request.Name;
             location.Address = string.IsNullOrWhiteSpace(request.Address) ? location.Address : request.Address;
 
             location.Street = request.Street ?? location.Street;
@@ -174,7 +172,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = location.Latitude,
                 Longitude = location.Longitude,
                 ClientId = location.ClientId,
-                ClientName = location.Client?.Name
+                ClientName = location.Client?.Name!
             };
         }
 
@@ -184,7 +182,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var location = await _locationRepository.GetByIdAsync(id);
 
             if (location == null)
-                throw new KeyNotFoundException($"Location with id {id} not found.");
+				throw new NotFoundException(nameof(Location), id);
+
             return await _locationRepository.DeleteAsync(id);
         }
 
@@ -204,7 +203,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = l.Latitude,
                 Longitude = l.Longitude,
                 ClientId = l.ClientId,
-                ClientName = l.Client?.Name
+                ClientName = l.Client?.Name!
             }).ToList();
         }
 
@@ -228,7 +227,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Latitude = l.Latitude,
                 Longitude = l.Longitude,
                 ClientId = l.ClientId,
-                ClientName = l.Client?.Name
+                ClientName = l.Client?.Name!
             }).ToList();
 
             return new PagedResponse<LocationResponse>

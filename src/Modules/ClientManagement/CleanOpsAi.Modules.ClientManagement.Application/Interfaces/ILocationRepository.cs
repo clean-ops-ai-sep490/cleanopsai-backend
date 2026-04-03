@@ -1,9 +1,4 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
 {
@@ -17,5 +12,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
         Task<int> DeleteAsync(Guid id);
         Task<List<Location>> GetByClientIdAsync(Guid clientId);
         Task<(List<Location> Items, int TotalCount)> GetByClientIdPaginationAsync(Guid clientId, int pageNumber, int pageSize);
-    }
+
+        Task<int> SoftDeleteAsync(Guid id);
+	}
 }

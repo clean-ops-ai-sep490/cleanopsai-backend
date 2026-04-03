@@ -1,15 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Workareas;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
-using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 {
@@ -18,13 +13,19 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         private readonly IWorkAreaRepository _repository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
-        public WorkAreaService(IWorkAreaRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+		public WorkAreaService(
+            IWorkAreaRepository repository, 
+            IUserContext userContext, 
+            IDateTimeProvider dateTimeProvider, 
+            IIdGenerator idGenerator)
         {
             _repository = repository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
-        }
+            _idGenerator = idGenerator;
+		}
 
         // get by id
         public async Task<WorkAreaResponse?> GetByIdAsync(Guid id)
@@ -119,7 +120,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
         {
             var workArea = new WorkArea
             {
-                Id = Uuid7.NewGuid(),
+                Id = _idGenerator.Generate(),
                 Name = request.Name,
                 ZoneId = request.ZoneId,
                 Created = _dateTimeProvider.UtcNow,
@@ -143,9 +144,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var workArea = await _repository.GetByIdAsync(id);
 
             if (workArea == null)
-                throw new KeyNotFoundException($"WorkArea with id {id} not found.");
+				throw new NotFoundException(nameof(WorkArea), id);
 
-            workArea.Name = string.IsNullOrWhiteSpace(request.Name) ? workArea.Name : request.Name;
+			workArea.Name = string.IsNullOrWhiteSpace(request.Name) ? workArea.Name : request.Name;
 
             workArea.LastModified = _dateTimeProvider.UtcNow;
             workArea.LastModifiedBy = _userContext.UserId.ToString();
@@ -166,7 +167,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             var workArea = await _repository.GetByIdAsync(id);
 
             if (workArea == null)
-                throw new KeyNotFoundException($"WorkArea with id {id} not found.");
+                throw new NotFoundException(nameof(WorkArea), id);
             return await _repository.DeleteAsync(id);
         }
     }
