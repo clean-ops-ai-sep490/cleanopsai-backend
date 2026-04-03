@@ -79,6 +79,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("client_id");
 
+                    b.Property<DateTime>("ContractEndDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("contract_end_date");
+
+                    b.Property<DateTime>("ContractStartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("contract_start_date");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");

@@ -9,7 +9,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager, Admin")]
     public class ZonesController : ControllerBase
     {
         private readonly IZoneService _zoneService;

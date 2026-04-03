@@ -128,5 +128,21 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			if (!result) return NotFound();
 			return Ok();
 		}
-	}
+
+        [HttpPost("adhoc")]
+        [SwaggerOperation(
+			Summary = "Create Adhoc Task",
+			Description = "Creates a manual (adhoc) task without schedule and SOP steps. " +
+						  "This task is assigned directly to a worker and can be started immediately.",
+			Tags = new[] { "TaskAssignment" }
+		)]
+        [ProducesResponseType(typeof(TaskAssignmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CreateAdhocTask(
+    [FromBody] CreateAdhocTaskDto request)
+        {
+            var result = await _taskAssignmentService.CreateAdhocTask(request);
+            return Ok(result);
+        }
+    }
 }

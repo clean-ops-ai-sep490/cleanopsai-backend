@@ -10,7 +10,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager, Admin")]
     public class ClientsController : ControllerBase
     {
         private readonly IClientService _clientService;

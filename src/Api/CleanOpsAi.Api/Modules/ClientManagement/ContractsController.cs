@@ -11,7 +11,7 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Manager")]
+    [Authorize(Roles = "Manager, Admin")]
     public class ContractsController : ControllerBase
     {
         private readonly IContractService _service;
@@ -67,6 +67,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             {
                 Name = request.Name,
                 ClientId = request.ClientId,
+                ContractStartDate = request.ContractStartDate,
+                ContractEndDate = request.ContractEndDate,
                 FileStream = request.File?.OpenReadStream(),
                 FileName = request.File?.FileName
             };
@@ -93,6 +95,8 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
             var command = new ContractUpdateRequest
             {
                 Name = request.Name,
+                ContractStartDate = request.ContractStartDate,
+                ContractEndDate = request.ContractEndDate,
                 FileStream = request.File?.OpenReadStream(),
                 FileName = request.File?.FileName
             };

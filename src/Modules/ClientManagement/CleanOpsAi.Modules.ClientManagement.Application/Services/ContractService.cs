@@ -117,6 +117,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 Id = _idGenerator.Generate(),
                 Name = request.Name,
                 ClientId = request.ClientId,
+                ContractStartDate = request.ContractStartDate,
+                ContractEndDate = request.ContractEndDate,
                 UrlFile = fileUrl,
                 Created = _dateTimeProvider.UtcNow,
                 CreatedBy = _userContext.UserId.ToString(),
@@ -129,6 +131,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             {
                 Id = contract.Id,
                 Name = contract.Name,
+                ContractStartDate = contract.ContractStartDate,
+                ContractEndDate = contract.ContractEndDate,
                 UrlFile = contract.UrlFile,
                 ClientId = contract.ClientId
             };
@@ -146,6 +150,16 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
 			if (!string.IsNullOrWhiteSpace(request.Name))
             {
                 contract.Name = request.Name;
+            }
+
+            if(request.ContractStartDate != default)
+            {
+                contract.ContractStartDate = request.ContractStartDate;
+            }
+
+            if (request.ContractEndDate != default)
+            {
+                contract.ContractEndDate = request.ContractEndDate;
             }
 
             if (request.FileStream != null)
@@ -168,6 +182,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
             {
                 Id = contract.Id,
                 Name = contract.Name,
+                ContractStartDate = contract.ContractStartDate,
+                ContractEndDate = contract.ContractEndDate,
                 UrlFile = contract.UrlFile,
                 ClientId = contract.ClientId
             };
@@ -196,6 +212,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 UrlFile = c.UrlFile,
                 ClientId = c.ClientId,
                 ClientName = c.Client?.Name,
+                ContractStartDate = c.ContractStartDate,
+                ContractEndDate = c.ContractEndDate,
                 Created = c.Created,
                 LastModified = c.LastModified
             }).ToList();
@@ -217,6 +235,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Services
                 UrlFile = c.UrlFile,
                 ClientId = c.ClientId,
                 ClientName = c.Client?.Name,
+                ContractStartDate = c.ContractStartDate,
+                ContractEndDate = c.ContractEndDate,
                 Created = c.Created,
                 LastModified = c.LastModified
             }).ToList();

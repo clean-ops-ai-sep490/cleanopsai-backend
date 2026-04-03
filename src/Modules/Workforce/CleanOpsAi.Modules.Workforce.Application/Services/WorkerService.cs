@@ -52,27 +52,24 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         }
 
         // get by user id
-        public async Task<List<WorkerResponse>> GetByUserIdAsync(Guid userId)
+        public async Task<WorkerResponse> GetByUserIdAsync(Guid userId)
         {
             var worker = await _workerRepository.GetByUserIdAsync(userId);
 
             if (worker == null)
                 return null;
 
-            return new List<WorkerResponse>
+            return new WorkerResponse
             {
-                new WorkerResponse
-                {
-                    Id = worker.Id,
-                    UserId = worker.UserId,
-                    FullName = worker.FullName,
-                    DisplayAddress = worker.DisplayAddress,
-                    Latitude = worker.Latitude,
-                    Longitude = worker.Longitude,
-                    AvatarUrl = worker.AvatarUrl,
-                    TotalSkills = worker.WorkerSkills.Count,
-                    TotalCertifications = worker.WorkerCertifications.Count
-                }
+                Id = worker.Id,
+                UserId = worker.UserId,
+                FullName = worker.FullName,
+                DisplayAddress = worker.DisplayAddress,
+                Latitude = worker.Latitude,
+                Longitude = worker.Longitude,
+                AvatarUrl = worker.AvatarUrl,
+                TotalSkills = worker.WorkerSkills.Count,
+                TotalCertifications = worker.WorkerCertifications.Count
             };
         }
 

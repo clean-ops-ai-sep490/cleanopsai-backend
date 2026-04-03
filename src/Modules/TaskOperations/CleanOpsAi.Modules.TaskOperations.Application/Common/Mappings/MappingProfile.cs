@@ -43,6 +43,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
                 .ForMember(dest => dest.Transcription, opt => opt.Ignore())
                 .ForSourceMember(src => src.AudioStream, opt => opt.DoNotValidate())
                 .ForSourceMember(src => src.AudioFileName, opt => opt.DoNotValidate());
+
+            // UpdateEmergencyLeaveRequestDto mappings
+            CreateMap<AdHocRequest, AdHocRequestDto>();
+            CreateMap<CreateAdHocRequestDto, AdHocRequest>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestedByWorkerId, opt => opt.Ignore())
+                .ForMember(dest => dest.Created, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.LastModified, opt => opt.Ignore())
+                .ForMember(dest => dest.LastModifiedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.ReviewedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovedAt, opt => opt.Ignore());
+            CreateMap<UpdateAdHocRequestDto, AdHocRequest>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
         }
     }
 }
