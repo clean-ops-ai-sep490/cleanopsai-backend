@@ -11,10 +11,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Domain.Entities
 		public string UrlFile { get; set; } = null!;
 
 		public Guid ClientId { get; set; }
-
+		
 		public Client Client { get; set; } = null!;
 
-		public virtual ICollection<ContractShift> ContractShifts { get; set; } = new List<ContractShift>();
+		public DateTime ContractStartDate { get; set; }
+
+		public DateTime ContractEndDate { get; set; }
+
+        public virtual ICollection<ContractShift> ContractShifts { get; set; } = new List<ContractShift>();
 
 		public virtual ICollection<Sla> Slas { get; set; } = new List<Sla>();
 	}

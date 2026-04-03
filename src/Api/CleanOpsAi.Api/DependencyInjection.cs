@@ -1,9 +1,11 @@
 ﻿using CleanOpsAi.Api.Common.Exceptions;
 using CleanOpsAi.Api.Middlewares; 
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
+using CleanOpsAi.Modules.ClientManagement.Infrastructure.Consumers;
 using CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
+using CleanOpsAi.Modules.UserAccess.Infrastructure.Consumers;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Consumers;
 using Microsoft.OpenApi.Models;
 using System.Text.Json;
@@ -62,6 +64,9 @@ public static class DependencyInjection
 			typeof(SendNotificationConsumer).Assembly,
 			typeof(GetSopStepsByScheduleConsumer).Assembly,
 			typeof(GetWorkersByIdsConsumer).Assembly,
+            typeof(GetSupervisorByWorkerConsumer).Assembly,
+			typeof(GetWorkAreaByIdConsumer).Assembly,
+            typeof(GetSupervisorNameByUserIdConsumer).Assembly,
 			typeof(CheckSingleWorkerCompetencyConsumer).Assembly,
 			typeof(FindQualifiedWorkersConsumer).Assembly,
 			typeof(GetSopRequirementsByScheduleConsumer).Assembly,
