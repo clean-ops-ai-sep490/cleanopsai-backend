@@ -114,5 +114,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 
 			return await query.ToPaginatedResultAsync(request, ct);
 		}
-	}
+
+        public async Task<TaskAssignment?> GetOverlappingTask(
+			Guid assigneeId,
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default)
+        {
+            return await _context.TaskAssignments
+                .Where(t =>
+                    t.AssigneeId == assigneeId &&
+                    !t.IsDeleted &&
+                    t.Status != TaskAssignmentStatus.Completed &&
+                    t.ScheduledStartAt < end &&
+                    t.ScheduledEndAt > start
+                )
+                .OrderBy(t => t.ScheduledStartAt)
+                .FirstOrDefaultAsync(ct);
+        }
+    }
 }

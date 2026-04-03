@@ -26,7 +26,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
 		private readonly IRequestClient<SopStepsRequested> _sopStepsClient;
-		private readonly IUserContext _userContext;
+        private readonly IRequestClient<GetWorkersByIdsRequest> _workerClient;
+        private readonly IUserContext _userContext;
         //private readonly IPublishEndpoint _publishEndpoint;
 
         public TaskAssignmentService(ITaskAssignmentRepository taskAssignmentRepository,
@@ -36,7 +37,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			IDateTimeProvider dateTimeProvider,
 			IIdGenerator idGenerator,
 			IRequestClient<SopStepsRequested> sopClient,
-			IUserContext userContext)
+			IRequestClient<GetWorkersByIdsRequest> workerClient,
+            IUserContext userContext)
 		{
 			_taskAssignmentRepository = taskAssignmentRepository;
 			_taskStepExecutionRepository = taskStepExecutionRepository;
@@ -45,7 +47,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_dateTimeProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
 			_sopStepsClient = sopClient;
-			_userContext = userContext;
+			_workerClient = workerClient;
+            _userContext = userContext;
         }
 
 
@@ -281,29 +284,69 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				Steps = new List<TaskStepExecutionDto>() 
 			};
 		}
-	
+
         // create adhoc task without schedule, step
         public async Task<TaskAssignmentDto> CreateAdhocTask(CreateAdhocTaskDto dto)
         {
+            var now = _dateTimeProvider.UtcNow;
+
+            if (dto.StartAt < now)
+                throw new BadRequestException("Không thể tạo task trong quá khứ");
+
+            // Lấy tên assignee qua RabbitMQ
+            var workerResponse = await _workerClient.GetResponse<GetWorkersByIdsResponse>(
+                new GetWorkersByIdsRequest { WorkerIds = new List<Guid> { dto.AssigneeId } });
+
+            var worker = workerResponse.Message.Workers.FirstOrDefault()
+                ?? throw new BadRequestException("Không tìm thấy thông tin worker");
+
+            var start = dto.StartAt;
+            var end = dto.StartAt.AddMinutes(dto.DurationMinutes);
+
+            //  tìm task bị overlap
+            var overlappingTask = await _taskAssignmentRepository
+                .GetOverlappingTask(dto.AssigneeId, start, end);
+
+            //  nếu có → pause
+            if (overlappingTask != null)
+            {
+                if (overlappingTask.Status == TaskAssignmentStatus.InProgress ||
+                    overlappingTask.Status == TaskAssignmentStatus.NotStarted)
+                {
+                    overlappingTask.Status = TaskAssignmentStatus.Block;
+                    overlappingTask.LastModified = now;
+                    overlappingTask.LastModifiedBy = _userContext.UserId.ToString();
+                }
+                else
+                {
+                    throw new BadRequestException("Task không thể bị gián đoạn");
+                }
+            }
+
+            //  tạo adhoc task
             var task = new TaskAssignment
             {
                 Id = _idGenerator.Generate(),
 
-                // fake schedule
                 TaskScheduleId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
 
                 AssigneeId = dto.AssigneeId,
                 OriginalAssigneeId = dto.AssigneeId,
-                WorkAreaId = dto.WorkAreaId,
 
-                ScheduledStartAt = dto.StartAt,
-                ScheduledEndAt = dto.StartAt.AddMinutes(dto.DurationMinutes),
+                AssigneeName = worker.FullName,
+                OriginalAssigneeName = worker.FullName,
+
+                WorkAreaId = dto.WorkAreaId,
+                DisplayLocation = dto.DisplayLocation,
+
+                ScheduledStartAt = start,
+                ScheduledEndAt = end,
 
                 Status = TaskAssignmentStatus.NotStarted,
                 IsAdhocTask = true,
                 NameAdhocTask = dto.Name,
 
-                Created = _dateTimeProvider.UtcNow,
+                Created = now,
                 CreatedBy = _userContext.UserId.ToString()
             };
 

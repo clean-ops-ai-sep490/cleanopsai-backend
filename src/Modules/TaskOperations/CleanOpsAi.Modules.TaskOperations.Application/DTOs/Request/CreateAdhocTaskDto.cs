@@ -10,6 +10,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
     {
         public Guid AssigneeId { get; set; }
         public Guid WorkAreaId { get; set; }
+        public string DisplayLocation { get; set; } = default!;
         public DateTime StartAt { get; set; }
         public int DurationMinutes { get; set; }
         public string Name { get; set; }

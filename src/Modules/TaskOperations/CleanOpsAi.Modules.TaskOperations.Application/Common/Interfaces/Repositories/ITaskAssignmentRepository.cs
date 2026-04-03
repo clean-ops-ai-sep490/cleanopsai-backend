@@ -34,5 +34,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 
 		Task<PaginatedResult<TaskAssignment>> Gets(TaskAssignmentFilter filter, PaginationRequest request,
 			CancellationToken ct = default);
-	}
+
+        Task<TaskAssignment?> GetOverlappingTask(
+			Guid assigneeId,
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default);
+    }
 }
