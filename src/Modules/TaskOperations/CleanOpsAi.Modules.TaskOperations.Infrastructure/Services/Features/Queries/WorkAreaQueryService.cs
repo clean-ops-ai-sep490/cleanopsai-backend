@@ -1,14 +1,9 @@
 ﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
-using MassTransit;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MassTransit; 
 
-namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
+namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Queries
 {
     public class WorkAreaQueryService : IWorkAreaQueryService
     {

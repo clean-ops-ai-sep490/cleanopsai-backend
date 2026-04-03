@@ -1,10 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
-using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response; 
-﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging; 
-using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services; 
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using MassTransit;
 
-namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
+namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Queries
 {
 	public class WorkerQueryService : IWorkerQueryService
 	{ 
