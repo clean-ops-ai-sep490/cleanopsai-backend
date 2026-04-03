@@ -45,6 +45,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			DateTime weekEnd,
 			DateOnly? date,
 			TimeOnly? preferredStartTime,
+			List<Guid>? qualifiedWorkerIds,
 			PaginationRequest paginationRequest,
 			CancellationToken ct = default)
 		{
@@ -52,7 +53,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 				.Where(t =>
 					t.WorkAreaId == workAreaId &&
 					t.AssigneeId != excludeAssigneeId &&
-					t.Status != TaskAssignmentStatus.NotStarted &&
+					t.Status == TaskAssignmentStatus.NotStarted &&
 					t.ScheduledStartAt < scheduledEndAt &&
 					t.ScheduledEndAt > scheduledStartAt &&
 					t.ScheduledStartAt >= weekStart &&
@@ -61,6 +62,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 						s.Status == SwapRequestStatus.PendingTargetApproval ||
 						s.Status == SwapRequestStatus.PendingManagerApproval)
 				);
+
+			if (qualifiedWorkerIds != null && qualifiedWorkerIds.Any())
+				query = query.Where(t => qualifiedWorkerIds.Contains(t.AssigneeId));
 
 			if (date.HasValue)
 				query = query.Where(t =>

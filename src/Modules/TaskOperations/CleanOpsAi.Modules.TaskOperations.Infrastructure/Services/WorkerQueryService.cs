@@ -1,36 +1,35 @@
 ﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
-using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
-using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response; 
+﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging; 
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services; 
 using MassTransit;
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
 {
 	public class WorkerQueryService : IWorkerQueryService
-	{
-		private readonly IRequestClient<GetWorkersByIdsRequest> _client;
-        private readonly IRequestClient<GetWorkerIdByUserIdRequest> _workerIdClient;
-        public WorkerQueryService(IRequestClient<GetWorkersByIdsRequest> client, IRequestClient<GetWorkerIdByUserIdRequest> workerIdClient)
+	{ 
+		private readonly IIntegrationBus _bus;
+        public WorkerQueryService(IIntegrationBus bus)
 		{
-			_client = client;
-            _workerIdClient = workerIdClient;
-        }
-
+			_bus = bus; 
+        } 
 		public async Task<Dictionary<Guid, string>> GetUserNames(List<Guid> workerIds)
 		{
-			var response = await _client.GetResponse<GetWorkersByIdsResponse>(new
+			var response = await _bus.RequestAsync<GetWorkersByIdsRequest, GetWorkersByIdsResponse>(new GetWorkersByIdsRequest
 			{
 				WorkerIds = workerIds
 			});
-			return response.Message.Workers.ToDictionary(w => w.Id, w => w.FullName);
+
+			return response.Workers.ToDictionary(w => w.Id, w => w.FullName);
 		}
 
         public async Task<Guid?> GetWorkerIdByUserIdAsync(Guid userId, CancellationToken ct = default)
         {
-            var response = await _workerIdClient.GetResponse<GetWorkerIdByUserIdResponse>(
-                new GetWorkerIdByUserIdRequest { UserId = userId }, ct);
+			var response = await _bus.RequestAsync<GetWorkerIdByUserIdRequest, GetWorkerIdByUserIdResponse>(
+				new GetWorkerIdByUserIdRequest { UserId = userId });
 
-            return response.Message.Found ? response.Message.WorkerId : null;
-        }
+			return response.Found ? response.WorkerId : null;
+		}
 
     }
 }

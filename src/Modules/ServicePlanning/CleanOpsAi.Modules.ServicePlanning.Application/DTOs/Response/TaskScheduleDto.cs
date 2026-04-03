@@ -21,6 +21,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 
 		public Guid? AssigneeId { get; set; }
 
+		public string? AssigneeName { get; set; }
+
+		public string? DisplayLocation { get; set; }
+
 		public int DurationMinutes { get; set; }
 
 		public JsonElement Metadata { get; set; }

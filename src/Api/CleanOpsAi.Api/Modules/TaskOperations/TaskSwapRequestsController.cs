@@ -2,6 +2,8 @@
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -25,9 +27,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[HttpGet("{taskAssignmentId}/swap-candidates")]
 		[SwaggerOperation(
 			Summary = "Get Swap Candidates",
-			Description = "Retrieves a paginated list of swap candidates for a specific task assignment within the current week. " +
-						  "Optionally filter by date and preferred start time to narrow down results. " +
-						  "Candidates are workers in the same work area with overlapping schedules and no pending swap requests.",
+			Description = "Finds eligible swap partners within the current week. Candidates must: 1. Be in the same work area. 2. Meet requirements for your task. 3. Have no schedule conflicts. Supports date/time filtering.",
 			Tags = new[] { "TaskSwapRequest" }
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<SwapCandidateDto>), StatusCodes.Status200OK)]
@@ -42,9 +42,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 				Date = date,
 				PreferredStartTime = preferredStartTime
 			};
-			var result = await _service.GetSwapCandidatesAsync(dto, paginationRequest, ct);
-			if (!result.Succeeded)
-				return BadRequest(result.Errors);
+			var result = await _service.GetSwapCandidatesAsync(dto, paginationRequest, ct); 
 
 			return Ok(result.Value);
 		}
@@ -52,18 +50,50 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 
 		//[Authorize]
 		[HttpGet]
+		[Authorize(Roles = "Supervisor")]
 		[SwaggerOperation(
-			Summary = "Get Task Swap Requests List",
-			Description = "Retrieves a list of task swap requests with optional filtering, sorting, and pagination. " +
-				  "Supports filtering by status, requester, target worker, and date range. " +
-				  "The result can be scoped based on the current user's role (e.g., requester, target worker, or manager).",
+			Summary = "Get Swap Requests for Supervisor",
+			Description = "Retrieves swap requests assigned to the supervisor. " +
+						  "Supports filtering by perspective: requests received from workers or handled by the supervisor.",
 			Tags = new[] { "TaskSwapRequest" }
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<TaskSwapRequestDto>), StatusCodes.Status200OK)]
-		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> Gets([FromQuery] GetSwapRequestsDto dto,[FromQuery] PaginationRequest paginationRequest, CancellationToken ct = default)
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		[ProducesResponseType(StatusCodes.Status403Forbidden)]
+		public async Task<IActionResult> Gets(
+			[FromQuery] GetSwapRequestsDto dto,
+			[FromQuery] PaginationRequest paginationRequest, 
+			CancellationToken ct = default)
 		{
 			var result = await _service.GetSwapRequestsAsync(dto, paginationRequest, ct);
+			return Ok(result);
+		}
+
+		[HttpGet("me")]
+		[Authorize(Roles = "Worker")]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		[ProducesResponseType(StatusCodes.Status403Forbidden)]
+		[SwaggerOperation(
+			Summary = "Get My Swap Requests",
+			Description = "Retrieves swap requests created by or assigned to the current worker.",
+			Tags = new[] { "TaskSwapRequest" }
+		)]
+		[ProducesResponseType(typeof(PaginatedResult<TaskSwapRequestDto>), StatusCodes.Status200OK)]
+		public async Task<IActionResult> GetMine(
+			[FromQuery] Guid workerId,
+			[FromQuery] SwapPerspective perspective = SwapPerspective.All,
+			[FromQuery] PaginationRequest paginationRequest = default,
+			[FromQuery] SwapRequestStatus? status = null,
+			CancellationToken ct = default)
+		{
+			var dto = new GetMySwapRequestsDto
+			{
+				WorkerId = workerId,
+				Perspective = perspective,
+				Status = status
+			};
+
+			var result = await _service.GetMySwapRequestsAsync(dto, status, paginationRequest, ct);
 			return Ok(result);
 		}
 
@@ -87,8 +117,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		[HttpPost]
 		[SwaggerOperation(
 			Summary = "Create Task Swap Request",
-			Description = "Creates a new task swap request. The requester initiates a swap with another worker (target worker). " +
-				  "The request will be pending until the target worker responds.",
+			Description = "Initiates a swap. Validates: 1. Dual-competency (both must be qualified for each other's tasks). 2. Post-swap schedule conflicts. 3. Existing pending requests. Request expires in 2h.",
 			Tags = new[] { "TaskSwapRequest" }
 		)]
 		[ProducesResponseType(typeof(TaskSwapRequestDto), StatusCodes.Status201Created)]

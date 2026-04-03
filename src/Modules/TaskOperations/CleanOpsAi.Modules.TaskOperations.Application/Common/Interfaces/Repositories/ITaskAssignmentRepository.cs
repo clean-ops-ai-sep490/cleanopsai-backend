@@ -20,7 +20,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 			DateTime weekStart,
 			DateTime weekEnd,
 			DateOnly? date,
-			TimeOnly? preferredStartTime, 
+			TimeOnly? preferredStartTime,
+			List<Guid>? qualifiedWorkerIds,
 			PaginationRequest paginationRequest,
 			CancellationToken ct = default);
 

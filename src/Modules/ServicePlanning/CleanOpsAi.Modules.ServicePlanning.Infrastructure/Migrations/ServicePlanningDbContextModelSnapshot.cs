@@ -293,6 +293,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_id");
 
+                    b.Property<string>("AssigneeName")
+                        .HasColumnType("text")
+                        .HasColumnName("assignee_name");
+
                     b.Property<DateOnly?>("ContractEndDate")
                         .HasColumnType("date")
                         .HasColumnName("contract_end_date");
@@ -314,6 +318,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
+
+                    b.Property<string>("DisplayLocation")
+                        .HasColumnType("text")
+                        .HasColumnName("display_location");
 
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("integer")

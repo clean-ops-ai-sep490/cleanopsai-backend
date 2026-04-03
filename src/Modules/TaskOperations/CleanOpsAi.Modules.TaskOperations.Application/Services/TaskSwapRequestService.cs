@@ -22,11 +22,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IIdGenerator _idGenerator;
 		private readonly IUserContext _userContext; 
 		private readonly IWorkerQueryService _workerQueryService;
+		private readonly ISopRequirementsQueryService _sopRequirementsQueryService;
+		private readonly IWorkerCertificationSkillQueryService _workerCertificationSkillQueryService;
+		private readonly ISupervisorQueryService _supervisorQueryService;
 
-		public TaskSwapRequestService(ITaskSwapRequestRepository taskSwapRequestRepository,
+		public TaskSwapRequestService(
+			ITaskSwapRequestRepository taskSwapRequestRepository,
 			ITaskAssignmentRepository taskAssignmentRepository,
-			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator,
-			IUserContext userContext, IWorkerQueryService workerQueryService)
+			IMapper mapper, 
+			IDateTimeProvider dateTimeProvider, 
+			IIdGenerator idGenerator,
+			IUserContext userContext, 
+			IWorkerQueryService workerQueryService, 
+			ISopRequirementsQueryService sopRequirementsQueryService, 
+			IWorkerCertificationSkillQueryService workerCertificationSkillQueryService,
+			ISupervisorQueryService supervisorQueryService)
 		{
 			_taskSwapRequestRepository = taskSwapRequestRepository;
 			_taskAssignmentRepository = taskAssignmentRepository;
@@ -35,6 +45,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_idGenerator = idGenerator;
 			_userContext = userContext;
 			_workerQueryService = workerQueryService;
+			_sopRequirementsQueryService = sopRequirementsQueryService;
+			_workerCertificationSkillQueryService = workerCertificationSkillQueryService;
+			_supervisorQueryService = supervisorQueryService;
 		}
 
 		public async Task<SwapRequestDto> GetById(Guid id, CancellationToken ct = default)
@@ -72,9 +85,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				throw new NotFoundException(nameof(TaskAssignment), dto.TargetTaskAssignmentId);
 
 
-			ValidateTargetTask(targetTask, dto.TargetWorkerId); 
+			ValidateTargetTask(targetTask, dto.TargetWorkerId);  
+			ValidateSwapRules(requesterTask, targetTask);
 
-			ValidateSwapRules(requesterTask, targetTask); 
+			await ValidateWorkerCompetencyAsync(requesterTask, targetTask, dto.RequesterId, dto.TargetWorkerId, ct);
 
 			var hasPending = await _taskSwapRequestRepository.HasPendingSwapAsync(dto.TaskAssignmentId);
 			if (hasPending)
@@ -137,6 +151,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (requesterTask == null)
 				throw new NotFoundException(nameof(TaskAssignment), dto.TaskAssignmentId);
 
+			var requirements = await _sopRequirementsQueryService.GetSopRequirementsByScheduleId(requesterTask.TaskScheduleId, ct);
+
+			List<Guid>? qualifiedWorkerIds = null;
+			if (requirements.Found &&
+				(requirements.RequiredSkillIds.Any() || requirements.RequiredCertificationIds.Any()))
+			{
+				qualifiedWorkerIds = await _workerCertificationSkillQueryService
+					.GetQualifiedWorkersAsync(
+						requirements.RequiredSkillIds,
+						requirements.RequiredCertificationIds,
+						ct);
+			}
+
 
 			var today = _dateTimeProvider.UtcNow;
 			var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
@@ -151,12 +178,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				weekEnd: endOfWeek,
 				date: dto.Date,
 				preferredStartTime: dto.PreferredStartTime,
+				qualifiedWorkerIds: qualifiedWorkerIds,
 				paginationRequest: paginationRequest,
 				ct: ct);
 
 			return Result<PaginatedResult<SwapCandidateDto>>.Success(
 				_mapper.Map<PaginatedResult<SwapCandidateDto>>(candidates)
-	);
+			);
 		}
 
 		public async Task<Result> RespondSwapRequestAsync(RespondSwapRequestDto dto, CancellationToken ct = default)
@@ -188,6 +216,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			}
 
 			swapRequest.Status = SwapRequestStatus.PendingManagerApproval;
+			var workAreaId = swapRequest.TaskAssignment.WorkAreaId;
+			var supervisorResp = await _supervisorQueryService.GetSupervisorWorkAreasAsync(
+				workerId: swapRequest.RequesterId,
+				workerIdTarget: swapRequest.TargetWorkerId,
+				workAreaId: workAreaId,
+				ct: ct);
+
+			if(!supervisorResp.Found || supervisorResp.SupervisorUserId == null)
+				throw new BadRequestException("No common supervisor found for approval in same area with worker and target worker");
+			
+			swapRequest.ReviewedByUserId = supervisorResp.SupervisorUserId.Value;
+
 			await _taskSwapRequestRepository.SaveChangesAsync(ct);
 
 			// Notify manager
@@ -239,8 +279,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (task.Status != TaskAssignmentStatus.NotStarted)
 				throw new BadRequestException("Task was started or completed");
 
-			if (task.ScheduledStartAt - DateTime.UtcNow < TimeSpan.FromHours(12))
-				throw new BadRequestException("Task must be at least 12 hours away");
+			if (task.ScheduledStartAt - DateTime.UtcNow < TimeSpan.FromHours(2))
+				throw new BadRequestException("Task must be at least 2 hours away");
 		}
 
 		private void ValidateTargetTask(TaskAssignment task, Guid targetWorkerId)
@@ -267,7 +307,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task<PaginatedResult<SwapRequestDto>> GetSwapRequestsAsync(GetSwapRequestsDto dto, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
-			var result = await _taskSwapRequestRepository.GetSwapRequestsPaging(dto.Status, paginationRequest, ct);
+			if(_userContext.Role != "Supervisor")
+			{
+				throw new ForbiddenException("Only supervisors can view swap requests list");
+			}
+			var result = await _taskSwapRequestRepository.GetSwapRequestsPaging(_userContext.UserId , dto.Status, paginationRequest, ct);
 
 			return new PaginatedResult<SwapRequestDto>(
 				result.PageNumber,
@@ -275,5 +319,67 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				result.TotalElements,
 				_mapper.Map<List<SwapRequestDto>>(result.Content));
 		}
+
+		private async Task ValidateWorkerCompetencyAsync(
+			TaskAssignment requesterTask,
+			TaskAssignment targetTask,
+			Guid requesterId,
+			Guid targetWorkerId,
+			CancellationToken ct)
+		{
+			// Take requirements song song
+			var taskA = _sopRequirementsQueryService.GetSopRequirementsByScheduleId(requesterTask.TaskScheduleId, ct);
+
+			var taskB = _sopRequirementsQueryService
+				.GetSopRequirementsByScheduleId(targetTask.TaskScheduleId, ct); 
+
+			await Task.WhenAll(taskA, taskB);
+
+			var reqA = taskA.Result;
+			var reqB = taskB.Result;
+
+			// B phải đủ điều kiện làm task A
+			if (reqA.Found && (reqA.RequiredSkillIds.Any() || reqA.RequiredCertificationIds.Any()))
+			{
+				var bQualified = await _workerCertificationSkillQueryService.IsWorkerQualifiedAsync(
+					targetWorkerId,
+					reqA.RequiredSkillIds,
+					reqA.RequiredCertificationIds,
+					ct);
+
+				if (!bQualified)
+					throw new BadRequestException("Worker B does not meet requirements for Worker A's task");
+			}
+
+			// A phải đủ điều kiện làm task B
+			if (reqB.Found && (reqB.RequiredSkillIds.Any() || reqB.RequiredCertificationIds.Any()))
+			{
+				var aQualified = await _workerCertificationSkillQueryService.IsWorkerQualifiedAsync(
+					requesterId,
+					reqB.RequiredSkillIds,
+					reqB.RequiredCertificationIds,
+					ct);
+
+				if (!aQualified)
+					throw new BadRequestException("Worker A does not meet requirements for Worker B's task");
+			}
+		}
+
+		//my swap requests: cả sent và received
+		public async Task<PaginatedResult<SwapRequestDto>> GetMySwapRequestsAsync(GetMySwapRequestsDto dto, SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
+		{
+			var result = await _taskSwapRequestRepository.GetMySwapRequestsPaging(
+			dto.WorkerId,
+			dto.Perspective,
+			dto.Status,
+			paginationRequest,
+			ct);
+
+			return new PaginatedResult<SwapRequestDto>(
+			result.PageNumber,
+			result.PageSize,
+			result.TotalElements,
+			_mapper.Map<List<SwapRequestDto>>(result.Content));
+		} 
 	}
 }

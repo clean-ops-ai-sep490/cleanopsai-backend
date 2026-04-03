@@ -26,8 +26,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.Property(x => x.WorkAreaId);
 			builder.Property(x => x.ScheduledEndAt);
 
+
+			builder.Property(x => x.OriginalAssigneeName)
+				.HasMaxLength(255);
+			builder.Property(x => x.AssigneeName)
+				.HasMaxLength(255);
+
 			builder.Property(x => x.NameAdhocTask)
-				.HasMaxLength(500);
+				.HasMaxLength(255);
 
 			builder.Property(x => x.DisplayLocation)
 				.HasMaxLength(500);

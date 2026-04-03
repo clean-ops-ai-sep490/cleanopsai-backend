@@ -5,7 +5,9 @@ namespace CleanOpsAi.Modules.QualityControl.Domain.Entities
 {
 	public class FcmToken : BaseAuditableEntity
 	{
-		public Guid UserId { get; set; } 
+		public Guid UserId { get; set; }
+
+		public Guid? WorkerId { get; set; }
 
 		public string Token { get; set; } = null!;
 

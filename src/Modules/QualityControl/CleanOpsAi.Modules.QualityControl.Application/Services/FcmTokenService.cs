@@ -35,6 +35,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 				existing.Token = dto.Token;
 				existing.Platform = dto.Platform;
 				existing.DeviceName = dto.DeviceName;
+				existing.WorkerId = dto.WorkerId;
 				existing.IsActive = true;
 				existing.LastUsed = _dateTimeProvider.UtcNow;
 
@@ -48,7 +49,10 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 				duplicateToken.IsActive = false;
 			}
 
-			var fcmToken = _mapper.Map<FcmToken>(dto);
+			var fcmToken = _mapper.Map<FcmToken>(dto); 
+			fcmToken.Created = _dateTimeProvider.UtcNow;
+			fcmToken.CreatedBy = _userContext.UserId.ToString();
+
 			await _fcmTokenRepository.InsertAsync(fcmToken, cancellationToken);
 			await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
 

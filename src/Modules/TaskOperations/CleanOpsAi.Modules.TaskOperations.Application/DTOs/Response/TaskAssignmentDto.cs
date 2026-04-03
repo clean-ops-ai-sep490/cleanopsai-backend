@@ -21,5 +21,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 		public string? NameAdhocTask { get; set; }
 
 		public string? DisplayLocation { get; set; }
+
+		public string AssigneeName { get; set; } = null!;
+
+		public string OriginalAssigneeName { get; set; } = null!;
 	}
 }

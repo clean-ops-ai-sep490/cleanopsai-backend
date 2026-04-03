@@ -234,6 +234,10 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<Guid?>("WorkerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("worker_id");
+
                     b.HasKey("Id")
                         .HasName("pk_fcm_tokens");
 

@@ -12,6 +12,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public Guid OriginalAssigneeId { get; set; }
 
+		public string AssigneeName { get; set; } = null!;
+		public string OriginalAssigneeName { get; set; } = null!;
+
 		public Guid WorkAreaId { get; set; }
 
 		public TaskAssignmentStatus Status { get; set; }  

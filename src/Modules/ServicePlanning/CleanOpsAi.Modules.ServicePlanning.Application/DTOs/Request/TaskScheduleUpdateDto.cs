@@ -21,6 +21,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public Guid? AssigneeId { get; set; }
 
+		public string? AssigneeName { get; set; }
+
+		public string? DisplayLocation { get; set; }
+
 		public RecurrenceType RecurrenceType { get; set; }
 
 		public RecurrenceConfig RecurrenceConfig { get; set; } = null!;

@@ -4,12 +4,7 @@ using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
-using Medo;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Medo; 
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -266,7 +261,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             return await _repository.DeleteAsync(entity.Id);
         }
-
+         
         //Lấy supervisor của một worker trong một work area cụ thể 
         public async Task<WorkAreaSupervisorResponse?> GetSupervisorByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId)
         {
@@ -286,5 +281,23 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
-    }
+    
+		public async Task<(bool Found, Guid? SupervisorUserId)> GetCommonSupervisorAsync(Guid workAreaId, Guid workerId, Guid workerIdTarget, CancellationToken ct = default)
+		{ 
+			var supervisorsA = await _repository.GetSupervisorIdsAsync(workAreaId, workerId, ct);
+			if (!supervisorsA.Any()) return (false, null);
+             
+			var supervisorsB = await _repository.GetSupervisorIdsAsync(workAreaId, workerIdTarget, ct);
+			if (!supervisorsB.Any()) return (false, null);
+             
+			var commonId = supervisorsA.Intersect(supervisorsB).FirstOrDefault();
+
+			if (commonId != default)
+			{
+				return (true, commonId);
+			}
+
+			return (false, null);
+		}
+	} 
 }

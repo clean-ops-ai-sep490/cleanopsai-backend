@@ -375,6 +375,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_id");
 
+                    b.Property<string>("AssigneeName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("assignee_name");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
@@ -405,13 +411,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnName("last_modified_by");
 
                     b.Property<string>("NameAdhocTask")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("name_adhoc_task");
 
                     b.Property<Guid>("OriginalAssigneeId")
                         .HasColumnType("uuid")
                         .HasColumnName("original_assignee_id");
+
+                    b.Property<string>("OriginalAssigneeName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_assignee_name");
 
                     b.Property<DateTime>("ScheduledEndAt")
                         .HasColumnType("timestamp with time zone")

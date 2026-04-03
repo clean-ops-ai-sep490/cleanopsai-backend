@@ -160,7 +160,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
             return await _dbContext.SaveChangesAsync();
         }
-
+         
         // get WorkAreaSupervisor by WorkAreaId + WorkerId 
         public async Task<WorkAreaSupervisor?> GetByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId)
         {
@@ -171,5 +171,12 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                                       && x.IsDeleted == false);
         }
 
-    }
+		public async Task<List<Guid>> GetSupervisorIdsAsync(Guid workAreaId, Guid workerId, CancellationToken ct = default)
+		{
+			return await _dbContext.Set<WorkAreaSupervisor>()
+				.Where(x => x.WorkAreaId == workAreaId && x.WorkerId == workerId)
+				.Select(x => x.UserId) 
+				.ToListAsync(ct);
+		}
+	} 
 }

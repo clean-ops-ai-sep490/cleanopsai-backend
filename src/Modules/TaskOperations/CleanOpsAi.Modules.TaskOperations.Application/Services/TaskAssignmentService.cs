@@ -96,6 +96,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task GenerateAsync(GenerateTaskAssignmentsRequestedEvent msg)
 		{
+			Console.WriteLine("assignee: " + msg.AssigneeName);
+			Console.WriteLine("DisplayLocation: " + msg.DisplayLocation);
+
 			var scheduledTimes = _expander.Expand(
 					msg.RecurrenceType,
 					msg.RecurrenceConfig,
@@ -107,7 +110,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			foreach (var scheduledAt in scheduledTimes)
 			{
 				if (await _taskAssignmentRepository.ExistsAsync(msg.ScheduleId, scheduledAt))
-					continue;
+					continue; 
 
 				toInsert.Add(new TaskAssignment
 				{
@@ -115,6 +118,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					TaskScheduleId = msg.ScheduleId,
 					AssigneeId = msg.AssigneeId ?? Guid.Empty,
 					OriginalAssigneeId = msg.AssigneeId ?? Guid.Empty,
+					AssigneeName = msg.AssigneeName!,
+					OriginalAssigneeName = msg.AssigneeName!,
+					DisplayLocation = msg.DisplayLocation!,
 					WorkAreaId = msg.WorkAreaId,
 					ScheduledStartAt = scheduledAt,
 					ScheduledEndAt = scheduledAt.AddMinutes(msg.DurationMinutes),
@@ -180,7 +186,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					Status = index == 0
 						? TaskStepExecutionStatus.InProgress
 						: TaskStepExecutionStatus.NotStarted,
-					ResultData = s.ConfigDetail,
+					ResultData = "{}",
 					Created = _dateTimeProvider.UtcNow
 				}).ToList();
 

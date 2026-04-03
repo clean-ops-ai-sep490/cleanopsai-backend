@@ -1,9 +1,4 @@
-﻿using CleanOpsAi.Modules.Workforce.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CleanOpsAi.Modules.Workforce.Domain.Entities; 
 
 namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 {
@@ -22,5 +17,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<WorkAreaSupervisor?> GetByWorkAreaUserWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
         Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, Guid supervisorId);
         Task<WorkAreaSupervisor?> GetByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
-    }
+        Task<List<Guid>> GetSupervisorIdsAsync(Guid workAreaId, Guid workerId, CancellationToken ct = default);
+	} 
 }

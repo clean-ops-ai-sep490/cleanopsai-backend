@@ -1,10 +1,5 @@
 ﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
-using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors; 
 
 namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 {
@@ -22,5 +17,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<WorkAreaSupervisorAssignResponse> AssignWorkersAsync(WorkAreaSupervisorAssignRequest request);
         Task<int> UnassignWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
         Task<WorkAreaSupervisorResponse?> GetSupervisorByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
-    }
+        Task<(bool Found, Guid? SupervisorUserId)> GetCommonSupervisorAsync(Guid workAreaId, Guid workerId, Guid workerIdTarget, CancellationToken ct = default);
+	}
 }

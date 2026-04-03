@@ -10,7 +10,7 @@ using System.Text.Json;
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs
 {
 	public class WeeklyTaskGenerationJob(
-	IPublishEndpoint bus,
+	IBus bus,
 	ITaskScheduleService scheduleService,
 	IOptions<JobOptionsConfig> options) : IJob
 	{
@@ -33,17 +33,23 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs
 					? Min(toDate, schedule.ContractEndDate.Value)
 					: toDate;
 
-				await bus.Publish(new GenerateTaskAssignmentsRequestedEvent(
-					ScheduleId: schedule.Id,
-					FromDate: effectiveFrom,
-					ToDate: effectiveTo,
-					AssigneeId: schedule.AssigneeId,
-					WorkAreaId: schedule.WorkAreaId,
-					RecurrenceConfig: config,
-					RecurrenceType: schedule.RecurrenceType,
-					DurationMinutes: schedule.DurationMinutes,
-					Source: "auto"
-				));
+				Console.WriteLine($"ScheduleId: {schedule.Id} - Name: {schedule.AssigneeName}");
+				Console.WriteLine($"Location: {schedule.Id} - Name: {schedule.DisplayLocation}");
+
+				await bus.Publish(new GenerateTaskAssignmentsRequestedEvent
+				{
+					ScheduleId = schedule.Id,
+					AssigneeId = schedule.AssigneeId,
+					WorkAreaId = schedule.WorkAreaId,
+					FromDate = effectiveFrom,
+					ToDate = effectiveTo,
+					RecurrenceType = schedule.RecurrenceType,
+					RecurrenceConfig = config,
+					DurationMinutes = schedule.DurationMinutes,
+					AssigneeName = schedule.AssigneeName,
+					DisplayLocation = schedule.DisplayLocation,
+					Source = "auto"
+				});
 			}
 		}
 

@@ -1,7 +1,8 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
-using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response; 
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services
 {
@@ -23,5 +24,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 		Task<Result> CancelSwapRequestAsync(Guid swapRequestId, Guid requesterId, CancellationToken ct = default);
 
 		Task<PaginatedResult<SwapRequestDto>> GetSwapRequestsAsync(GetSwapRequestsDto dto, PaginationRequest paginationRequest ,CancellationToken ct = default);
+
+		Task<PaginatedResult<SwapRequestDto>> GetMySwapRequestsAsync(
+			GetMySwapRequestsDto dto,
+			SwapRequestStatus? status,
+			PaginationRequest paginationRequest,
+			CancellationToken ct = default);
 	}
 }

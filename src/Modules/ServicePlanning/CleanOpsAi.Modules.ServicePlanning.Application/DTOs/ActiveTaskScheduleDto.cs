@@ -19,5 +19,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs
 		public DateOnly? ContractEndDate { get; set; }
 
 		public int DurationMinutes { get; set; }
+
+		public string AssigneeName { get; set; } = null!;
+
+		public string DisplayLocation { get; set; } = null!;
 	}
 }
