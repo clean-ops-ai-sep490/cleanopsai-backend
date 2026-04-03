@@ -135,6 +135,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		{
 			var assignment = await _taskAssignmentRepository.GetByIdAsync(taskAssignmentId, ct)
 				?? throw new NotFoundException(nameof(TaskAssignment), taskAssignmentId);
+			if (assignment.IsAdhocTask)
+			{  
+				if (assignment.AssigneeId != workerId)
+					throw new ForbiddenException("Not your task");
+
+				if (assignment.Status != TaskAssignmentStatus.NotStarted)
+					throw new BadRequestException(
+						$"Task was in status {assignment.Status}, can not start");
+
+				assignment.Status = TaskAssignmentStatus.InProgress;
+				assignment.LastModified = _dateTimeProvider.UtcNow;
+
+				await _taskAssignmentRepository.SaveChangesAsync(ct);
+				return new StartTaskDto
+				{
+					TaskAssignmentId = assignment.Id,
+					Status = assignment.Status,
+					Steps = new List<TaskStepExecutionDto>(),
+					IsAdhoc = true
+				};
+
+			}
 
 			if (assignment.AssigneeId != workerId)
 				throw new ForbiddenException("Not your task");
@@ -183,6 +205,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 						? TaskStepExecutionStatus.InProgress
 						: TaskStepExecutionStatus.NotStarted,
 					ResultData = "{}",
+					StepOrder = s.StepOrder,
 					Created = _dateTimeProvider.UtcNow
 				}).ToList();
 
@@ -203,7 +226,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			{
 				TaskAssignmentId = assignment.Id,
 				Status = assignment.Status,
-				Steps = stepDtos
+				Steps = stepDtos,
+				IsAdhoc = false
 			};
 		}
 
@@ -216,6 +240,42 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				result.PageSize,
 				result.TotalElements,
 				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
+		}
+
+		public async Task<StartTaskDto> CompleteTaskAsync(Guid taskAssignmentId, TaskCompletedDto dto, CancellationToken ct = default)
+		{
+			var assignment = await _taskAssignmentRepository.GetByIdAsync(taskAssignmentId, ct)
+				 ?? throw new NotFoundException(nameof(TaskAssignment), taskAssignmentId);
+
+			if (assignment.AssigneeId != dto.WorkerId)
+				throw new ForbiddenException("Not your task");
+
+			if (assignment.Status != TaskAssignmentStatus.InProgress)
+				throw new BadRequestException($"Task is in status {assignment.Status}, cannot complete");
+
+			if (assignment.Status == TaskAssignmentStatus.Completed)
+				throw new BadRequestException("Task already completed");
+
+			if (!assignment.IsAdhocTask)
+			{
+				var hasUnfinishedStep = await _taskStepExecutionRepository
+					.AnyUnfinishedStepAsync(taskAssignmentId, ct);
+
+				if (hasUnfinishedStep)
+					throw new BadRequestException("All steps must be completed before finishing task");
+			}
+
+			assignment.Status = TaskAssignmentStatus.Completed;
+			assignment.LastModified = _dateTimeProvider.UtcNow;
+
+			await _taskAssignmentRepository.SaveChangesAsync(ct);
+
+			return new StartTaskDto
+			{
+				TaskAssignmentId = assignment.Id,
+				Status = assignment.Status,
+				Steps = new List<TaskStepExecutionDto>() 
+			};
 		}
 	}
 }

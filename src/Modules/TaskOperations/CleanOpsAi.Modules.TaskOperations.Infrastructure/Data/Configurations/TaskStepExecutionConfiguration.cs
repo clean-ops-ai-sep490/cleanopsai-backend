@@ -21,6 +21,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.HasIndex(x => x.TaskAssignmentId);
 
 			builder.HasQueryFilter(x => !x.IsDeleted);
+
+			builder.Property(x => x.StepOrder);
 		}
 	}
 }

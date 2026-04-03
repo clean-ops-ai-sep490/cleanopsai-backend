@@ -50,9 +50,11 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ITaskSwapRequestService, TaskSwapRequestService>();
 		builder.Services.AddScoped<IEquipmentRequestService, EquipmentRequestService>();
 		builder.Services.AddScoped<IIssueReportService, IssueReportService>();
+		builder.Services.AddScoped<ITaskStepExecutionService, TaskStepExecutionService>();
         builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>();
+
+
 		builder.Services.AddScoped<IWorkerQueryService, WorkerQueryService>();
-		 
 		builder.Services.AddScoped<IWorkerCertificationSkillQueryService, WorkerCertificationSkillQueryService>();
 		builder.Services.AddScoped<ISopRequirementsQueryService, SopRequirementsQueryService>();
 		builder.Services.AddScoped<ISupervisorQueryService, SupervisorQueryService>();

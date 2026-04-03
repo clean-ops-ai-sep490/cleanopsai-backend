@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
@@ -69,11 +70,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				throw new BadRequestException("Schedule conflict detected");
 
 			var taskSchedule = _mapper.Map<TaskSchedule>(dto);
+			if (taskSchedule.IsActive)
+			{
+				ValidateForActivation(taskSchedule);
+			}
+
 			taskSchedule.Id = _idGenerator.Generate();
 			taskSchedule.Created = _dateTimeProvider.UtcNow;
 			taskSchedule.CreatedBy = _userContext.UserId.ToString();
-			taskSchedule.Version = 1;
-			taskSchedule.IsActive = false;
+			taskSchedule.Version = 1; 
 
 			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
 			taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
@@ -340,7 +345,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				_mapper.Map<List<TaskScheduleDto>>(result.Content));
 		}
 
-		public async Task<bool> Activate(Guid id, CancellationToken ct = default)
+		public async Task<Result> Activate(Guid id, CancellationToken ct = default)
 		{
 			var schedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
 
@@ -353,10 +358,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			schedule.LastModified = _dateTimeProvider.UtcNow;
 			schedule.LastModifiedBy = _userContext.UserId.ToString();
 			await _taskScheduleRepository.SaveChangesAsync(ct);
-			return true;
+			return Result.Success();
 		}
 
-		public async Task<bool> Deactivate(Guid id, CancellationToken ct = default)
+		public async Task<Result> Deactivate(Guid id, CancellationToken ct = default)
 		{
 			var schedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
 
@@ -368,7 +373,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			schedule.LastModified = _dateTimeProvider.UtcNow;
 			schedule.LastModifiedBy = _userContext.UserId.ToString();
 			await _taskScheduleRepository.SaveChangesAsync(ct);
-			return true;
+			return Result.Success();
 		}
 
 		private void ValidateForActivation(TaskSchedule schedule)

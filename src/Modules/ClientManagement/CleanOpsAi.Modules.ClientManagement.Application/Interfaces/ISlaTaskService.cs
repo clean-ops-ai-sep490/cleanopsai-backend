@@ -1,10 +1,5 @@
 ﻿using CleanOpsAi.Modules.ClientManagement.Application.Dtos;
-using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks; 
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
 {

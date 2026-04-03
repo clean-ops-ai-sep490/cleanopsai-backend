@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+﻿using CleanOpsAi.BuildingBlocks.Application.Common;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
@@ -19,7 +20,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 
 		Task<PaginatedResult<TaskScheduleDto>> Gets(PaginationRequest request, CancellationToken ct = default);
 
-		Task<bool> Activate(Guid id, CancellationToken ct = default);
-		Task<bool> Deactivate(Guid id, CancellationToken ct = default);
+		Task<Result> Activate(Guid id, CancellationToken ct = default);
+		Task<Result> Deactivate(Guid id, CancellationToken ct = default);
 	}
 }

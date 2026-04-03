@@ -6,5 +6,7 @@
 		public Guid SopStepId { get; set; }
 		public int StepOrder { get; set; }
 		public string Status { get; set; } = null!;
+
+		public Guid? NextStepId { get; set; }
 	}
 }

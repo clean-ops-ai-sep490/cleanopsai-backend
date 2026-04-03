@@ -65,6 +65,21 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			return Ok(result);
 		}
 
+		[HttpPost("{id}/complete")]
+		[SwaggerOperation(
+			Summary = "Complete a task assignment",
+			Description = "Marks a task assignment as completed. For SOP-based tasks, all steps must be completed. Adhoc tasks can be completed directly.",
+			Tags = new[] { "TaskAssignment" }
+		)]
+		[ProducesResponseType(typeof(StartTaskDto), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> CompleteTask(Guid id, TaskCompletedDto dto, CancellationToken ct)
+		{
+			var result = await _taskAssignmentService.CompleteTaskAsync(id, dto, ct);
+			return Ok(result);
+		}
+
 		[HttpPut("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Update Task Assignment",

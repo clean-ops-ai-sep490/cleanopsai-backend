@@ -14,6 +14,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public string ResultData { get; set; } = null!; //jsonb
 
+		public int StepOrder { get; set; }
+
 		public DateTime StartedAt { get; set; }
 
 		public DateTime CompletedAt { get; set; }
