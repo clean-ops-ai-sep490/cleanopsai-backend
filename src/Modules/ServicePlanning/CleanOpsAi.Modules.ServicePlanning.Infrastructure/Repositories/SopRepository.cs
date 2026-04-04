@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
@@ -45,6 +46,27 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		public async Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
 		{
 			return await _context.Sops.ToPaginatedResultAsync(request, ct);
+		}
+
+		public async Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
+			Guid sopId,
+			CancellationToken ct = default)
+		{
+			return await _context.SopSteps
+				.Where(ss => ss.SopId == sopId && !ss.IsDeleted)
+				.Include(ss => ss.Step)
+				.OrderBy(ss => ss.StepOrder)
+				.Select(ss => new SopStepMetadataDto
+				{
+					Id = ss.Id,
+					SopId = ss.SopId,
+					StepId = ss.StepId,
+					StepOrder = ss.StepOrder,
+					ConfigDetail = ss.ConfigDetail,
+					ConfigSchema = ss.Step.ConfigSchema, 
+					IsDeleted = ss.IsDeleted
+				})
+				.ToListAsync(ct);
 		}
 	}
 }

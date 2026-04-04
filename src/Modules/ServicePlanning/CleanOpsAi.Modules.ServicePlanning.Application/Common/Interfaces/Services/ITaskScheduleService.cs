@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
@@ -22,5 +23,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 
 		Task<Result> Activate(Guid id, CancellationToken ct = default);
 		Task<Result> Deactivate(Guid id, CancellationToken ct = default);
+
+		Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
+			Guid sopId,
+			CancellationToken ct = default);
 	}
 }

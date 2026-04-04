@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services
 {
@@ -9,5 +10,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 			Guid id,
 			SubmitStepExecutionDto dto, 
 			CancellationToken ct = default);
+
+		Task<TaskStepExecutionDetailDto> GetStepDetailAsync(Guid id, CancellationToken ct = default);
 	}
 }

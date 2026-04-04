@@ -2,6 +2,7 @@
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
 {
@@ -58,6 +59,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
                 .ForMember(dest => dest.ApprovedAt, opt => opt.Ignore());
             CreateMap<UpdateAdHocRequestDto, AdHocRequest>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
-        }
+
+
+			CreateMap<TaskStepExecution, TaskStepExecutionDetailDto>()
+		   .ForMember(dest => dest.Status,
+			   opt => opt.MapFrom(src => src.Status.ToString()))
+		   .ForMember(dest => dest.ConfigSnapshot,
+			   opt => opt.MapFrom(src =>
+				   string.IsNullOrEmpty(src.ConfigSnapshot)
+					   ? (JsonElement?)null
+					   : JsonSerializer.Deserialize<JsonElement>(src.ConfigSnapshot, (JsonSerializerOptions?)null)))
+		   .ForMember(dest => dest.ResultData,
+			   opt => opt.MapFrom(src =>
+				   string.IsNullOrEmpty(src.ResultData) || src.ResultData == "{}"
+					   ? (JsonElement?)null
+					   : JsonSerializer.Deserialize<JsonElement>(src.ResultData, (JsonSerializerOptions?)null)));
+		}
     }
 }

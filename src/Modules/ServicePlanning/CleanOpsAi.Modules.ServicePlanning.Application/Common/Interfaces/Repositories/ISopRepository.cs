@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories
@@ -13,5 +14,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 		Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
 
 		Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default);
+
+		Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
+			Guid sopId,
+			CancellationToken ct = default);
 	}
 }

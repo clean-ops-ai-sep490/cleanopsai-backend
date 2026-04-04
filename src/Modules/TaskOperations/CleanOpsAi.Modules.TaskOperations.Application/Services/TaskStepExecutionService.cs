@@ -1,9 +1,11 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+﻿using AutoMapper;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 
@@ -13,13 +15,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 	{
 		private readonly ITaskStepExecutionRepository _repository;
 		private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IMapper _mapper;
 
 		public TaskStepExecutionService(
 			ITaskStepExecutionRepository taskStepExecutionRepository,
-			IDateTimeProvider dateTimeProvider)
+			IDateTimeProvider dateTimeProvider,
+			IMapper mapper)
 		{
 			_repository = taskStepExecutionRepository;
 			_dateTimeProvider = dateTimeProvider;
+			_mapper = mapper;
 		}
 
 		public async Task<TaskStepExecutionDto> CompleteStepAsync(Guid id, SubmitStepExecutionDto dto, CancellationToken ct = default)
@@ -67,6 +72,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				NextStepId = nextStep?.Id
 			};
 
+		}
+
+		public async Task<TaskStepExecutionDetailDto> GetStepDetailAsync(Guid id, CancellationToken ct = default)
+		{
+			var step = await _repository.GetByIdAsync(id, ct)
+				?? throw new NotFoundException(nameof(TaskStepExecution), id);
+
+			return _mapper.Map<TaskStepExecutionDetailDto>(step);
 		}
 	}
 }

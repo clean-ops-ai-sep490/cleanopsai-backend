@@ -5,6 +5,7 @@ using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services; 
@@ -19,6 +20,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 	{
 		private readonly ITaskScheduleRepository _taskScheduleRepository;
 		private readonly ISopStepRepository _sopStepRepository;
+		private readonly ISopRepository _sopRepository;
 		private readonly IMapper _mapper;
 		private readonly IPublishEndpoint _bus;
 		private readonly IIdGenerator _idGenerator;
@@ -28,10 +30,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public TaskScheduleService(
 			ITaskScheduleRepository taskScheduleRepository,
 			ISopStepRepository sopStepRepository,
+			ISopRepository sopRepository,
 			IMapper mapper, IPublishEndpoint publishEndpoint,
 			IIdGenerator idGenerator, IDateTimeProvider dateTimeProvider, IUserContext userContext)
 		{
 			_taskScheduleRepository = taskScheduleRepository;
+			_sopRepository = sopRepository;
 			_sopStepRepository = sopStepRepository;
 			_mapper = mapper; 
 			_bus = publishEndpoint;
@@ -395,7 +399,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			if (schedule.RecurrenceConfig == null)
 				throw new BadRequestException("RecurrenceConfig is required");
 		}
-		
+
+		public async Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(Guid sopId, CancellationToken ct = default)
+		{
+			return await _sopRepository.GetSopStepsWithSchemaAsync(sopId, ct);
+		}
 	}
 }
 

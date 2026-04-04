@@ -12,6 +12,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 
 		Task<TaskStepExecution?> GetNextStepAsync(Guid assignmentId, int currentStepOrder, CancellationToken ct);
 
-		Task<bool> AnyUnfinishedStepAsync(Guid assignmentId, CancellationToken ct);
+		Task<bool> AnyUnfinishedStepAsync(Guid assignmentId, CancellationToken ct); 
 	}
 }

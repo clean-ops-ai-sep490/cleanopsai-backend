@@ -3,6 +3,7 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -211,6 +212,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					Status = index == 0
 						? TaskStepExecutionStatus.InProgress
 						: TaskStepExecutionStatus.NotStarted,
+					ConfigSnapshot = JsonSerializer.Serialize(new
+					{
+						schema = JsonSerializer.Deserialize<object>(s.ConfigSchema),
+						detail = JsonSerializer.Deserialize<object>(s.ConfigDetail)
+					}),
 					ResultData = "{}",
 					StepOrder = s.StepOrder,
 					Created = _dateTimeProvider.UtcNow

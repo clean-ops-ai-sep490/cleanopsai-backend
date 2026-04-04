@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -34,6 +35,13 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 
 			var result = await _service.CompleteStepAsync(id, dto, ct);
 
+			return Ok(result);
+		}
+
+		[HttpGet("{id:guid}")]
+		public async Task<IActionResult> GetStepDetail(Guid id, CancellationToken ct)
+		{
+			var result = await _service.GetStepDetailAsync(id, ct);
 			return Ok(result);
 		}
 	}
