@@ -100,40 +100,47 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task GenerateAsync(GenerateTaskAssignmentsRequestedEvent msg)
 		{
-			Console.WriteLine("assignee: " + msg.AssigneeName);
-			Console.WriteLine("DisplayLocation: " + msg.DisplayLocation);
+			var scheduleIds = msg.Items.Select(x => x.ScheduleId).Distinct().ToList();
 
-			var scheduledTimes = _expander.Expand(
-					msg.RecurrenceType,
-					msg.RecurrenceConfig,
-					msg.FromDate,
-					msg.ToDate);
+			var existingKeys = await _taskAssignmentRepository.GetExistingKeysAsync(scheduleIds);
 
+			var existingSet = new HashSet<(Guid, DateTime)>(existingKeys);
+			 
 			var toInsert = new List<TaskAssignment>();
 
-			foreach (var scheduledAt in scheduledTimes)
+			foreach (var item in msg.Items)
 			{
-				if (await _taskAssignmentRepository.ExistsAsync(msg.ScheduleId, scheduledAt))
-					continue; 
+				var scheduledTimes = _expander.Expand(
+					item.RecurrenceType,
+					item.RecurrenceConfig,
+					item.FromDate,
+					item.ToDate);
 
-				toInsert.Add(new TaskAssignment
+				foreach (var scheduledAt in scheduledTimes)
 				{
-					Id = _idGenerator.Generate(),
-					TaskScheduleId = msg.ScheduleId,
-					AssigneeId = msg.AssigneeId ?? Guid.Empty,
-					OriginalAssigneeId = msg.AssigneeId ?? Guid.Empty,
-					AssigneeName = msg.AssigneeName!,
-					OriginalAssigneeName = msg.AssigneeName!,
-					DisplayLocation = msg.DisplayLocation!,
-					WorkAreaId = msg.WorkAreaId,
-					ScheduledStartAt = scheduledAt,
-					ScheduledEndAt = scheduledAt.AddMinutes(msg.DurationMinutes),
-					Status = TaskAssignmentStatus.NotStarted,
-					IsAdhocTask = false,
-					Created = _dateTimeProvider.UtcNow,
-					CreatedBy = "system"
-				});
+					if (existingSet.Contains((item.ScheduleId, scheduledAt)))
+						continue;
+
+					toInsert.Add(new TaskAssignment
+					{
+						Id = _idGenerator.Generate(),
+						TaskScheduleId = item.ScheduleId,
+						AssigneeId = item.AssigneeId ?? Guid.Empty,
+						OriginalAssigneeId = item.AssigneeId ?? Guid.Empty,
+						AssigneeName = item.AssigneeName!,
+						OriginalAssigneeName = item.AssigneeName!,
+						DisplayLocation = item.DisplayLocation!,
+						WorkAreaId = item.WorkAreaId,
+						ScheduledStartAt = scheduledAt,
+						ScheduledEndAt = scheduledAt.AddMinutes(item.DurationMinutes),
+						Status = TaskAssignmentStatus.NotStarted,
+						IsAdhocTask = false,
+						Created = _dateTimeProvider.UtcNow,
+						CreatedBy = "system"
+					});
+				}
 			}
+
 
 			if (toInsert.Count > 0)
 				await _taskAssignmentRepository.BulkInsertAsync(toInsert);
@@ -232,7 +239,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				Id = s.Id,
 				SopStepId = s.SopStepId,
 				StepOrder = validSteps[index].StepOrder,
-				Status = s.Status.ToString()
+				ConfigSnapshot = JsonSerializer.Deserialize<JsonElement>(s.ConfigSnapshot),
+				ResultData = JsonSerializer.Deserialize<JsonElement>(s.ResultData),
+				Status = s.Status
 			}).ToList();
 
 			return new StartTaskDto

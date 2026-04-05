@@ -61,7 +61,11 @@ public static class DependencyInjection
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
-    }
+		builder.Services.AddHttpClient<GoongMapService>();
+		builder.Services.AddScoped<IGoongMapService, GoongMapService>();
+
+
+	}
 
 
 }

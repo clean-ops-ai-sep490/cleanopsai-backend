@@ -68,7 +68,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				Id = step.Id,
 				SopStepId = step.SopStepId,
 				StepOrder = step.StepOrder,
-				Status = step.Status.ToString(),
+				Status = step.Status,
 				NextStepId = nextStep?.Id
 			};
 

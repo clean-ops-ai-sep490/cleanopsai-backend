@@ -8,6 +8,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 	{
 		Task<bool> ExistsAsync(Guid scheduleId, DateTime scheduledAt);
 
+		Task<IEnumerable<(Guid ScheduleId, DateTime ScheduledAt)>> GetExistingKeysAsync(List<Guid> scheduleIds);
+
 		Task BulkInsertAsync(IEnumerable<TaskAssignment> assignments);
 
 		Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct = default);

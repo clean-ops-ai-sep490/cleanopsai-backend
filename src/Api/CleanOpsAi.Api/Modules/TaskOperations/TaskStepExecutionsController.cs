@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +40,14 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 		}
 
 		[HttpGet("{id:guid}")]
-		public async Task<IActionResult> GetStepDetail(Guid id, CancellationToken ct)
+		[SwaggerOperation(
+			Summary = "Get task step execution detail",
+			Description = "Retrieves detailed information of a specific task step execution, including status, configuration snapshot, and result data.",
+			Tags = new[] { "TaskStepExecution" }
+		)]
+		[ProducesResponseType(typeof(TaskStepExecutionDetailDto), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
 		{
 			var result = await _service.GetStepDetailAsync(id, ct);
 			return Ok(result);

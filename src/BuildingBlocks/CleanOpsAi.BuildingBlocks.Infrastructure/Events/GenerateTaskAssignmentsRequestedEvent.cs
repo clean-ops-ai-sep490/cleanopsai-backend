@@ -2,7 +2,12 @@
 
 namespace CleanOpsAi.BuildingBlocks.Infrastructure.Events
 {
-	public record GenerateTaskAssignmentsRequestedEvent
+
+	public class GenerateTaskAssignmentsRequestedEvent
+	{
+		public List<GenerateTaskAssignmentItem> Items { get; set; } = new();
+	}
+	public record GenerateTaskAssignmentItem
 	{
 		public Guid ScheduleId { get; init; }
 		public Guid? AssigneeId { get; init; }

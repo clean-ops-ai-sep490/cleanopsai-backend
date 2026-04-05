@@ -8,25 +8,25 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
 {
 	public class MappingProfile : Profile
 	{
-		public MappingProfile() 
-		{
-			CreateMap<TaskAssignmentUpdateDto, TaskAssignment>(); 
-			CreateMap<TaskAssignment, TaskAssignmentDto>();
+        public MappingProfile()
+        {
+            CreateMap<TaskAssignmentUpdateDto, TaskAssignment>();
+            CreateMap<TaskAssignment, TaskAssignmentDto>();
 
-			CreateMap<TaskSwapRequest, TaskSwapRequestDto>();
-			CreateMap<TaskSwapRequestCreateDto, TaskSwapRequest>();
+            CreateMap<TaskSwapRequest, TaskSwapRequestDto>();
+            CreateMap<TaskSwapRequestCreateDto, TaskSwapRequest>();
 
-			CreateMap<TaskSwapRequest, SwapRequestDto>();
+            CreateMap<TaskSwapRequest, SwapRequestDto>();
 
-			CreateMap<TaskAssignment, SwapTaskInfoDto>()
-	            .ForMember(dest => dest.TaskAssignmentId, opt => opt.MapFrom(src => src.Id)); 
+            CreateMap<TaskAssignment, SwapTaskInfoDto>()
+                .ForMember(dest => dest.TaskAssignmentId, opt => opt.MapFrom(src => src.Id));
 
-			CreateMap<TaskAssignment, SwapCandidateDto>()
-	            .ForMember(dest => dest.WorkerId, opt => opt.MapFrom(src => src.AssigneeId))
-	            .ForMember(dest => dest.Task, opt => opt.MapFrom(src => src));
+            CreateMap<TaskAssignment, SwapCandidateDto>()
+                .ForMember(dest => dest.WorkerId, opt => opt.MapFrom(src => src.AssigneeId))
+                .ForMember(dest => dest.Task, opt => opt.MapFrom(src => src));
 
-			// EquipmentRequest mappings
-			CreateMap<EquipmentRequest, EquipmentRequestDto>();
+            // EquipmentRequest mappings
+            CreateMap<EquipmentRequest, EquipmentRequestDto>();
             CreateMap<CreateEquipmentRequestDto, EquipmentRequest>();
             CreateMap<UpdateEquipmentRequestDto, EquipmentRequest>()
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
@@ -61,19 +61,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
 
-			CreateMap<TaskStepExecution, TaskStepExecutionDetailDto>()
-		   .ForMember(dest => dest.Status,
-			   opt => opt.MapFrom(src => src.Status.ToString()))
-		   .ForMember(dest => dest.ConfigSnapshot,
-			   opt => opt.MapFrom(src =>
-				   string.IsNullOrEmpty(src.ConfigSnapshot)
-					   ? (JsonElement?)null
-					   : JsonSerializer.Deserialize<JsonElement>(src.ConfigSnapshot, (JsonSerializerOptions?)null)))
-		   .ForMember(dest => dest.ResultData,
-			   opt => opt.MapFrom(src =>
-				   string.IsNullOrEmpty(src.ResultData) || src.ResultData == "{}"
-					   ? (JsonElement?)null
-					   : JsonSerializer.Deserialize<JsonElement>(src.ResultData, (JsonSerializerOptions?)null)));
-		}
-    }
+            CreateMap<TaskStepExecution, TaskStepExecutionDetailDto>()
+                .ForMember(
+                    dest => dest.ConfigSnapshot,
+                    opt => opt.MapFrom(src =>
+                    JsonSerializer.Deserialize<JsonElement>(src.ConfigSnapshot, (JsonSerializerOptions?)null)))
+                .ForMember(
+                    dest => dest.ResultData,
+                    opt => opt.MapFrom(src =>
+                    JsonSerializer.Deserialize<JsonElement>(src.ResultData, (JsonSerializerOptions?)null)));
+        }
+	}
 }

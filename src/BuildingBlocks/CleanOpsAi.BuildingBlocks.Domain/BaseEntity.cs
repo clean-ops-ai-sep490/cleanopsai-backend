@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema; 
-
-namespace CleanOpsAi.BuildingBlocks.Domain
+﻿namespace CleanOpsAi.BuildingBlocks.Domain
 {
 	public abstract class BaseEntity
 	{ 

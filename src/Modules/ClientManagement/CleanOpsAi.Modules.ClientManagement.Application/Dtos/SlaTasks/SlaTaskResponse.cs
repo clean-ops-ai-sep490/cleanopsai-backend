@@ -6,9 +6,9 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.SlaTasks
     {
         public Guid Id { get; set; }
 
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
 
-        public Guid SlaId { get; set; }
+		public Guid SlaId { get; set; }
 
         public string SlaName { get; set; }
 
