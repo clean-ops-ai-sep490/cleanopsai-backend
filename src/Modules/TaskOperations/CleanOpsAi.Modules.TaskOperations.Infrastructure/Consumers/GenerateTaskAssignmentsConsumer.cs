@@ -12,10 +12,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers
 			ConsumeContext<GenerateTaskAssignmentsRequestedEvent> context)
 		{
 			Console.WriteLine("CONSUMER START");
-			var msg = context.Message;
-
-
-			Console.WriteLine($"CONSUMER START - Assignee: {msg.AssigneeName}, Location: {msg.DisplayLocation}, Id: {msg.ScheduleId}");
+			var msg = context.Message; 
 
 			await taskAssignmentService.GenerateAsync(context.Message);
 		}

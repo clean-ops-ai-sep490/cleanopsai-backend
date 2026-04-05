@@ -26,6 +26,8 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IUserContext, UserContext>();
 
 		builder.Services.AddScoped<IIntegrationBus, MassTransitIntegrationBus>();
+		builder.Services.AddScoped<IEventBus, MassTransitEventBus>();
+
 	}
 
 }

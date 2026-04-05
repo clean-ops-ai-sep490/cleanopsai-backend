@@ -4,8 +4,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositori
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
-using MassTransit;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data; 
 using Microsoft.EntityFrameworkCore;
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
@@ -24,6 +23,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 					x.TaskScheduleId == scheduleId &&
 					x.ScheduledStartAt == scheduledAt &&
 					!x.IsDeleted);
+		}
+
+		public async Task<IEnumerable<(Guid ScheduleId, DateTime ScheduledAt)>> GetExistingKeysAsync(
+		List<Guid> scheduleIds)
+		{
+			return await _context.TaskAssignments
+				.Where(x => scheduleIds.Contains(x.TaskScheduleId) && !x.IsDeleted)
+				.Select(x => new { x.TaskScheduleId, x.ScheduledStartAt })
+				.AsNoTracking() // read-only, không cần track
+				.ToListAsync()
+				.ContinueWith(t => t.Result.Select(x => (x.TaskScheduleId, x.ScheduledStartAt)));
 		}
 
 		public async Task BulkInsertAsync(IEnumerable<TaskAssignment> assignments)

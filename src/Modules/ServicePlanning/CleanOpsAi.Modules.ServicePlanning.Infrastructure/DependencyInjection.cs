@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
+﻿using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Events;
+using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings;
 using CleanOpsAi.Modules.ServicePlanning.Application.Configurations;
@@ -7,6 +8,7 @@ using CleanOpsAi.Modules.ServicePlanning.Application.Services;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories;
+using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -81,6 +83,10 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ISopService, SopService>();
 		builder.Services.AddScoped<ITaskScheduleService, TaskScheduleService>();
 		builder.Services.AddScoped<IEnvironmentTypeService, EnvironmentTypeService>();
+
+		//events
+
+		builder.Services.AddScoped<ITaskScheduleEventService, TaskScheduleEventService>();
 
 	}
 }

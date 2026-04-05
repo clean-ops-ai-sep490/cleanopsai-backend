@@ -2,15 +2,16 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
-using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces; 
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
+using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Events;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services; 
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
-using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
-using MassTransit;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities; 
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
@@ -19,25 +20,31 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 	{
 		private readonly ITaskScheduleRepository _taskScheduleRepository;
 		private readonly ISopStepRepository _sopStepRepository;
-		private readonly IMapper _mapper;
-		private readonly IPublishEndpoint _bus;
+		private readonly ISopRepository _sopRepository;
+		private readonly IMapper _mapper; 
 		private readonly IIdGenerator _idGenerator;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IUserContext _userContext;
+		private readonly ITaskScheduleEventService _taskScheduleEventService;
 
 		public TaskScheduleService(
 			ITaskScheduleRepository taskScheduleRepository,
 			ISopStepRepository sopStepRepository,
-			IMapper mapper, IPublishEndpoint publishEndpoint,
-			IIdGenerator idGenerator, IDateTimeProvider dateTimeProvider, IUserContext userContext)
+			ISopRepository sopRepository,
+			IMapper mapper,
+			IIdGenerator idGenerator,
+			IDateTimeProvider dateTimeProvider,
+			IUserContext userContext,
+			ITaskScheduleEventService taskScheduleEventService)
 		{
 			_taskScheduleRepository = taskScheduleRepository;
+			_sopRepository = sopRepository;
 			_sopStepRepository = sopStepRepository;
-			_mapper = mapper; 
-			_bus = publishEndpoint;
+			_mapper = mapper;
 			_idGenerator = idGenerator;
 			_dateTimeProvider = dateTimeProvider;
 			_userContext = userContext;
+			_taskScheduleEventService = taskScheduleEventService;
 		}
 
 		public async Task<TaskScheduleDto> GetById(Guid id, CancellationToken ct = default)
@@ -310,12 +317,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var schedules = await _taskScheduleRepository.GetByIdsAsync(request.TaskScheduleIds, ct);
 
-			foreach (var schedule in schedules)
+			var items = schedules.Select(schedule =>
 			{
 				var config = JsonSerializer.Deserialize<RecurrenceConfig>(
 					schedule.RecurrenceConfig)!;
 
-				await _bus.Publish(new GenerateTaskAssignmentsRequestedEvent
+				return new GenerateTaskAssignmentItem
 				{
 					ScheduleId = schedule.Id,
 					AssigneeId = schedule.AssigneeId,
@@ -328,7 +335,19 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					AssigneeName = schedule.AssigneeName!,
 					DisplayLocation = schedule.DisplayLocation!,
 					Source = "manual"
-				});
+				};
+			}).ToList();
+
+			var chunks = items.Chunk(100).ToList();
+
+			foreach (var chunk in chunks)
+			{
+				await _taskScheduleEventService.RequestGenerateAssignments(
+					new GenerateTaskAssignmentsRequestedEvent
+					{
+						Items = chunk.ToList()
+					},
+					ct);
 			}
 
 			//throw new NotImplementedException();
@@ -395,7 +414,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			if (schedule.RecurrenceConfig == null)
 				throw new BadRequestException("RecurrenceConfig is required");
 		}
-		
+
+		public async Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(Guid sopId, CancellationToken ct = default)
+		{
+			return await _sopRepository.GetSopStepsWithSchemaAsync(sopId, ct);
+		}
 	}
 }
 

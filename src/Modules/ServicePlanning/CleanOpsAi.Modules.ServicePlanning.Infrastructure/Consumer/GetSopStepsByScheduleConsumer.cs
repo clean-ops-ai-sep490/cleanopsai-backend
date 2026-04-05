@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services; 
 using MassTransit;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer
 {
@@ -9,23 +10,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer
 		public async Task Consume(ConsumeContext<SopStepsRequested> context)
 		{
 			var msg = context.Message;
-
-			var schedule  = await taskScheduleService.GetById(msg.TaskScheduleId);
-
+			var schedule = await taskScheduleService.GetById(msg.TaskScheduleId);
 			if (schedule is null)
 			{
-				await context.RespondAsync(new SopStepsIntegrated
-				{
-					Found = false
-				});
+				await context.RespondAsync(new SopStepsIntegrated { Found = false });
 				return;
 			}
+			 
+			var sopSteps = await taskScheduleService
+				.GetSopStepsWithSchemaAsync(schedule.SopId);
 
 			await context.RespondAsync(new SopStepsIntegrated
 			{
 				Found = true,
-				Metadata = schedule.Metadata.GetRawText()
-
+				Metadata = JsonSerializer.Serialize(sopSteps)
 			});
 		}
 	}
