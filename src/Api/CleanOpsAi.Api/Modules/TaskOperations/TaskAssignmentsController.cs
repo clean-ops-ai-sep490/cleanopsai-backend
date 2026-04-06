@@ -144,5 +144,23 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             var result = await _taskAssignmentService.CreateAdhocTask(request);
             return Ok(result);
         }
+
+        [HttpGet("workers-availability-by-area")]
+        [SwaggerOperation(
+            Summary = "Get Worker For Free in time",
+            Description = "Get all worker and who have no task in time will be sort first",
+            Tags = new[] { "TaskAssignment" }
+        )]
+        public async Task<IActionResult> GetWorkersAvailabilityByArea(
+			Guid workAreaId,
+			DateTime start,
+			DateTime end,
+			CancellationToken ct)
+        {
+            var result = await _taskAssignmentService
+                .GetWorkersAvailableByAreaAsync(workAreaId, start, end, ct);
+
+            return Ok(result);
+        }
     }
 }

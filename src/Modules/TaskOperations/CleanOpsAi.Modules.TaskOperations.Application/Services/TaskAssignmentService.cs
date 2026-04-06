@@ -6,6 +6,7 @@ using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
@@ -29,7 +30,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IRequestClient<SopStepsRequested> _sopStepsClient;
         private readonly IRequestClient<GetWorkersByIdsRequest> _workerClient;
         private readonly IUserContext _userContext;
-        //private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IRequestClient<GetWorkersByWorkAreaRequest> _workerByAreaClient;
 
         public TaskAssignmentService(ITaskAssignmentRepository taskAssignmentRepository,
 			ITaskStepExecutionRepository taskStepExecutionRepository,
@@ -39,7 +40,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			IIdGenerator idGenerator,
 			IRequestClient<SopStepsRequested> sopClient,
 			IRequestClient<GetWorkersByIdsRequest> workerClient,
-            IUserContext userContext)
+            IUserContext userContext,
+            IRequestClient<GetWorkersByWorkAreaRequest> workerByAreaClient)
 		{
 			_taskAssignmentRepository = taskAssignmentRepository;
 			_taskStepExecutionRepository = taskStepExecutionRepository;
@@ -50,6 +52,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_sopStepsClient = sopClient;
 			_workerClient = workerClient;
             _userContext = userContext;
+			_workerByAreaClient = workerByAreaClient;
         }
 
 
@@ -308,6 +311,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (dto.StartAt < now)
                 throw new BadRequestException("Không thể tạo task trong quá khứ");
 
+            //  CHECK worker có thuộc work area không
+            var workerInAreaResponse = await _workerByAreaClient
+                .GetResponse<GetWorkersByWorkAreaResponse>(
+                    new GetWorkersByWorkAreaRequest
+                    {
+                        WorkAreaId = dto.WorkAreaId
+                    });
+
+            var workersInArea = workerInAreaResponse.Message.Workers ?? new List<WorkerDto>();
+
+            var isValidWorker = workersInArea.Any(x => x.Id == dto.AssigneeId);
+
+            if (!isValidWorker)
+                throw new BadRequestException("Worker không thuộc work area này");
+
             // Lấy tên assignee qua RabbitMQ
             var workerResponse = await _workerClient.GetResponse<GetWorkersByIdsResponse>(
                 new GetWorkersByIdsRequest { WorkerIds = new List<Guid> { dto.AssigneeId } });
@@ -343,7 +361,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             {
                 Id = _idGenerator.Generate(),
 
-                TaskScheduleId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                TaskScheduleId = _idGenerator.Generate(),
 
                 AssigneeId = dto.AssigneeId,
                 OriginalAssigneeId = dto.AssigneeId,
@@ -369,6 +387,48 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             await _taskAssignmentRepository.SaveChangesAsync();
 
             return _mapper.Map<TaskAssignmentDto>(task);
+        }
+
+        public async Task<List<WorkerAvailabilityDto>> GetWorkersAvailableByAreaAsync(
+			Guid workAreaId,
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default)
+        {
+            try
+            {
+                var workerResponse = await _workerByAreaClient
+                    .GetResponse<GetWorkersByWorkAreaResponse>(
+                        new GetWorkersByWorkAreaRequest
+                        {
+                            WorkAreaId = workAreaId
+                        },
+                        timeout: RequestTimeout.After(s: 10), // thêm timeout rõ ràng
+                        cancellationToken: ct);
+
+                var workers = workerResponse.Message.Workers ?? new List<WorkerDto>();
+
+                var busyWorkerIds = await _taskAssignmentRepository
+                    .GetBusyWorkerIdsAsync(workAreaId, start, end, ct);
+
+                var busySet = new HashSet<Guid>(busyWorkerIds);
+
+                return workers
+                    .Select(w => new WorkerAvailabilityDto
+                    {
+                        WorkerId = w.Id,
+                        FullName = w.FullName,
+                        IsBusy = busySet.Contains(w.Id)
+                    })
+                    .OrderBy(x => x.IsBusy)
+                    .ThenBy(x => x.FullName)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR CALL WORKER SERVICE: " + ex.ToString());
+                throw;
+            }
         }
 
     }

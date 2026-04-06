@@ -142,5 +142,25 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .OrderBy(t => t.ScheduledStartAt)
                 .FirstOrDefaultAsync(ct);
         }
+
+        public async Task<List<Guid>> GetBusyWorkerIdsAsync(
+			Guid workAreaId,
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default)
+        {
+            return await _context.TaskAssignments
+                .Where(t =>
+                    !t.IsDeleted &&
+                    t.WorkAreaId == workAreaId &&   // filter theo khu vực
+                    t.Status != TaskAssignmentStatus.Completed &&
+                    t.Status != TaskAssignmentStatus.Block &&
+                    t.ScheduledStartAt < end &&
+                    t.ScheduledEndAt > start
+                )
+                .Select(t => t.AssigneeId)
+                .Distinct()
+                .ToListAsync(ct);
+        }
     }
 }

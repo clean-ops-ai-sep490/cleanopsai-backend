@@ -29,5 +29,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 		Task<StartTaskDto> CompleteTaskAsync(Guid taskAssignmentId, TaskCompletedDto dto, CancellationToken ct = default);
 		Task<TaskAssignmentDto> CreateAdhocTask(CreateAdhocTaskDto dto);
 
+		Task<List<WorkerAvailabilityDto>> GetWorkersAvailableByAreaAsync(
+			Guid workAreaId,
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default);
+
     }
 }
