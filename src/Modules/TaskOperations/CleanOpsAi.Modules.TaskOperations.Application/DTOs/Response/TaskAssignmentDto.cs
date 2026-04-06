@@ -24,6 +24,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 
 		public string AssigneeName { get; set; } = null!;
 
-		public string OriginalAssigneeName { get; set; } = null!;
+		public string OriginalAssigneeName { get; set; } = null!; 
+
+		public ICollection<TaskStepExecutionDto> Steps { get; set; } = new List<TaskStepExecutionDto>();
 	}
 }

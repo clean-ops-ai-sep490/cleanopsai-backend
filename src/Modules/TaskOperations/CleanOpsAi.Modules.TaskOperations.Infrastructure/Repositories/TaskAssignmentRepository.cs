@@ -44,7 +44,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 
 		public async Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct)
 		{
-			return await _context.TaskAssignments.FirstOrDefaultAsync(x=>x.Id == id, ct);
+			return await _context.TaskAssignments
+				.Include(x => x.TaskStepExecutions)
+				.FirstOrDefaultAsync(x=>x.Id == id, ct);
 		}
 
 		public async Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(Guid workAreaId,

@@ -66,9 +66,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		public async Task<TaskAssignmentDto?> GetById(Guid id, CancellationToken ct = default)
 		{
 			var taskAssignment = await _taskAssignmentRepository.GetByIdExist(id, ct);
-			if (taskAssignment == null) return null;
+			if (taskAssignment == null) return null; 
 
-			return _mapper.Map<TaskAssignmentDto?>(taskAssignment);
+			return _mapper.Map<TaskAssignmentDto>(taskAssignment);
 		}
 
 		public async Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentDto dto)
