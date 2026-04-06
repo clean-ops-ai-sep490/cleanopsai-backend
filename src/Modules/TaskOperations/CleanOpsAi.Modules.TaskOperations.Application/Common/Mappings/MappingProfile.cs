@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
@@ -11,9 +12,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
         public MappingProfile()
         {
             CreateMap<TaskAssignmentUpdateDto, TaskAssignment>();
-            CreateMap<TaskAssignment, TaskAssignmentDto>();
+			CreateMap<TaskAssignment, TaskAssignmentDto>()
+				.ForMember(dest => dest.Steps, opt => opt.MapFrom(src => src.TaskStepExecutions.OrderBy(x => x.StepOrder).ToList()));
 
-            CreateMap<TaskSwapRequest, TaskSwapRequestDto>();
+			CreateMap<TaskSwapRequest, TaskSwapRequestDto>();
             CreateMap<TaskSwapRequestCreateDto, TaskSwapRequest>();
 
             CreateMap<TaskSwapRequest, SwapRequestDto>();
@@ -70,6 +72,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
                     dest => dest.ResultData,
                     opt => opt.MapFrom(src =>
                     JsonSerializer.Deserialize<JsonElement>(src.ResultData, (JsonSerializerOptions?)null)));
-        }
+
+			CreateMap<TaskStepExecution, TaskStepExecutionDto>()
+	            .ForMember(
+		            dest => dest.ConfigSnapshot,
+		            opt => opt.MapFrom(src =>
+		            JsonSerializer.Deserialize<JsonElement>(src.ConfigSnapshot, (JsonSerializerOptions?)null)))
+	            .ForMember(
+		            dest => dest.ResultData,
+		            opt => opt.MapFrom(src =>
+		            JsonSerializer.Deserialize<JsonElement>(src.ResultData, (JsonSerializerOptions?)null)));
+
+
+		}
 	}
 }
