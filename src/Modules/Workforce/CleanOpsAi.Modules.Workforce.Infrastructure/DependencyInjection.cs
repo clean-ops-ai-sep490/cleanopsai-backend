@@ -48,6 +48,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkerSkillRepository, WorkerSkillRepository>();
 		builder.Services.AddScoped<IWorkerGpsRepository, WorkerGpsRepository>();
 		builder.Services.AddScoped<IWorkAreaSupervisorRepository, WorkAreaSupervisorRepository>(); 
+		builder.Services.AddScoped<IPpeItemRepository, PpeItemRepository>();
 
         // Services
         builder.Services.AddScoped<IWorkerService, WorkerService>();
@@ -58,6 +59,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkerSkillService, WorkerSkillService>();
 		builder.Services.AddScoped<IWorkerGpsService, WorkerGpsService>();
 		builder.Services.AddScoped<IWorkAreaSupervisorService, WorkAreaSupervisorService>();
+		builder.Services.AddScoped<IPpeItemService, PpeItemService>();
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();

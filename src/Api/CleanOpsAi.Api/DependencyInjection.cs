@@ -70,8 +70,9 @@ public static class DependencyInjection
 			typeof(CheckSingleWorkerCompetencyConsumer).Assembly,
 			typeof(FindQualifiedWorkersConsumer).Assembly,
 			typeof(GetSopRequirementsByScheduleConsumer).Assembly,
-			typeof(GetSupervisorByWorkAreaConsumer).Assembly
-		);
+			typeof(GetSupervisorByWorkAreaConsumer).Assembly,
+            typeof(GetWorkersByWorkAreaConsumer).Assembly
+        );
 
 		builder.Services.AddCors(options =>
 		{
