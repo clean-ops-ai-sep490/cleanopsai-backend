@@ -24,5 +24,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		{
 			return await _context.Steps.ToPaginatedResultAsync(request, ct);
 		}
+
+		public async Task<bool> IsActionKeyExists(string actionKey, CancellationToken ct = default)
+		{
+			var existsStep = await _context.Steps.FirstOrDefaultAsync(s => s.ActionKey == actionKey, ct);
+			if (existsStep != null)
+			{
+				return true;
+			}
+			return false;
+		}
 	}
 }

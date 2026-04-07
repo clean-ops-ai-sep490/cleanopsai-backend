@@ -29,6 +29,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 		public async Task<StepDto> CreateNewStep(StepCreateDto dto, CancellationToken ct = default)
 		{
+			if (await _stepRepository.IsActionKeyExists(dto.ActionKey, ct))
+				throw new BadRequestException($"Step with ActionKey '{dto.ActionKey}' already exists.");
+
 			var newStep = _mapper.Map<Step>(dto);
 
 			newStep.Id = _idGenerator.Generate();

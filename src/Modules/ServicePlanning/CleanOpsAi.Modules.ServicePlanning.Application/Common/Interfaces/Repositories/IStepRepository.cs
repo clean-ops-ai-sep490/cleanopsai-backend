@@ -8,5 +8,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 		Task<List<Step>> GetByIdsAsync(List<Guid> ids, CancellationToken cancellationToken = default);
 
 		Task<PaginatedResult<Step>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
+
+		Task<bool> IsActionKeyExists(string actionKey, CancellationToken ct = default);
 	}
 }
