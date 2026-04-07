@@ -2,16 +2,16 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
-using CleanOpsAi.BuildingBlocks.Application.Interfaces; 
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Events;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
-using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services; 
+using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
-using CleanOpsAi.Modules.ServicePlanning.Domain.Entities; 
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
@@ -21,7 +21,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly ITaskScheduleRepository _taskScheduleRepository;
 		private readonly ISopStepRepository _sopStepRepository;
 		private readonly ISopRepository _sopRepository;
-		private readonly IMapper _mapper; 
+		private readonly IMapper _mapper;
 		private readonly IIdGenerator _idGenerator;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IUserContext _userContext;
@@ -49,24 +49,34 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 		public async Task<TaskScheduleDto> GetById(Guid id, CancellationToken ct = default)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
+			var taskSchedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
 			if (taskSchedule == null)
 				throw new NotFoundException(nameof(TaskSchedule), id);
-			
+
 			return _mapper.Map<TaskScheduleDto>(taskSchedule);
 		}
 
 		public async Task<TaskScheduleDto> Create(TaskScheduleCreateDto dto, CancellationToken ct = default)
 		{
+			if (dto.DurationMinutes <= 0)
+				throw new BadRequestException("Duration must be greater than 0");
+
+			if (dto.RecurrenceConfig?.Times != null)
+			{
+				ValidateTimesNotOverlap(dto.RecurrenceConfig.Times, dto.DurationMinutes);
+			}
+
+			ValidateContractDate(dto.ContractStartDate, dto.ContractEndDate);
+
 			var windowStart = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
-			var windowEnd = windowStart.AddDays(14); 
+			var windowEnd = windowStart.AddDays(14);
 
 			var hasConflict = await HasScheduleConflictAsync(
 				dto.WorkAreaDetailId,
 				dto.SlaShiftId,
 				dto.AssigneeId,
 				dto.RecurrenceType,
-				dto.RecurrenceConfig,
+				dto.RecurrenceConfig!,
 				dto.ContractStartDate,
 				dto.ContractEndDate,
 				windowStart,
@@ -85,7 +95,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			taskSchedule.Id = _idGenerator.Generate();
 			taskSchedule.Created = _dateTimeProvider.UtcNow;
 			taskSchedule.CreatedBy = _userContext.UserId.ToString();
-			taskSchedule.Version = 1; 
+			taskSchedule.Version = 1;
 
 			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
 			taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
@@ -97,59 +107,77 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 		public async Task<TaskScheduleDto> Update(Guid id, TaskScheduleUpdateDto dto, CancellationToken ct = default)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
+			var taskSchedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
 			if (taskSchedule == null)
-			{
 				throw new NotFoundException(nameof(TaskSchedule), id);
-			}
-			else
+
+			if (dto.DurationMinutes <= 0)
+				throw new BadRequestException("Duration must be greater than 0");
+
+			if (dto.RecurrenceConfig == null)
+				throw new BadRequestException("RecurrenceConfig is required");
+
+			var recurrenceConfig = dto.RecurrenceConfig;
+			if (recurrenceConfig.Times != null)
 			{
-				_mapper.Map(dto, taskSchedule);
-
-				var windowStart = DateOnly.FromDateTime(DateTime.UtcNow);
-				var windowEnd = windowStart.AddDays(14);
-
-				var recurrenceConfigObj = JsonSerializer.Deserialize<RecurrenceConfig>(
-					taskSchedule.RecurrenceConfig
-				)!;
-
-				var hasConflict = await HasScheduleConflictAsync(
-					taskSchedule.WorkAreaDetailId,
-					taskSchedule.SlaShiftId,
-					taskSchedule.AssigneeId,
-					taskSchedule.RecurrenceType,
-					recurrenceConfigObj,
-					taskSchedule.ContractStartDate,
-					taskSchedule.ContractEndDate,
-					windowStart,
-					windowEnd,
-					excludeScheduleId: taskSchedule.Id
-				);
-
-
-				if (hasConflict)
-					throw new BadRequestException("Schedule conflict detected");
-
-				taskSchedule.Version++;
-				taskSchedule.LastModified = _dateTimeProvider.UtcNow;
-				taskSchedule.LastModifiedBy = _userContext.UserId.ToString();
-
-				if (dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId)
-				{
-					var sopSteps = await _sopStepRepository.GetListBySopId(dto.SopId);
-					taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
-				}
-
-				await _taskScheduleRepository.SaveChangesAsync(ct);
-				return _mapper.Map<TaskScheduleDto>(taskSchedule);
+				ValidateTimesNotOverlap(recurrenceConfig.Times, dto.DurationMinutes);
 			}
 
-			
+			var startDate = dto.ContractStartDate != default ? dto.ContractStartDate : taskSchedule.ContractStartDate; 
+
+			var endDate = dto.ContractEndDate ?? taskSchedule.ContractEndDate; 
+			ValidateContractDate(startDate, endDate);
+
+			var recurrenceType = dto.RecurrenceType != default
+			? dto.RecurrenceType
+			: taskSchedule.RecurrenceType;
+
+
+			var windowStart = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
+			var windowEnd = windowStart.AddDays(14);
+
+			var recurrenceConfigObj = JsonSerializer.Deserialize<RecurrenceConfig>(
+				taskSchedule.RecurrenceConfig
+			)!;
+
+			var hasConflict = await HasScheduleConflictAsync(
+				dto.WorkAreaDetailId ?? taskSchedule.WorkAreaDetailId,
+				dto.SlaShiftId != Guid.Empty ? dto.SlaShiftId : taskSchedule.SlaShiftId,
+				dto.AssigneeId ?? taskSchedule.AssigneeId,
+				recurrenceType,
+				recurrenceConfig,
+				startDate,
+				endDate,
+				windowStart,
+				windowEnd,
+				excludeScheduleId: taskSchedule.Id
+			);
+
+			if (hasConflict)
+				throw new BadRequestException("Schedule conflict detected");
+
+			var isSopChanged = dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId;
+
+			_mapper.Map(dto, taskSchedule);
+
+			if (isSopChanged)
+			{
+				var sopSteps = await _sopStepRepository.GetListBySopId(dto.SopId);
+				taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
+			}
+
+			taskSchedule.Version++;
+			taskSchedule.LastModified = _dateTimeProvider.UtcNow;
+			taskSchedule.LastModifiedBy = _userContext.UserId.ToString(); 
+
+			await _taskScheduleRepository.SaveChangesAsync(ct);
+			return _mapper.Map<TaskScheduleDto>(taskSchedule); 
+
 		}
 
 		public async Task<bool> Delete(Guid id, CancellationToken ct = default)
 		{
-			var taskSchedule = await _taskScheduleRepository.GetById(id, ct);
+			var taskSchedule = await _taskScheduleRepository.GetByIdAsync(id, ct);
 			if (taskSchedule == null)
 				throw new NotFoundException(nameof(TaskSchedule), id);
 
@@ -190,7 +218,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			var effectiveEnd = (contractEndDate ?? windowEnd) < windowEnd ? contractEndDate ?? windowEnd
 				: windowEnd;
 
-			var targetOccurrences = Expand(recurrenceType, recurrenceConfig, effectiveStart, effectiveEnd); 
+			var targetOccurrences = Expand(recurrenceType, recurrenceConfig, effectiveStart, effectiveEnd);
 			var occurrenceSet = new HashSet<DateTime>(targetOccurrences);
 
 			if (occurrenceSet.Count != targetOccurrences.Count)
@@ -293,7 +321,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private static bool MatchesType(
 			RecurrenceType type, RecurrenceConfig config, DateOnly date) =>
 			type switch
-		{
+			{
 				RecurrenceType.Daily => true,
 
 				RecurrenceType.Weekly =>
@@ -307,7 +335,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					?? false,
 
 				_ => false
-		};
+			};
 
 		private static DateOnly Max(DateOnly a, DateOnly b) => a > b ? a : b;
 
@@ -413,6 +441,37 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 			if (schedule.RecurrenceConfig == null)
 				throw new BadRequestException("RecurrenceConfig is required");
+		}
+
+		private void ValidateTimesNotOverlap(List<TimeOnly> times, int durationMinutes)
+		{
+			if (times == null || times.Count <= 1)
+				return;
+
+			var sorted = times.OrderBy(t => t).ToList();
+
+			for (int i = 0; i < sorted.Count - 1; i++)
+			{
+				var currentStart = sorted[i];
+				var currentEnd = currentStart.AddMinutes(durationMinutes);
+
+				var nextStart = sorted[i + 1];
+
+				if (nextStart < currentEnd)
+				{
+					throw new BadRequestException(
+						$"Time overlap detected between {currentStart} and {nextStart} with duration {durationMinutes} minutes"
+					);
+				}
+			}
+		}
+
+		private void ValidateContractDate(DateOnly start, DateOnly? end)
+		{
+			if (end.HasValue && end.Value <= start)
+			{
+				throw new BadRequestException("ContractEndDate must be greater than ContractStartDate");
+			}
 		}
 
 		public async Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(Guid sopId, CancellationToken ct = default)

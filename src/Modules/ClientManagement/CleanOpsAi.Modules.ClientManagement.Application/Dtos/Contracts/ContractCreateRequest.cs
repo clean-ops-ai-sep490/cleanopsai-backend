@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts
+﻿namespace CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts
 {
     public class ContractCreateRequest
     {
-        public string Name { get; set; }
-        public Guid ClientId { get; set; }
+        public string Name { get; set; } = null!;
+		public Guid ClientId { get; set; }
         public DateTime ContractStartDate { get; set; }
         public DateTime ContractEndDate { get; set; }
         public Stream? FileStream { get; set; }

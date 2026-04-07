@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Domain.Dtos;
+using System.ComponentModel;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
@@ -25,11 +26,16 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request
 
 		public string? DisplayLocation { get; set; }
 
+		public int DurationMinutes { get; set; }
+
 		public RecurrenceType RecurrenceType { get; set; }
 
 		public RecurrenceConfig RecurrenceConfig { get; set; } = null!;
 
 		public DateOnly ContractStartDate { get; set; }
 		public DateOnly? ContractEndDate { get; set; }
+
+		[DefaultValue(false)]
+		public bool IsActive { get; set; } = false;
 	}
 }
