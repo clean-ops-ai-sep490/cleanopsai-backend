@@ -8,6 +8,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -63,15 +64,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 			await _repository.SaveChangesAsync(ct);
 
-			return new TaskStepExecutionDto
-			{
-				Id = step.Id,
-				SopStepId = step.SopStepId,
-				StepOrder = step.StepOrder,
-				Status = step.Status,
-				NextStepId = nextStep?.Id
-			};
+			var stepDto = _mapper.Map<TaskStepExecutionDto>(step);
+			stepDto.NextStepId = nextStep?.Id;
+			stepDto.ConfigSnapshot = JsonSerializer.Deserialize<JsonElement>("{}");
 
+			return stepDto;
 		}
 
 		public async Task<TaskStepExecutionDetailDto> GetStepDetailAsync(Guid id, CancellationToken ct = default)
