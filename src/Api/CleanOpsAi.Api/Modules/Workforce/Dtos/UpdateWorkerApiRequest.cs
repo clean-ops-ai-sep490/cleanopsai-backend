@@ -2,9 +2,8 @@
 {
     public class UpdateWorkerApiRequest
     {
-        public string? DisplayAddress { get; set; }
-        public double? Latitude { get; set; }
-        public double? Longitude { get; set; }
+        public string? FullName { get; set; }
+        public string? Address { get; set; }        // FE chỉ truyền địa chỉ
         public IFormFile? Avatar { get; set; }
     }
 }

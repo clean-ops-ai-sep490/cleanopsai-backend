@@ -164,5 +164,26 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .Distinct()
                 .ToListAsync(ct);
         }
+
+        public async Task<List<Guid>> GetBusyWorkerIdsWithoutAreaAsync(
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default)
+        {
+            var startUtc = DateTime.SpecifyKind(start, DateTimeKind.Utc);
+            var endUtc = DateTime.SpecifyKind(end, DateTimeKind.Utc);
+
+            return await _context.TaskAssignments
+                .Where(t =>
+                    !t.IsDeleted &&
+                    t.Status != TaskAssignmentStatus.Completed &&
+                    t.Status != TaskAssignmentStatus.Block &&
+                    t.ScheduledStartAt < endUtc &&
+                    t.ScheduledEndAt > startUtc
+                )
+                .Select(t => t.AssigneeId)
+                .Distinct()
+                .ToListAsync(ct);
+        }
     }
 }

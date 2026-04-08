@@ -112,18 +112,14 @@ namespace CleanOpsAi.Api.Modules.Workforce
         {
             var command = new WorkerUpdateRequest
             {
-                DisplayAddress = request.DisplayAddress,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude,
+                FullName = request.FullName,
+                DisplayAddress = request.Address,
                 AvatarStream = request.Avatar?.OpenReadStream(),
                 AvatarFileName = request.Avatar?.FileName
             };
-
             var result = await _service.UpdateAsync(id, command);
-
             if (result != null)
                 return Ok(result);
-
             return NotFound();
         }
 
@@ -145,16 +141,42 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return NotFound();
         }
 
-        [HttpPost("filter")]
-        [Consumes("application/json")]
+        [HttpGet("filter")]
         [SwaggerOperation(
             Summary = "Filter worker",
-            Description = "Filter worker by certi, skill, location",
+            Description = "Filter worker by certi, skill, location, and start date end date to find who not busy",
             Tags = new[] { "Workers" })]
-        public async Task<IActionResult> Filter([FromBody] WorkerFilterRequest request)
+        public async Task<IActionResult> Filter(
+            [FromQuery] string? address,
+            [FromQuery] List<string>? skillCategories,
+            [FromQuery] List<string>? certificateCategories,
+            [FromQuery] DateTime? startAt,
+            [FromQuery] DateTime? endAt)
         {
+            var request = new WorkerFilterRequest
+            {
+                Address = address,
+                SkillCategories = skillCategories,
+                CertificateCategories = certificateCategories,
+                StartAt = startAt,
+                EndAt = endAt
+            };
             var result = await _service.FilterAsync(request);
             return Ok(result);
         }
+
+        [HttpGet("nlp-filter")]
+        [SwaggerOperation(
+            Summary = "NLP search worker",
+            Description = "Search worker bằng ngôn ngữ tự nhiên. VD: 'Find workers with glass cleaning skills in District 1 from 8am to 10am today'. Warning khi có khoảng  thời gian thì phải có thời gian bắt đầu và thời gian kết thúc. Ghi chú: rất hay bị 400 do Gemini bị nghẽn do sử dụng key free ",
+            Tags = new[] { "Workers" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Danh sách worker phù hợp")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Query không hợp lệ")]
+        public async Task<IActionResult> NlpFilter([FromQuery] string search)
+        {
+            var result = await _service.NlpFilterAsync(search);
+            return Ok(result);
+        }
+
     }
 }

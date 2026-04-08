@@ -84,9 +84,9 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ITaskScheduleService, TaskScheduleService>();
 		builder.Services.AddScoped<IEnvironmentTypeService, EnvironmentTypeService>();
 
-		//events
+        //events
 
-		builder.Services.AddScoped<ITaskScheduleEventService, TaskScheduleEventService>();
+        builder.Services.AddScoped<ITaskScheduleEventService, TaskScheduleEventService>();
 
 	}
 }

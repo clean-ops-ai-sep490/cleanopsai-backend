@@ -48,5 +48,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 			DateTime start,
 			DateTime end,
 			CancellationToken ct = default);
+
+		Task<List<Guid>> GetBusyWorkerIdsWithoutAreaAsync(
+			DateTime start,
+			DateTime end,
+			CancellationToken ct = default);
+
     }
 }
