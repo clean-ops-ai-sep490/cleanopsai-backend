@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services;
@@ -14,20 +15,28 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IEnvironmentTypeRepository _environmentTypeRepository;
 		private readonly IMapper _mapper;
 		private readonly IUserContext _userContext;
+		private readonly IDateTimeProvider _dateTimeProvider;
+		private readonly IIdGenerator _idGenerator;
 
-		public EnvironmentTypeService(IEnvironmentTypeRepository environmentTypeRepository,
-			IMapper mapper, IUserContext userContext)
+		public EnvironmentTypeService(
+			IEnvironmentTypeRepository environmentTypeRepository,
+			IMapper mapper,
+			IUserContext userContext,
+			IDateTimeProvider dateTimeProvider,
+			IIdGenerator idGenerator)
 		{
 			_environmentTypeRepository = environmentTypeRepository;
 			_mapper = mapper;
 			_userContext = userContext;
+			_dateTimeProvider = dateTimeProvider;
+			_idGenerator = idGenerator;
 		}
 
 		public async Task<EnvironmentTypeDto> Create(EnvironmentTypeCreateDto dto, CancellationToken ct = default)
 		{
 		    var entity = _mapper.Map<EnvironmentType>(dto);
-			entity.Id = Uuid7.NewGuid();
-			entity.Created = DateTime.UtcNow;
+			entity.Id = _idGenerator.Generate();
+			entity.Created = _dateTimeProvider.UtcNow;
 
 			await _environmentTypeRepository.InsertAsync(entity);
 			await _environmentTypeRepository.SaveChangesAsync();
@@ -76,7 +85,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 
 			_mapper.Map(dto, environmentType);
-			environmentType.LastModified = DateTime.UtcNow;
+			environmentType.LastModified = _dateTimeProvider.UtcNow;
 
 			await _environmentTypeRepository.SaveChangesAsync(ct);
 			return _mapper.Map<EnvironmentTypeDto>(environmentType);
