@@ -183,7 +183,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				ct: ct);
 
 			return Result<PaginatedResult<SwapCandidateDto>>.Success(
-				_mapper.Map<PaginatedResult<SwapCandidateDto>>(candidates)
+				new PaginatedResult<SwapCandidateDto>(
+					candidates.PageNumber,
+					candidates.PageSize,
+					candidates.TotalElements,
+					_mapper.Map<List<SwapCandidateDto>>(candidates.Content)
+				)
 			);
 		}
 
