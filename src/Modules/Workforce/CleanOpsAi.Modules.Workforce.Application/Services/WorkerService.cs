@@ -1,10 +1,13 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
+using MassTransit;
 using Medo;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
@@ -17,13 +20,19 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private const string AVATAR_FOLDER = "avatars";
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IGoongMapService _goongMapService;
+        private readonly IRequestClient<GetBusyWorkerIdsRequest> _busyWorkerClient;
+        private readonly IGeminiService _geminiService;
 
-        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext, IDateTimeProvider dateTimeProvider, IGoongMapService goongMapService, IRequestClient<GetBusyWorkerIdsRequest> busyWorkerClient, IGeminiService geminiService)
         {
             _workerRepository = workerRepository;
             _fileStorage = fileStorageService;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
+            _goongMapService = goongMapService;
+            _busyWorkerClient = busyWorkerClient;
+            _geminiService = geminiService;
         }
 
         // get by id
@@ -161,19 +170,23 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             if (worker == null)
                 throw new KeyNotFoundException($"Worker with id {id} not found.");
 
-            if (!string.IsNullOrWhiteSpace(request.DisplayAddress))
-                worker.DisplayAddress = request.DisplayAddress;
-
-            if (request.Latitude.HasValue)
-                worker.Latitude = request.Latitude.Value;
-
-            if (request.Longitude.HasValue)
-                worker.Longitude = request.Longitude.Value;
-
-            if(!string.IsNullOrWhiteSpace(request.FullName))
+            if (!string.IsNullOrWhiteSpace(request.FullName))
                 worker.FullName = request.FullName;
 
-            // upload avatar
+            // Geocode address → lat/lng + DisplayAddress
+            if (!string.IsNullOrWhiteSpace(request.DisplayAddress))
+            {
+                worker.DisplayAddress = request.DisplayAddress;
+
+                var coords = await _goongMapService.GetCoordinatesAsync(request.DisplayAddress);
+                if (coords.HasValue)
+                {
+                    worker.Latitude = coords.Value.lat;
+                    worker.Longitude = coords.Value.lng;
+                }
+            }
+
+            // Upload avatar
             if (request.AvatarStream != null)
             {
                 var fileUrl = await _fileStorage.UploadFileAsync(
@@ -181,7 +194,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     $"{AVATAR_FOLDER}/{request.AvatarFileName}",
                     CONTAINER
                 );
-
                 worker.AvatarUrl = fileUrl;
             }
 
@@ -240,11 +252,56 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
+        // filter workers based on skills, certifications, location, and availability (busy or not) within a time range
         public async Task<List<WorkerResponse>> FilterAsync(WorkerFilterRequest request)
         {
+            // Validate startAt/endAt
+            if (request.StartAt.HasValue && request.EndAt.HasValue)
+            {
+                if (request.StartAt > request.EndAt)
+                    throw new BadRequestException("startAt phải nhỏ hơn endAt.");
+            }
+            else if (request.StartAt.HasValue && !request.EndAt.HasValue)
+            {
+                throw new BadRequestException("Cần truyền endAt khi có startAt.");
+            }
+            else if (!request.StartAt.HasValue && request.EndAt.HasValue)
+            {
+                throw new BadRequestException("Cần truyền startAt khi có endAt.");
+            }
+
+            // Nếu FE truyền address thì geocode sang lat/lng
+            if (!string.IsNullOrWhiteSpace(request.Address)
+                && !request.Latitude.HasValue
+                && !request.Longitude.HasValue)
+            {
+                var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+                if (coords.HasValue)
+                {
+                    request.Latitude = coords.Value.lat;
+                    request.Longitude = coords.Value.lng;
+                }
+            }
+
+            //// Lấy danh sách worker đang bận
+            var busyWorkerIds = new HashSet<Guid>();
+            if (request.StartAt.HasValue && request.EndAt.HasValue)
+            {
+                var busyResponse = await _busyWorkerClient
+                    .GetResponse<GetBusyWorkerIdsResponse>(new GetBusyWorkerIdsRequest
+                    {
+                        StartAt = request.StartAt.Value,
+                        EndAt = request.EndAt.Value
+                    });
+
+                busyWorkerIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
+            }
+
             var workers = await _workerRepository.FilterAsync(request);
 
-            return workers.Select(x => new WorkerResponse
+            return workers
+            .Where(x => !busyWorkerIds.Contains(x.Id)) // loại worker bận
+            .Select(x => new WorkerResponse
             {
                 Id = x.Id,
                 UserId = x.UserId,
@@ -258,7 +315,40 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             }).ToList();
         }
 
-		public async Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids)
+        // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
+        public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new BadRequestException("Query không được để trống.");
+
+            var parsed = await _geminiService.ParseWorkerFilterAsync(query);
+
+            string? warning = null;
+            if (parsed.StartAt.HasValue != parsed.EndAt.HasValue)
+            {
+                parsed.StartAt = null;
+                parsed.EndAt = null;
+                warning = "Không thể filter theo lịch bận vì thiếu thời gian bắt đầu hoặc kết thúc, kết quả trả về không lọc theo thời gian.";
+            }
+
+            var request = new WorkerFilterRequest
+            {
+                Address = parsed.Address,
+                SkillCategories = parsed.SkillCategories,
+                CertificateCategories = parsed.CertificateCategories,
+                StartAt = parsed.StartAt,
+                EndAt = parsed.EndAt
+            };
+
+            return new WorkerNlpFilterResponse
+            {
+                Warning = warning,
+                Workers = await FilterAsync(request)
+            };
+        }
+
+        // Lấy thông tin cơ bản (id, full name) của danh sách worker theo ids, dùng cho hiển thị trong dropdown khi chọn worker cho task assignment
+        public async Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids)
 		{
 			var workers = await _workerRepository.GetWorkersByIds(ids);
 			return workers.Select(x => new WorkerDto
@@ -282,5 +372,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 		{
 			return await _workerRepository.IsWorkerQualifiedAsync(workerId, requiredSkillIds, requiredCertificationIds, ct);
 		}
+
 	}
 }

@@ -72,24 +72,15 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // delete Client
         public async Task<int> DeleteAsync(Guid id)
         {
-            var client = _dbContext.Set<Client>().FirstOrDefault(c => c.Id == id);
-            if (client != null)
-            {
-                var newClient = new Client
-                {
-                    Id = client.Id,
-                    Name = client.Name,
-                    Email = client.Email,
-                    CreatedBy = client.CreatedBy,
-                    Created = client.Created,
-                    LastModifiedBy = client.LastModifiedBy,
-                    LastModified = client.LastModified,
-                    IsDeleted = true
-                };
-                _dbContext.Set<Client>().Update(client);
-                return await _dbContext.SaveChangesAsync();
-            }
-            return 0;
+            var client = await _dbContext.Set<Client>()
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (client == null)
+                return 0;
+
+            client.IsDeleted = true; // chỉ update field cần thiết
+
+            return await _dbContext.SaveChangesAsync();
         }
     }
 }
