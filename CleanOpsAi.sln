@@ -134,6 +134,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.Workforc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.BuildingBlocks.IntegrationTests", "src\BuildingBlocks\Tests\CleanOpsAi.BuildingBlocks.IntegrationTests\CleanOpsAi.BuildingBlocks.IntegrationTests.csproj", "{033BF123-0CF6-95E0-F0FC-250EB13D908A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WorkareaCheckin", "WorkareaCheckin", "{8679E5F4-A9E4-4041-A8D3-70654B2510A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.WorkareaCheckin.Domain", "src\Modules\WorkareaCheckin\CleanOpsAi.Modules.WorkareaCheckin.Domain\CleanOpsAi.Modules.WorkareaCheckin.Domain.csproj", "{C68FE0DF-ADA8-5F09-6B1C-C42D98BC3F8E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.WorkareaCheckin.Application", "src\Modules\WorkareaCheckin\CleanOpsAi.Modules.WorkareaCheckin.Application\CleanOpsAi.Modules.WorkareaCheckin.Application.csproj", "{1B14B821-27C4-6801-A401-1758804F36F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CleanOpsAi.Modules.WorkareaCheckin.Infrastructure", "src\Modules\WorkareaCheckin\CleanOpsAi.Modules.WorkareaCheckin.Infrastructure\CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.csproj", "{B18D6209-43C5-ED15-4CF6-066F32B906FE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -328,6 +336,18 @@ Global
 		{033BF123-0CF6-95E0-F0FC-250EB13D908A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{033BF123-0CF6-95E0-F0FC-250EB13D908A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{033BF123-0CF6-95E0-F0FC-250EB13D908A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C68FE0DF-ADA8-5F09-6B1C-C42D98BC3F8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C68FE0DF-ADA8-5F09-6B1C-C42D98BC3F8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C68FE0DF-ADA8-5F09-6B1C-C42D98BC3F8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C68FE0DF-ADA8-5F09-6B1C-C42D98BC3F8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B14B821-27C4-6801-A401-1758804F36F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B14B821-27C4-6801-A401-1758804F36F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B14B821-27C4-6801-A401-1758804F36F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B14B821-27C4-6801-A401-1758804F36F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B18D6209-43C5-ED15-4CF6-066F32B906FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B18D6209-43C5-ED15-4CF6-066F32B906FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B18D6209-43C5-ED15-4CF6-066F32B906FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B18D6209-43C5-ED15-4CF6-066F32B906FE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -396,6 +416,10 @@ Global
 		{42BC553B-B585-172C-8A57-6F5055A39274} = {3EE131C2-2484-4FC8-ACB9-F134D4F0A1DF}
 		{EA5E030D-BEB4-9A49-C3B7-8F8EEE6A0EEB} = {3EE131C2-2484-4FC8-ACB9-F134D4F0A1DF}
 		{033BF123-0CF6-95E0-F0FC-250EB13D908A} = {CCC259EB-E603-41A5-86E4-991E71CF4360}
+		{8679E5F4-A9E4-4041-A8D3-70654B2510A4} = {1DBB3BE4-6D03-412F-AAE6-2CB0E6962C61}
+		{C68FE0DF-ADA8-5F09-6B1C-C42D98BC3F8E} = {8679E5F4-A9E4-4041-A8D3-70654B2510A4}
+		{1B14B821-27C4-6801-A401-1758804F36F6} = {8679E5F4-A9E4-4041-A8D3-70654B2510A4}
+		{B18D6209-43C5-ED15-4CF6-066F32B906FE} = {8679E5F4-A9E4-4041-A8D3-70654B2510A4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BD300A16-B862-450A-A9A0-D6A2C4900C55}
