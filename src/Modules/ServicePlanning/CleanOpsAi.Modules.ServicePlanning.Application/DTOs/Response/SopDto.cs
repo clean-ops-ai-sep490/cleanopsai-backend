@@ -9,9 +9,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 		public string Name { get; set; } = null!;
 		public string? Description { get; set; }
 		public ServiceType ServiceType { get; set; }
-		public Guid EnvironmentTypeId { get; set; }
-		public bool IsRequiredSkill { get; set; }
-		public bool IsRequiredCertification { get; set; }
+		public Guid EnvironmentTypeId { get; set; } 
 		public int Version { get; set; }
 		public List<SopStepDto> SopSteps { get; set; } = new();
 
