@@ -107,6 +107,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         public async Task<IssueReportDto?> Create(CreateIssueReportDto dto, CancellationToken ct = default)
         {
             var entity = _mapper.Map<IssueReport>(dto);
+            entity.Status = IssueStatus.Pending; // default status when create new report
             entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
