@@ -15,8 +15,4 @@
     <ProjectReference Include="..\CleanOpsAi.Modules.WorkareaCheckin.Domain\CleanOpsAi.Modules.WorkareaCheckin.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Common\Interfaces\" />
-  </ItemGroup>
-
 </Project>

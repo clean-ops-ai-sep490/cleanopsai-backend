@@ -45,6 +45,8 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data.Configurations
 				ble.Property(b => b.LastSeenAt);
 				ble.Property(b => b.LastMaintenanceAt);
 			});
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

@@ -36,6 +36,8 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data.Configurations
 				.WithMany()
 				.HasForeignKey(x => x.AccessDeviceId)
 				.OnDelete(DeleteBehavior.SetNull);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

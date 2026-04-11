@@ -33,6 +33,8 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data.Configurations
 				.WithOne(x => x.WorkareaCheckinPoint)
 				.HasForeignKey(x => x.WorkareaCheckinPointId)
 				.OnDelete(DeleteBehavior.Restrict);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }
