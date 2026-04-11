@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+	<PackageReference Include="QRCoder" Version="1.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CleanOpsAi.Modules.WorkareaCheckin.Application\CleanOpsAi.Modules.WorkareaCheckin.Application.csproj" />
   </ItemGroup>
 

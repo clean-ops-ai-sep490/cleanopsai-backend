@@ -12,17 +12,12 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data.Configurations
 
 			builder.Property(x => x.Name)
 				.IsRequired()
-				.HasMaxLength(100);
-
-			builder.Property(x => x.Code)
-				.IsRequired()
-				.HasMaxLength(50);
-
-			builder.HasIndex(x => x.Code)
-				.IsUnique();
+				.HasMaxLength(100); 
 
 			builder.Property(x => x.IsActive)
 				.HasDefaultValue(true);
+
+			builder.HasIndex(x => new { x.WorkareaId, x.Code, x.IsDeleted }).IsUnique().HasFilter("is_deleted = false");
 
 			builder.HasMany(x => x.AccessDevices)
 				.WithOne(x => x.WorkareaCheckinPoint)

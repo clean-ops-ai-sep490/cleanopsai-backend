@@ -13,10 +13,7 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Repos
 
 		Task<bool> DeleteAsync(Tkey id, CancellationToken cancellationToken = default);
 		Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default);
-		Task<T?> GetByIdAsync(Tkey id, CancellationToken cancellationToken = default);
-
-
-		Task<T?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default);
+		Task<T?> GetByIdAsync(Tkey id, CancellationToken cancellationToken = default); 
 
 		Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 	}
