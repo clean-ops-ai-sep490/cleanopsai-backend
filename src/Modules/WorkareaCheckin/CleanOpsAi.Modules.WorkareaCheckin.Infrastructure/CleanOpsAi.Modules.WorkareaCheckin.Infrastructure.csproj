@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CleanOpsAi.Modules.WorkareaCheckin.Application\CleanOpsAi.Modules.WorkareaCheckin.Application.csproj" />
+  </ItemGroup>
+
 </Project>
