@@ -20,7 +20,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 
 		Task<List<TaskSchedule>> GetByIdsAsync( List<Guid> ids, CancellationToken ct = default);
 
-		Task<PaginatedResult<TaskSchedule>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
+		Task<PaginatedResult<TaskSchedule>> GetsPaging(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default);
 
 	}
 }
