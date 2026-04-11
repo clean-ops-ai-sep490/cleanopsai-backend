@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.Api.Modules.UserAccess.Dtos;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
@@ -133,5 +134,30 @@ namespace CleanOpsAi.Api.Modules.UserAccess
             await _authService.ResetPassword(request.Email, request.Token, request.NewPassword);
             return Ok("Reset password thành công");
         }
+
+        [HttpGet("supervisors")]
+        //[Authorize(Roles = "Admin,Manager")]
+        [SwaggerOperation(
+			Summary = "Get supervisors paging",
+			Description = "Get list of supervisors with pagination and optional keyword search (email or name)",
+			Tags = new[] { "Auth" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Success")]
+        public async Task<IActionResult> GetSupervisors(
+			[FromQuery] string? keyword,
+			[FromQuery] int pageNumber = 1,
+			[FromQuery] int pageSize = 10,
+			CancellationToken ct = default)
+        {
+            var request = new PaginationRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+
+            var result = await _authService.GetSupervisors(keyword, request, ct);
+
+            return Ok(result);
+        }
+
     }
 }
