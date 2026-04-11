@@ -1,5 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
@@ -120,7 +122,30 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			};
 		}
 
-		private string GenerateAccessToken(ApplicationUser user, IList<string> roles)
+        // Get all supervisors with pagination
+        public async Task<PaginatedResult<ApplicationUser>> GetSupervisorsPagingAsync(
+			string? keyword,
+			PaginationRequest request,
+			CancellationToken ct = default)
+        {
+            var query = _dbContext.Users
+                .Where(x => x.Role == UserRole.Supervisor);
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = $"%{keyword.Trim()}%";
+
+                query = query.Where(x =>
+                    EF.Functions.Like(x.FullName, keyword) ||
+                    EF.Functions.Like(x.Email!, keyword));
+            }
+
+            return await query
+                .OrderByDescending(x => x.CreatedAt)
+                .ToPaginatedResultAsync(request, ct);
+        }
+
+        private string GenerateAccessToken(ApplicationUser user, IList<string> roles)
 		{
 			var key = new SymmetricSecurityKey(
 				Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]!));

@@ -1,8 +1,10 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
+using CleanOpsAi.Modules.UserAccess.Application.DTOs.Response;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
 using CleanOpsAi.Modules.UserAccess.Domain;
@@ -160,6 +162,29 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Services
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new Exception(errors);
             }
+        }
+
+        public async Task<PaginatedResult<UserDto>> GetSupervisors(
+            string? keyword,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _authRepository.GetSupervisorsPagingAsync(keyword, request, ct);
+
+            var dtos = result.Content.Select(user => new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role
+            }).ToList();
+
+            return new PaginatedResult<UserDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos
+            );
         }
 
     }

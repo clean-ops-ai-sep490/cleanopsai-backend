@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.UserAccess.Application.DTOs.Response;
+using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
 using CleanOpsAi.Modules.UserAccess.Domain;
 
@@ -12,5 +14,6 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Contracts
 		Task ForgotPassword(string email);
 		Task ResetPassword(string email, string token, string newPassword);
         Task<string> VerifyOtp(string email, string otp);
+        Task<PaginatedResult<UserDto>> GetSupervisors(string? keyword, PaginationRequest request, CancellationToken ct = default);
     }
 }
