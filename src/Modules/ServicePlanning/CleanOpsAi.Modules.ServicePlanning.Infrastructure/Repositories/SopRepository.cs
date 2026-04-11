@@ -2,6 +2,7 @@
 using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -36,16 +37,51 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 
 		public async Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default)
 		{
-			var sop = await _context.Sops
+			var sop = await _context.Sops 
 				.Include(x => x.SopRequiredCertifications)  
 				.Include(x => x.SopRequiredSkills)
 				.FirstOrDefaultAsync(x => x.Id == id, ct);
 			return sop;
 		}
 
-		public async Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
+		public async Task<PaginatedResult<Sop>> GetsPaging(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default)
 		{
-			return await _context.Sops.ToPaginatedResultAsync(request, ct);
+			var sops = _context.Sops.AsQueryable();
+
+			if (!string.IsNullOrWhiteSpace(query.Name))
+			{
+				sops = sops.Where(x =>
+					EF.Functions.ILike(x.Name, $"%{query.Name}%")
+				);
+			}
+
+			if (query.ServiceType.HasValue)
+			{
+				sops = sops.Where(x => x.ServiceType == query.ServiceType.Value);
+			}
+
+			if (query.EnvironmentTypeId.HasValue)
+			{
+				sops = sops.Where(x => x.EnvironmentTypeId == query.EnvironmentTypeId.Value);
+			}
+
+			if (query.RequiredSkillIds?.Any() == true)
+			{
+				sops = sops.Where(x =>
+					x.SopRequiredSkills.Any(rs => query.RequiredSkillIds.Contains(rs.SkillId))
+				);
+			}
+
+			if (query.RequiredCertificationIds?.Any() == true)
+			{
+				sops = sops.Where(x =>
+					x.SopRequiredCertifications.Any(rc => query.RequiredCertificationIds.Contains(rc.CertificationId))
+				);
+			}
+
+			sops = query.IsDescending ? sops.OrderByDescending(x => x.Name) : sops.OrderBy(x => x.Name);
+
+			return await sops.ToPaginatedResultAsync(request, ct);
 		}
 
 		public async Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
@@ -67,6 +103,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 					IsDeleted = ss.IsDeleted
 				})
 				.ToListAsync(ct);
+		}
+
+		public async Task<Sop?> GetSopWithStepDetail(Guid id, CancellationToken ct = default)
+		{
+			return  await _context.Sops
+				.Include(x => x.SopSteps).ThenInclude(ss => ss.Step)
+				.Include(x => x.SopRequiredSkills)
+				.Include(x => x.SopRequiredCertifications)
+				.FirstOrDefaultAsync(x => x.Id == id, ct);
 		}
 	}
 }

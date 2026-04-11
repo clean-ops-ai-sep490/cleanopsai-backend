@@ -21,5 +21,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<EquipmentResponse?> UpdateAsync(Guid id, EquipmentUpdateRequest request);
 
         Task<int> DeleteAsync(Guid id);
+
+        Task<PagedResponse<EquipmentResponse>> SearchPaginationAsync(string? keyword, int pageNumber, int pageSize);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Request;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
 using MassTransit;
@@ -62,9 +63,20 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 			return await query.ToListAsync(cancellationToken);
 		}
 
-		public async Task<PaginatedResult<TaskSchedule>> GetsPaging(PaginationRequest request, CancellationToken ct = default)
+		public async Task<PaginatedResult<TaskSchedule>> GetsPaging(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default)
 		{
-			return await _context.TaskSchedules.ToPaginatedResultAsync(request, ct);
+			var taskSchedules = _context.TaskSchedules.AsQueryable();
+
+			if (!string.IsNullOrWhiteSpace(query.Name))
+			{
+				taskSchedules = taskSchedules.Where(x =>
+					EF.Functions.ILike(x.Name, $"%{query.Name}%")
+				);
+			}
+
+			taskSchedules = query.IsDescending ? taskSchedules.OrderByDescending(x => x.Name) : taskSchedules.OrderBy(x => x.Name);
+
+			return await taskSchedules.ToPaginatedResultAsync(request, ct);
 		}
 	}
 }

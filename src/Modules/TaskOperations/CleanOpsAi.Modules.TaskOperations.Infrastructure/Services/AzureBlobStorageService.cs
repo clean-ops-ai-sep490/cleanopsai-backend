@@ -61,5 +61,53 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services
             sasBuilder.SetPermissions(BlobSasPermissions.Read);
             return blobClient.GenerateSasUri(sasBuilder).ToString();
         }
+
+        // luu danh sach file
+        public async Task<List<string>> UploadFilesAsync(
+            IEnumerable<(Stream Stream, string FileName)> files,
+            string containerName,
+            CancellationToken ct = default)
+        {
+            var container = _blobServiceClient.GetBlobContainerClient(containerName);
+            await container.CreateIfNotExistsAsync(cancellationToken: ct);
+
+            // Upload song song các file
+            var uploadTasks = files.Select(async file =>
+            {
+                var blobName = BuildBlobName(file.FileName);
+                var blobClient = container.GetBlobClient(blobName);
+
+                await blobClient.UploadAsync(file.Stream, new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders { ContentType = ResolveContentType(blobName) }
+                }, ct);
+
+                return GenerateSasUrl(blobName, containerName);
+            });
+
+            var urls = await Task.WhenAll(uploadTasks);
+            return urls.ToList();
+        }
+
+        /// Tạo tên blob unique, giữ nguyên folder prefix nếu có
+        private static string BuildBlobName(string fileName)
+        {
+            var extension = Path.GetExtension(fileName);
+            var folder = Path.GetDirectoryName(fileName)?.Replace("\\", "/");
+            var uniqueName = $"{Guid.NewGuid()}{extension}";
+
+            return string.IsNullOrEmpty(folder)
+                ? uniqueName
+                : $"{folder}/{uniqueName}";
+        }
+
+        private static string ResolveContentType(string blobName)
+        {
+            var provider = new FileExtensionContentTypeProvider();
+            return provider.TryGetContentType(blobName, out var contentType)
+                ? contentType
+                : "application/octet-stream";
+        }
+
     }
 }

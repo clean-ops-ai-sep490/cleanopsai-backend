@@ -45,5 +45,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 				.OrderBy(x => x.StepOrder)
 				.FirstOrDefaultAsync(ct);
 		}
-	}
+
+        public async Task<List<TaskStepExecution>> GetStepsWithImagesByAssignmentIdAsync(Guid taskAssignmentId, CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutions
+                .Where(x => x.TaskAssignmentId == taskAssignmentId && !x.IsDeleted)
+                .Include(x => x.TaskStepExecutionImages
+                    .Where(img => !img.IsDeleted))
+                .OrderBy(x => x.StepOrder)
+                .AsNoTracking()
+                .ToListAsync(ct);
+        }
+
+    }
 }

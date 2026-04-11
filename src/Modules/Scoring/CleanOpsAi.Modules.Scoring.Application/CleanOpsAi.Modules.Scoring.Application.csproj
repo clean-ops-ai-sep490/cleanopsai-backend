@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Application\CleanOpsAi.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\CleanOpsAi.Modules.Scoring.Domain\CleanOpsAi.Modules.Scoring.Domain.csproj" />
+    <ProjectReference Include="..\CleanOpsAi.Modules.Scoring.IntegrationEvents\CleanOpsAi.Modules.Scoring.IntegrationEvents.csproj" />
+  </ItemGroup>
+
+</Project>

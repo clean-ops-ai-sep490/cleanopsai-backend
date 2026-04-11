@@ -75,5 +75,49 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
             return 0;
         }
+
+        public async Task<(List<Equipment> Items, int TotalCount)> SearchPaginationAsync(string? keyword, int pageNumber, int pageSize)
+        {
+            var query = _dbContext.Set<Equipment>()
+                .Where(x => !x.IsDeleted);
+
+            var list = await query.ToListAsync();
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.Trim().ToLower();
+                var keywordNormalized = RemoveDiacritics(keyword);
+
+                list = list.Where(x =>
+                    RemoveDiacritics(x.Name.ToLower())
+                        .Contains(keywordNormalized)
+                ).ToList();
+            }
+
+            var totalCount = list.Count;
+
+            var items = list
+                .OrderByDescending(x => x.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return (items, totalCount);
+        }
+
+        private static string RemoveDiacritics(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+
+            var chars = normalized
+                .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                            != System.Globalization.UnicodeCategory.NonSpacingMark)
+                .ToArray();
+
+            return new string(chars).Normalize(System.Text.NormalizationForm.FormC);
+        }
     }
 }
