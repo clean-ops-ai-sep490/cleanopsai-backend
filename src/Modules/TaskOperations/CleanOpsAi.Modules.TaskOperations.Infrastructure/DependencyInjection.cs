@@ -43,7 +43,8 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IIssueReportRepository, IssueReportRepository>();
 		builder.Services.AddScoped<IEmergencyLeaveRequestRepository, EmergencyLeaveRequestRepository>();
 		builder.Services.AddScoped<IAdHocRequestRepository, AdHocRequestRepository>();
-		builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
+        builder.Services.AddScoped<ITaskStepExecutionImageRepository, TaskStepExecutionImageRepository>();
+        builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
 
         builder.Services.AddScoped<IRecurrenceExpander, RecurrenceExpander>();
@@ -53,7 +54,8 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IIssueReportService, IssueReportService>();
 		builder.Services.AddScoped<ITaskStepExecutionService, TaskStepExecutionService>();
         builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>(); 
-        builder.Services.AddScoped<IAdHocRequestService, AdHocRequestService>(); 
+        builder.Services.AddScoped<IAdHocRequestService, AdHocRequestService>();
+        builder.Services.AddScoped<ITaskStepExecutionImageService, TaskStepExecutionImageService>();
 
         builder.Services.AddScoped<ISupervisorQueryService, SupervisorQueryService>();
         builder.Services.AddScoped<IWorkAreaQueryService, WorkAreaQueryService>(); 
