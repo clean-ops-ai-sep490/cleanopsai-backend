@@ -36,6 +36,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 					opt => opt.MapFrom(src =>
 					JsonSerializer.Deserialize<JsonElement>(src.ConfigSchema, (JsonSerializerOptions?)null)));
 
+			CreateMap<Step, StepInSopStepDto>();
 
 			//Sop mapping
 			CreateMap<SopCreateDto, Sop>()
@@ -49,7 +50,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 
 			CreateMap<SopStep, SopStepDto>()
 				.ForMember(dest => dest.ConfigDetail, opt => opt.MapFrom(src =>
-					JsonSerializer.Deserialize<JsonElement>(src.ConfigDetail, (JsonSerializerOptions?)null)));
+					JsonSerializer.Deserialize<JsonElement>(src.ConfigDetail, (JsonSerializerOptions?)null)))
+				.ForMember(dest => dest.Step, opt => opt.MapFrom(src => src.Step));
+
 
 
 			CreateMap<SopUpdateDto, Sop>()

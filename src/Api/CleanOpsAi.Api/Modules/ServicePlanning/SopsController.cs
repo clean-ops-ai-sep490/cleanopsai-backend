@@ -30,10 +30,11 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<SopDto>), StatusCodes.Status200OK)]
 		public async Task<IActionResult> Gets(
+		[FromQuery] GetsSopQueryFilter query,
 		[FromQuery] PaginationRequest request,
 		CancellationToken ct)
 		{
-			var result = await _sopService.Gets(request, ct);
+			var result = await _sopService.Gets(query, request, ct);
 			return Ok(result);
 		}
 

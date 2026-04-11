@@ -15,7 +15,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 
 		Task<SopDto?> GetByIdWithStepsAsync(Guid id, CancellationToken cancellationToken = default);
 
-		Task<PaginatedResult<SopDto>> Gets(PaginationRequest request, CancellationToken ct = default);
+		Task<PaginatedResult<SopDto>> Gets(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default);
 
 		Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default);
 	}

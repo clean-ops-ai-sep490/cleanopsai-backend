@@ -11,12 +11,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 			bool includeDeleted = false,
 			CancellationToken cancellationToken = default);
 
-		Task<PaginatedResult<Sop>> GetsPaging(PaginationRequest request, CancellationToken ct = default);
+		Task<PaginatedResult<Sop>> GetsPaging(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default);
 
 		Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default);
 
 		Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
 			Guid sopId,
 			CancellationToken ct = default);
+		 
+		Task<Sop?> GetSopWithStepDetail(Guid id, CancellationToken ct = default);
 	}
 }
