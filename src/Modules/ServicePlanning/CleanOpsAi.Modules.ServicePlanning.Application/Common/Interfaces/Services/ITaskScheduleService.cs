@@ -19,7 +19,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 		 
 		Task GenerateTaskAssigmentsAsync(GenerateTaskAssignmentsRequest request, CancellationToken ct = default);
 
-		Task<PaginatedResult<TaskScheduleDto>> Gets(PaginationRequest request, CancellationToken ct = default);
+		Task<PaginatedResult<TaskScheduleDto>> Gets(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default);
 
 		Task<Result> Activate(Guid id, CancellationToken ct = default);
 		Task<Result> Deactivate(Guid id, CancellationToken ct = default);

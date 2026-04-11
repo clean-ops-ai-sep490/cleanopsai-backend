@@ -20,7 +20,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		{
 			_taskScheduleService = taskScheduleService; 
 		}
-
+		
 		[Authorize]
 		[HttpGet]
 		[SwaggerOperation(
@@ -30,10 +30,11 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		)]
 		[ProducesResponseType(typeof(PaginatedResult<TaskScheduleDto>), StatusCodes.Status200OK)]
 		public async Task<IActionResult> Gets(
+		[FromQuery] GetsTaskScheduleQuery query,
 		[FromQuery] PaginationRequest request,
 		CancellationToken ct)
 		{
-			var result = await _taskScheduleService.Gets(request, ct);
+			var result = await _taskScheduleService.Gets(query, request, ct);
 			return Ok(result);
 		}
 

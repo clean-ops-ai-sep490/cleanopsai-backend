@@ -381,9 +381,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			//throw new NotImplementedException();
 		}
 
-		public async Task<PaginatedResult<TaskScheduleDto>> Gets(PaginationRequest request, CancellationToken ct = default)
+		public async Task<PaginatedResult<TaskScheduleDto>> Gets(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default)
 		{
-			var result = await _taskScheduleRepository.GetsPaging(request, ct);
+			var result = await _taskScheduleRepository.GetsPaging(query, request, ct);
 
 			return new PaginatedResult<TaskScheduleDto>(
 				result.PageNumber,
