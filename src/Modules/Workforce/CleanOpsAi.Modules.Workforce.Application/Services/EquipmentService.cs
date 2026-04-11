@@ -136,5 +136,27 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         {
             return await _repository.DeleteAsync(id);
         }
+
+        public async Task<PagedResponse<EquipmentResponse>> SearchPaginationAsync(string? keyword, int pageNumber, int pageSize)
+        {
+            var (items, totalCount) = await _repository.SearchPaginationAsync(keyword, pageNumber, pageSize);
+
+            var responses = items.Select(x => new EquipmentResponse
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Type = x.Type,
+                Description = x.Description
+            }).ToList();
+
+            return new PagedResponse<EquipmentResponse>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = responses
+            };
+        }
     }
 }

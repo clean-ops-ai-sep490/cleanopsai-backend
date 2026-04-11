@@ -10,5 +10,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
     {
         Task<string> UploadFileAsync(Stream fileStream, string fileName, string containerName);
         string GenerateSasUrl(string fileName, string containerName);
+
+        Task<List<string>> UploadFilesAsync(
+            IEnumerable<(Stream Stream, string FileName)> files,
+            string containerName,
+            CancellationToken ct = default);
     }
 }

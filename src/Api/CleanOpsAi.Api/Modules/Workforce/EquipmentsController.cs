@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.Modules.Workforce.Application.Dtos.Equipments;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -94,6 +95,20 @@ namespace CleanOpsAi.Api.Modules.Workforce
                 return Ok(result);
 
             return NotFound();
+        }
+
+        [HttpGet("search")]
+        [SwaggerOperation(
+            Summary = "Search equipments",
+            Description = "Search equipments with pagination.",
+            Tags = new[] { "Equipments" })]
+        public async Task<IActionResult> Search(
+            [FromQuery] string? keyword,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.SearchPaginationAsync(keyword, pageNumber, pageSize);
+            return Ok(result);
         }
     }
 }
