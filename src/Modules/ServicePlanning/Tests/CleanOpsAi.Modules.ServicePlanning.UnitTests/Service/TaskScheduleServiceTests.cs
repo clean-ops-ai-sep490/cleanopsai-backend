@@ -160,15 +160,22 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 		public async Task Gets_Should_ReturnPaginatedResult()
 		{
 			var request = new PaginationRequest { PageNumber = 1, PageSize = 10 };
+			var query = new GetsTaskScheduleQuery();  
+
 			var schedules = new List<TaskSchedule> { new TaskSchedule(), new TaskSchedule() };
 			var scheduleDtos = new List<TaskScheduleDto> { new TaskScheduleDto(), new TaskScheduleDto() };
 
 			var pagedResult = new PaginatedResult<TaskSchedule>(1, 10, 2, schedules);
 
-			_taskScheduleRepository.GetsPaging(request, Arg.Any<CancellationToken>()).Returns(pagedResult);
-			_mapper.Map<List<TaskScheduleDto>>(Arg.Any<List<TaskSchedule>>()).Returns(scheduleDtos);
+			_taskScheduleRepository
+				.GetsPaging(Arg.Any<GetsTaskScheduleQuery>(), request, Arg.Any<CancellationToken>())
+				.Returns(pagedResult);
 
-			var result = await _service.Gets(request);
+			_mapper
+				.Map<List<TaskScheduleDto>>(Arg.Any<List<TaskSchedule>>())
+				.Returns(scheduleDtos);
+
+			var result = await _service.Gets(query, request);  
 
 			Assert.Equal(2, result.TotalElements);
 			Assert.Equal(2, result.Content.Count);

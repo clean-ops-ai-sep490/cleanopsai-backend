@@ -145,15 +145,22 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 		public async Task Gets_Should_ReturnPaginatedResult()
 		{
 			var request = new PaginationRequest { PageNumber = 1, PageSize = 10 };
+			var query = new GetsSopQueryFilter(); 
+
 			var sops = new List<Sop> { new Sop(), new Sop() };
 			var sopDtos = new List<SopDto> { new SopDto(), new SopDto() };
 
 			var pagedResult = new PaginatedResult<Sop>(1, 10, 2, sops);
 
-			_sopRepository.GetsPaging(request, Arg.Any<CancellationToken>()).Returns(pagedResult);
-			_mapper.Map<List<SopDto>>(Arg.Any<List<Sop>>()).Returns(sopDtos);
+			_sopRepository
+				.GetsPaging(Arg.Any<GetsSopQueryFilter>(), request, Arg.Any<CancellationToken>())
+				.Returns(pagedResult);
 
-			var result = await _service.Gets(request);
+			_mapper
+				.Map<List<SopDto>>(Arg.Any<List<Sop>>())
+				.Returns(sopDtos);
+
+			var result = await _service.Gets(query, request); 
 
 			Assert.Equal(2, result.TotalElements);
 			Assert.Equal(2, result.Content.Count);
