@@ -1,0 +1,58 @@
+using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.Scoring.Application.Services;
+using CleanOpsAi.Modules.Scoring.Infrastructure.Data;
+using CleanOpsAi.Modules.Scoring.Infrastructure.Options;
+using CleanOpsAi.Modules.Scoring.Infrastructure.Repositories;
+using CleanOpsAi.Modules.Scoring.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Microsoft.Extensions.DependencyInjection;
+public static class DependencyInjection
+{
+	public static void InfrastructureScoringModule(this IHostApplicationBuilder builder)
+	{
+		builder.Services.AddDbContext<ScoringDbContext>(options =>
+		{
+			options.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"])
+				.UseSnakeCaseNamingConvention()
+				.EnableSensitiveDataLogging()
+				.EnableDetailedErrors();
+			options.EnableSensitiveDataLogging();
+			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
+		});
+
+		builder.Services.Configure<ScoringServiceOptions>(
+			builder.Configuration.GetSection("ScoringService"));
+
+		var redisConnection = builder.Configuration["Redis:ConnectionString"];
+		if (!string.IsNullOrWhiteSpace(redisConnection))
+		{
+			builder.Services.AddStackExchangeRedisCache(options =>
+			{
+				options.Configuration = redisConnection;
+			});
+		}
+		else
+		{
+			builder.Services.AddDistributedMemoryCache();
+		}
+
+		builder.Services.AddHttpClient<IScoringInferenceClient, ScoringInferenceClient>((sp, client) =>
+		{
+			var options = sp.GetRequiredService<IOptions<ScoringServiceOptions>>().Value;
+			if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+			{
+				client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+			}
+			client.Timeout = TimeSpan.FromSeconds(Math.Max(30, options.TimeoutSeconds));
+		});
+
+		builder.Services.AddScoped<IScoringJobRepository, ScoringJobRepository>();
+		builder.Services.AddScoped<IScoringJobCache, ScoringJobCache>();
+		builder.Services.AddScoped<IScoringJobService, ScoringJobService>();
+	}
+}

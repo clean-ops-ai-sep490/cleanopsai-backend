@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Infrastructure\CleanOpsAi.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\CleanOpsAi.Modules.Scoring.Application\CleanOpsAi.Modules.Scoring.Application.csproj" />
+  </ItemGroup>
+
+</Project>

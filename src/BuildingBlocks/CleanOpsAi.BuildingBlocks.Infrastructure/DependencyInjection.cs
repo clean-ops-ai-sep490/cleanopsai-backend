@@ -24,6 +24,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IIdGenerator, Uuid7Generator>();
 
 		builder.Services.AddScoped<IUserContext, UserContext>();
+		builder.Services.AddHttpContextAccessor();
 
 		builder.Services.AddScoped<IIntegrationBus, MassTransitIntegrationBus>();
 		builder.Services.AddScoped<IEventBus, MassTransitEventBus>();

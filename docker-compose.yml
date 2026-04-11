@@ -1,13 +1,82 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cleanopsai-postgres
+    environment:
+      - POSTGRES_DB=cleanopsai
+      - POSTGRES_USER=cleanopsai
+      - POSTGRES_PASSWORD=cleanopsai
+    ports:
+      - "5432:5432"
+    volumes:
+      - cleanopsai-postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: cleanopsai-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  redis:
+    image: redis:7-alpine
+    container_name: cleanopsai-redis
+    ports:
+      - "6379:6379"
+
+  cleaning-ai-scoring:
+    container_name: cleaning-ai-scoring
+    build:
+      context: ../cleaning_ai_poc
+      dockerfile: Dockerfile
+    environment:
+      - YOLO_TRAIN_PROJECT_DIR=/app/outputs/yolo_training_4_4
+    volumes:
+      - ../cleaning_ai_poc/outputs:/app/outputs:ro
+    ports:
+      - "8000:8000"
+
   cleanopsai-api:
     container_name: cleanopsai-api
     build:
       context: ./src
       dockerfile: Api/CleanOpsAi.Api/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+      - cleaning-ai-scoring
     ports:
       - "5000:8080"
       - "5001:8081"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cleanopsai;Username=cleanopsai;Password=cleanopsai
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Redis__ConnectionString=redis:6379
+      - ScoringService__BaseUrl=http://cleaning-ai-scoring:8000
+
+  cleanopsai-scoring-worker:
+    container_name: cleanopsai-scoring-worker
+    build:
+      context: ./src
+      dockerfile: Workers/CleanOpsAi.Scoring.Worker/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+      - cleaning-ai-scoring
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cleanopsai;Username=cleanopsai;Password=cleanopsai
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Redis__ConnectionString=redis:6379
+      - ScoringService__BaseUrl=http://cleaning-ai-scoring:8000
+
+volumes:
+  cleanopsai-postgres-data:

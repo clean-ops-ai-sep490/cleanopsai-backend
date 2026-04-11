@@ -4,3 +4,24 @@ GET {{CleanOpsAi.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+# Submit scoring job (async)
+POST {{CleanOpsAi.Api_HostAddress}}/api/scoring/jobs
+Content-Type: application/json
+
+{
+	"requestId": "demo-map-001",
+	"environmentKey": "LOBBY_CORRIDOR",
+	"imageUrls": [
+		"https://images.unsplash.com/photo-1489515217757-5fd1be406fef",
+		"https://images.unsplash.com/photo-1498049794561-7780e7231661"
+	]
+}
+
+###
+
+# Poll scoring job status (replace GUID from submit response)
+GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/jobs/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
