@@ -177,5 +177,14 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 
 			return Result.Success();
 		}
+
+		public async Task<WorkareaCheckinPointDto?> GetFirstByWorkarea(Guid workareaId, CancellationToken ct)
+		{
+			var entity = await _workareaCheckinPointRepository.GetFirstByWorkarea(workareaId, ct);
+			if (entity == null)
+				throw new NotFoundException("", $"No check-in point found for workarea {workareaId}");
+
+			return _mapper.Map<WorkareaCheckinPointDto>(entity);
+		}
 	}
 }

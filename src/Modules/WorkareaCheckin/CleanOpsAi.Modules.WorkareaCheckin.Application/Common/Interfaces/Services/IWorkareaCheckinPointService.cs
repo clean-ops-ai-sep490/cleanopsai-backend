@@ -1,6 +1,6 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Request;
-using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response;
+using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response; 
 
 namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Services
 {
@@ -15,6 +15,8 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Servi
 		Task<bool> Delete(Guid id, CancellationToken ct = default);
 
 		Task<Result> Activate(Guid id, CancellationToken ct = default);
-		Task<Result> Deactivate(Guid id, CancellationToken ct = default);   
+		Task<Result> Deactivate(Guid id, CancellationToken ct = default);
+
+		Task<WorkareaCheckinPointDto?> GetFirstByWorkarea(Guid workareaId, CancellationToken ct); 
 	}
 }

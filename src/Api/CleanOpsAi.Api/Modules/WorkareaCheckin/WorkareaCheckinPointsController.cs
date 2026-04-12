@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Threading.Tasks;
 
 namespace CleanOpsAi.Api.Modules.WorkareaCheckin
 {
@@ -30,11 +31,16 @@ namespace CleanOpsAi.Api.Modules.WorkareaCheckin
 		)]
 		[ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
-		public IActionResult GetQrByWorkarea(Guid workareaId)
+		public async Task<IActionResult> GetQrByWorkarea(Guid workareaId, CancellationToken ct = default)
 		{
+			var checkinPoint = await _service.GetFirstByWorkarea(workareaId, ct);
+			if (checkinPoint == null)
+				return NotFound($"No check-in point found for workarea {workareaId}"); 
+
 			var qrBytes = _qrService.GeneratePngFromObject(new
 			{
-				workareaId = workareaId
+				id = checkinPoint.Id,
+				code = checkinPoint.Code
 			});
 
 			return File(qrBytes, "image/png");
