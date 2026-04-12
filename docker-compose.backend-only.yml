@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cleanopsai-postgres
+    environment:
+      - POSTGRES_DB=cleanopsai
+      - POSTGRES_USER=cleanopsai
+      - POSTGRES_PASSWORD=cleanopsai
+    ports:
+      - "5432:5432"
+    volumes:
+      - cleanopsai-postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: cleanopsai-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  redis:
+    image: redis:7-alpine
+    container_name: cleanopsai-redis
+    ports:
+      - "6379:6379"
+
+  cleanopsai-api:
+    container_name: cleanopsai-api
+    build:
+      context: ./src
+      dockerfile: Api/CleanOpsAi.Api/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    ports:
+      - "5000:8080"
+      - "5001:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cleanopsai;Username=cleanopsai;Password=cleanopsai
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Redis__ConnectionString=redis:6379
+      - ScoringService__BaseUrl=${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  cleanopsai-scoring-worker:
+    container_name: cleanopsai-scoring-worker
+    build:
+      context: ./src
+      dockerfile: Workers/CleanOpsAi.Scoring.Worker/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cleanopsai;Username=cleanopsai;Password=cleanopsai
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Redis__ConnectionString=redis:6379
+      - ScoringService__BaseUrl=${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  cleanopsai-postgres-data:

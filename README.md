@@ -70,6 +70,38 @@ Neu muon xoa volume Postgres (xoa du lieu local):
 docker compose down -v
 ```
 
+## Chay backend rieng (khong build scoring cung compose)
+
+File compose rieng: `docker-compose.backend-only.yml`
+
+Kich ban nay chi chay:
+
+- postgres
+- rabbitmq
+- redis
+- cleanopsai-api
+- cleanopsai-scoring-worker
+
+Scoring API duoc goi qua URL ben ngoai stack qua bien moi truong `SCORING_SERVICE_BASE_URL`.
+
+Mac dinh:
+
+- `http://host.docker.internal:8000`
+
+Lenh chay:
+
+```powershell
+cd e:\capstone\server-side\cleanops-backend
+docker compose -f docker-compose.backend-only.yml up -d --build
+docker compose -f docker-compose.backend-only.yml ps
+```
+
+Tat stack:
+
+```powershell
+docker compose -f docker-compose.backend-only.yml down
+```
+
 ## Chay local khong dong goi API/Worker (tuy chon)
 
 Ban co the giu infra bang Docker va chay process .NET tren may:
