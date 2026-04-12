@@ -187,5 +187,130 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Services
             );
         }
 
+        // Lấy danh sách người dùng với phân trang, có thể lọc theo keyword và role
+        public async Task<PaginatedResult<UserDto>> GetUsers(
+            string? keyword,
+            UserRole? role,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _authRepository.GetUsersPagingAsync(keyword, role, request, ct);
+
+            var dtos = result.Content.Select(user => new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = (user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+                    ? "Locked"
+                    : "Active"
+            }).ToList();
+
+            return new PaginatedResult<UserDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos
+            );
+        }
+
+        // Lấy thông tin chi tiết người dùng theo Id, bao gồm trạng thái khóa tài khoản (Locked/Active)
+        public async Task<UserDto> GetUserById(Guid userId)
+        {
+            var user = await _authRepository.GetUserByIdAsync(userId);
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = (user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+                    ? "Locked"
+                    : "Active"
+            };
+        }
+
+        // Cập nhật thông tin người dùng (fullName, role), sau đó trả về thông tin đã cập nhật. Nếu userId không tồn tại, ném lỗi. Trạng thái khóa tài khoản vẫn giữ nguyên sau khi cập nhật.
+        public async Task<UserDto> UpdateUser(Guid userId, string fullName, UserRole role)
+        {
+            await _authRepository.UpdateUserAsync(userId, fullName, role);
+
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new Exception("User not found after update");
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = (user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+                    ? "Locked"
+                    : "Active"
+            };
+        }
+
+        // Xóa người dùng theo Id, sau đó trả về thông tin người dùng đã bị xóa. Nếu userId không tồn tại, ném lỗi. Trạng thái khóa tài khoản vẫn giữ nguyên sau khi xóa (vì thực tế là xóa mềm - soft delete).
+        public async Task<UserDto> DeleteUser(Guid userId)
+        {
+            await _authRepository.DeleteUserAsync(userId);
+
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new Exception("User not found after delete");
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = (user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+                    ? "Locked"
+                    : "Active"
+            };
+        }
+
+        // Khóa người dùng theo Id trong một số ngày nhất định, sau đó trả về thông tin người dùng đã bị khóa. Nếu userId không tồn tại, ném lỗi. Trạng thái khóa tài khoản sẽ là "Locked" nếu LockoutEnd trong tương lai, ngược lại là "Active".
+        public async Task<UserDto> LockUser(Guid userId, int days)
+        {
+            await _authRepository.LockUserAsync(userId, days);
+
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new Exception("User not found after lock");
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = (user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+                    ? "Locked"
+                    : "Active"
+            };
+        }
+
+        // Mở khóa người dùng theo Id, sau đó trả về thông tin người dùng đã được mở khóa. Nếu userId không tồn tại, ném lỗi. Trạng thái khóa tài khoản sẽ là "Locked" nếu LockoutEnd trong tương lai, ngược lại là "Active".
+        public async Task<UserDto> UnlockUser(Guid userId)
+        {
+            await _authRepository.UnlockUserAsync(userId);
+
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new Exception("User not found after unlock");
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = (user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+                    ? "Locked"
+                    : "Active"
+            };
+        }
+
     }
 }

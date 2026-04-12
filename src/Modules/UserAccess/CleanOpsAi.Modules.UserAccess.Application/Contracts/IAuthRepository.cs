@@ -11,5 +11,11 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Contracts
 		Task<AuthTokenResult> Login(string email, string password);
 		Task<AuthTokenResult> RefreshToken(string refreshToken);
 		Task<PaginatedResult<ApplicationUser>> GetSupervisorsPagingAsync(string? keyword, PaginationRequest request, CancellationToken ct = default);
+        Task<PaginatedResult<ApplicationUser>> GetUsersPagingAsync(string? keyword, UserRole? role, PaginationRequest request, CancellationToken ct = default);
+		Task<ApplicationUser> GetUserByIdAsync(Guid userId);
+        Task UpdateUserAsync(Guid userId, string fullName, UserRole role);
+		Task DeleteUserAsync(Guid userId);
+		Task LockUserAsync(Guid userId, int days);
+		Task UnlockUserAsync(Guid userId);
     }
 }

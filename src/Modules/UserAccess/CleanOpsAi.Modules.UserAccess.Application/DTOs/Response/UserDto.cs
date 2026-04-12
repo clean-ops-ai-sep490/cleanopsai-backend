@@ -12,6 +12,7 @@ namespace CleanOpsAi.Modules.UserAccess.Application.DTOs.Response
         public Guid Id { get; set; }
         public string Email { get; set; } = null!;
         public string FullName { get; set; } = null!;
+        public string? Status { get; set; }
         public UserRole Role { get; set; }
     }
 }
