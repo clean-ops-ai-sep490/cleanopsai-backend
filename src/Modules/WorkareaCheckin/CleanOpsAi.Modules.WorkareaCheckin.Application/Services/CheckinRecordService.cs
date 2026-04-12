@@ -40,17 +40,21 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 			if (request.WorkareaId == null && string.IsNullOrWhiteSpace(request.DeviceUuid))
 				throw new BadRequestException("QR or BLE data is required");
 
-			Guid pointId;
+			var checkPoint = await _pointRepo.GetByIdAsync(request.CheckinPointId, ct);
+			if (checkPoint == null)
+				throw new NotFoundException("CheckinPoint not found");
+
+			Guid pointId = checkPoint.Id;
 			Guid? deviceId = null;
 			CheckinType type;
 			 
 			if (request.WorkareaId != null)
 			{
-				var point = await _pointRepo.GetFirstByWorkarea(request.WorkareaId.Value, ct);
-				if (point == null)
-					throw new NotFoundException("CheckinPoint not found");
+				if (checkPoint.WorkareaId != request.WorkareaId.Value)
+				{
+					throw new BadRequestException("This Check-in Point does not belong to the scanned Workarea.");
+				}
 
-				pointId = point.Id;
 				type = CheckinType.Qr;
 			} 
 			else
@@ -68,7 +72,7 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 			var record = new CheckinRecord
 			{
 				Id = _idGenerator.Generate(),
-				WorkerId = request.WorkerId,
+				WorkerId = request.WorkerId, 
 
 				WorkareaCheckinPointId = pointId,
 				AccessDeviceId = deviceId,

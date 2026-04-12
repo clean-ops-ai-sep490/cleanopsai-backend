@@ -2,6 +2,8 @@
 {
 	public class CheckinRequestDto
 	{
+		public Guid CheckinPointId { get; set; }
+
 		public Guid WorkerId { get; set; }
 
 		public Guid? WorkareaId { get; set; }
