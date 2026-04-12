@@ -6,6 +6,7 @@ namespace CleanOpsAi.Modules.Scoring.IntegrationEvents
 		public string RequestId { get; init; } = null!;
 		public string EnvironmentKey { get; init; } = null!;
 		public List<string> ImageUrls { get; init; } = new();
+		public bool IncludeVisualizations { get; init; }
 		public Guid? SubmittedByUserId { get; init; }
 	}
 

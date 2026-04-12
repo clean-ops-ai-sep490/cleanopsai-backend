@@ -27,6 +27,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					message.JobId,
 					message.EnvironmentKey,
 					message.ImageUrls,
+					message.IncludeVisualizations,
 					context.CancellationToken);
 			}
 			catch (Exception ex)

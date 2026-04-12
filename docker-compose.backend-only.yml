@@ -43,7 +43,14 @@ services:
       - MessageBroker__Username=guest
       - MessageBroker__Password=guest
       - Redis__ConnectionString=redis:6379
+      - Jwt__Secret=${JWT_SECRET:-CleanOpsAi-Dev-Secret-Key-ChangeMe-1234567890}
+      - Jwt__Issuer=${JWT_ISSUER:-CleanOpsAi}
+      - Jwt__Audience=${JWT_AUDIENCE:-CleanOpsAi.Client}
+      - Jobs__WeeklyTaskGeneration__Enabled=${WEEKLY_TASK_JOB_ENABLED:-false}
+      - Jobs__WeeklyTaskGeneration__LookAheadDays=${WEEKLY_TASK_JOB_LOOKAHEAD_DAYS:-7}
       - ScoringService__BaseUrl=${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
+      - ScoringService__EvaluateUrlVisualizeLinkPath=${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
+      - ScoringService__VisualizationImagePath=${SCORING_SERVICE_VISUALIZATION_IMAGE_PATH:-/visualizations}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -63,6 +70,8 @@ services:
       - MessageBroker__Password=guest
       - Redis__ConnectionString=redis:6379
       - ScoringService__BaseUrl=${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
+      - ScoringService__EvaluateUrlVisualizeLinkPath=${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
+      - ScoringService__VisualizationImagePath=${SCORING_SERVICE_VISUALIZATION_IMAGE_PATH:-/visualizations}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

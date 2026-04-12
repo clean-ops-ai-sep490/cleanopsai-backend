@@ -1,3 +1,5 @@
+using CleanOpsAi.Modules.Scoring.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using CleanOpsAi.Api.Middlewares; 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +16,12 @@ builder.InfrastructureScoringModule();
 builder.AddWebAPIServices();  
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var scoringDbContext = scope.ServiceProvider.GetRequiredService<ScoringDbContext>();
+    scoringDbContext.Database.Migrate();
+}
 
 app.UseExceptionHandler();
 app.UseMiddleware<PerformanceMiddleware>();

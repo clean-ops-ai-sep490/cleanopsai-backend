@@ -7,7 +7,9 @@ using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
 using CleanOpsAi.Modules.Scoring.Domain.Entities;
 using CleanOpsAi.Modules.Scoring.Domain.Enums;
 using CleanOpsAi.Modules.Scoring.IntegrationEvents;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace CleanOpsAi.Modules.Scoring.Application.Services
 {
@@ -23,19 +25,22 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 		private readonly IScoringInferenceClient _inferenceClient;
 		private readonly IEventBus _eventBus;
 		private readonly IUserContext _userContext;
+		private readonly ILogger<ScoringJobService> _logger;
 
 		public ScoringJobService(
 			IScoringJobRepository repository,
 			IScoringJobCache cache,
 			IScoringInferenceClient inferenceClient,
 			IEventBus eventBus,
-			IUserContext userContext)
+			IUserContext userContext,
+			ILogger<ScoringJobService> logger)
 		{
 			_repository = repository;
 			_cache = cache;
 			_inferenceClient = inferenceClient;
 			_eventBus = eventBus;
 			_userContext = userContext;
+			_logger = logger;
 		}
 
 		public async Task<SubmitScoringJobResponse> SubmitAsync(CreateScoringJobRequest request, CancellationToken ct = default)
@@ -99,6 +104,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestId = job.RequestId,
 				EnvironmentKey = job.EnvironmentKey,
 				ImageUrls = imageUrls,
+				IncludeVisualizations = request.IncludeVisualizations,
 				SubmittedByUserId = job.SubmittedByUserId,
 			}, ct);
 
@@ -132,7 +138,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			return response;
 		}
 
-		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default)
+		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, bool includeVisualizations = false, CancellationToken ct = default)
 		{
 			var job = await _repository.GetByIdWithResultsAsync(jobId, ct);
 			if (job is null)
@@ -152,6 +158,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			await _cache.SetAsync(MapToDetail(job), ct);
 
 			var inference = await _inferenceClient.EvaluateBatchAsync(environmentKey, imageUrls, ct);
+			var visualizationBySource = includeVisualizations
+				? await BuildVisualizationMapAsync(environmentKey, inference.Results, ct)
+				: new Dictionary<string, ScoringVisualizationLinkResponse>(StringComparer.OrdinalIgnoreCase);
 
 			var mappedResults = new List<ScoringJobResult>(inference.Results.Count);
 			foreach (var result in inference.Results)
@@ -159,6 +168,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				var sourceType = string.IsNullOrWhiteSpace(result.SourceType) ? "unknown" : result.SourceType;
 				var source = string.IsNullOrWhiteSpace(result.Source) ? $"result-{result.Id ?? 0}" : result.Source;
 				var verdict = string.IsNullOrWhiteSpace(result.Scoring?.Verdict) ? "UNKNOWN" : result.Scoring!.Verdict!;
+
+				visualizationBySource.TryGetValue(source, out var visualization);
 
 				mappedResults.Add(new ScoringJobResult
 				{
@@ -168,7 +179,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					Source = source,
 					Verdict = verdict,
 					QualityScore = result.Scoring?.QualityScore ?? 0,
-					PayloadJson = JsonSerializer.Serialize(result, PayloadSerializerOptions),
+					PayloadJson = BuildResultPayloadJson(result, visualization),
 					Created = DateTime.UtcNow,
 					LastModified = DateTime.UtcNow,
 				});
@@ -197,6 +208,54 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			}, ct);
 
 			await _cache.SetAsync(MapToDetail(job), ct);
+		}
+
+		private async Task<Dictionary<string, ScoringVisualizationLinkResponse>> BuildVisualizationMapAsync(
+			string environmentKey,
+			IReadOnlyCollection<ScoringInferenceResult> inferenceResults,
+			CancellationToken ct)
+		{
+			var sourceUrls = inferenceResults
+				.Where(r => string.Equals(r.SourceType, "url", StringComparison.OrdinalIgnoreCase))
+				.Select(r => r.Source)
+				.Where(s => !string.IsNullOrWhiteSpace(s))
+				.Select(s => s!)
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			var visualizationBySource = new Dictionary<string, ScoringVisualizationLinkResponse>(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var sourceUrl in sourceUrls)
+			{
+				try
+				{
+					var visualization = await _inferenceClient.EvaluateUrlVisualizeLinkAsync(environmentKey, sourceUrl, ct);
+					visualizationBySource[sourceUrl] = visualization;
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(
+						ex,
+						"Failed to generate visualization link for source {SourceUrl} in scoring job enrichment.",
+						sourceUrl);
+				}
+			}
+
+			return visualizationBySource;
+		}
+
+		private static string BuildResultPayloadJson(ScoringInferenceResult result, ScoringVisualizationLinkResponse? visualization)
+		{
+			if (visualization is null)
+			{
+				return JsonSerializer.Serialize(result, PayloadSerializerOptions);
+			}
+
+			var payloadNode = JsonSerializer.SerializeToNode(result, PayloadSerializerOptions) as JsonObject
+				?? new JsonObject();
+			payloadNode["visualization"] = JsonSerializer.SerializeToNode(visualization, PayloadSerializerOptions);
+
+			return payloadNode.ToJsonString(PayloadSerializerOptions);
 		}
 
 		public async Task MarkFailedAsync(Guid jobId, string reason, CancellationToken ct = default)

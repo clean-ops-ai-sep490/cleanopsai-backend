@@ -7,7 +7,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services
 	{
 		Task<SubmitScoringJobResponse> SubmitAsync(CreateScoringJobRequest request, CancellationToken ct = default);
 		Task<ScoringJobDetailResponse?> GetByIdAsync(Guid jobId, CancellationToken ct = default);
-		Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default);
+		Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, bool includeVisualizations = false, CancellationToken ct = default);
 		Task MarkFailedAsync(Guid jobId, string reason, CancellationToken ct = default);
 	}
 }

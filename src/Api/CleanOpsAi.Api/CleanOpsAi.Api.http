@@ -25,3 +25,29 @@ GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/jobs/00000000-0000-0000-0000-0000
 Accept: application/json
 
 ###
+
+# Submit visualization scoring job (async)
+POST {{CleanOpsAi.Api_HostAddress}}/api/scoring/visualizations/jobs
+Content-Type: application/json
+
+{
+	"requestId": "demo-visual-001",
+	"environmentKey": "LOBBY_CORRIDOR",
+	"imageUrls": [
+		"https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=1200&q=80"
+	]
+}
+
+###
+
+# Poll visualization scoring status (payloadJson will include visualization metadata if available)
+GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/visualizations/jobs/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+# Get visualization image via backend proxy (replace token from payloadJson.visualization.visualization.token)
+GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/visualizations/images/replace-with-token
+
+###
