@@ -15,5 +15,11 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Contracts
 		Task ResetPassword(string email, string token, string newPassword);
         Task<string> VerifyOtp(string email, string otp);
         Task<PaginatedResult<UserDto>> GetSupervisors(string? keyword, PaginationRequest request, CancellationToken ct = default);
+        Task<PaginatedResult<UserDto>> GetUsers(string? keyword, UserRole? role, PaginationRequest request, CancellationToken ct = default);
+        Task<UserDto> GetUserById(Guid userId);
+        Task<UserDto> UpdateUser(Guid userId, string fullName, UserRole role);
+        Task<UserDto> DeleteUser(Guid userId);
+        Task<UserDto> LockUser(Guid userId, int days);
+        Task<UserDto> UnlockUser(Guid userId);
     }
 }
