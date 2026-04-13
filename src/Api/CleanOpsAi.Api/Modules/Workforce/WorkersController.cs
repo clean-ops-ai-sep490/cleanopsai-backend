@@ -172,7 +172,7 @@ namespace CleanOpsAi.Api.Modules.Workforce
             Tags = new[] { "Workers" })]
         [SwaggerResponse(StatusCodes.Status200OK, "Danh sách worker phù hợp")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Query không hợp lệ")]
-        public async Task<IActionResult> NlpFilter([FromQuery] string search)
+        public async Task<IActionResult> NlpFilter([FromQuery] string? search)
         {
             var result = await _service.NlpFilterAsync(search);
             return Ok(result);

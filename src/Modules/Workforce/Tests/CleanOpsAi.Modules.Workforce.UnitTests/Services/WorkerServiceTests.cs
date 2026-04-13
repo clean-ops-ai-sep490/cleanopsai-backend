@@ -220,7 +220,10 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
                     EndAt = null
                 });
 
-            _repoMock.FilterAsync(Arg.Any<WorkerFilterRequest>())
+            _goongMock.GetCoordinatesAsync("HCM")
+                .Returns((10.8231, 106.6297));
+
+            _repoMock.FilterStrictAsync(Arg.Any<WorkerFilterRequest>())
                 .Returns(new List<Worker>());
 
             var result = await _service.NlpFilterAsync("test");
