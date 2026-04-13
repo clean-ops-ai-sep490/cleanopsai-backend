@@ -48,6 +48,18 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 				.ForMember(dest => dest.RequiredCertificationIds,
 					opt => opt.MapFrom(src => src.SopRequiredCertifications.Select(x => x.CertificationId)));
 
+			CreateMap<Sop, SopListDto>()
+				.ForMember(dest => dest.StepCount,
+					opt => opt.MapFrom(src => src.SopSteps.Count))
+				.ForMember(dest => dest.RequiredSkillIds,
+					opt => opt.MapFrom(src => src.SopRequiredSkills.Select(x => x.SkillId)))
+				.ForMember(dest => dest.RequiredCertificationIds,
+					opt => opt.MapFrom(src => src.SopRequiredCertifications.Select(x => x.CertificationId)));
+				
+
+			CreateMap<Sop, SopListDto>().ForMember(dest => dest.StepCount,
+		opt => opt.MapFrom(src => src.SopSteps.Count));
+
 			CreateMap<SopStep, SopStepDto>()
 				.ForMember(dest => dest.ConfigDetail, opt => opt.MapFrom(src =>
 					JsonSerializer.Deserialize<JsonElement>(src.ConfigDetail, (JsonSerializerOptions?)null)))
@@ -93,7 +105,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 
 			CreateMap<EnvironmentTypeCreateDto, EnvironmentType>(); 
 			CreateMap<EnvironmentTypeUpdateDto, EnvironmentType>();
-			CreateMap<EnvironmentType, EnvironmentTypeDto>(); 
+			CreateMap<EnvironmentType, EnvironmentTypeDto>();
+
+			CreateMap<EnvironmentType, EnvironmentDto>();
+
 
 		}
 
