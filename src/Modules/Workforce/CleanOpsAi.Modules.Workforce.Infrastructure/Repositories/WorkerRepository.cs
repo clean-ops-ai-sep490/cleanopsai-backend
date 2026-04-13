@@ -3,6 +3,8 @@ using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text;
 
 namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 {
@@ -103,42 +105,199 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                     .ThenInclude(wc => wc.Certification)
                 .Where(x => !x.IsDeleted);
 
-            double lat = request.Latitude ?? 0;
-            double lon = request.Longitude ?? 0;
+            // =========================
+            // SKILL FILTER
+            // =========================
+            if (request.SkillCategories?.Any() == true)
+            {
+                query = query.Where(x =>
+                    x.WorkerSkills.Any(s =>
+                        request.SkillCategories.Contains(s.Skill.Category)));
+            }
 
-            var result = await query
-                .Select(x => new
+            // =========================
+            // CERT FILTER
+            // =========================
+            if (request.CertificateCategories?.Any() == true)
+            {
+                query = query.Where(x =>
+                    x.WorkerCertifications.Any(c =>
+                        request.CertificateCategories.Contains(c.Certification.Category)));
+            }
+
+            // =========================
+            // LOCATION BOUNDING BOX (thô, chỉ để giới hạn rows EF kéo về)
+            // =========================
+            if (request.Latitude.HasValue && request.Longitude.HasValue)
+            {
+                double lat = request.Latitude.Value;
+                double lon = request.Longitude.Value;
+                const double boundingBox = 2.0; // ~220km
+
+                query = query.Where(x =>
+                    x.Latitude.HasValue &&
+                    x.Longitude.HasValue &&
+                    Math.Abs(x.Latitude.Value - lat) <= boundingBox &&
+                    Math.Abs(x.Longitude.Value - lon) <= boundingBox);
+            }
+
+            var workers = await query.ToListAsync();
+
+            // =========================
+            // SORT: matched DisplayAddress luôn lên trước
+            // Haversine chỉ sort trong nội bộ từng nhóm
+            // =========================
+            if (!string.IsNullOrWhiteSpace(request.Address))
+            {
+                var keyword = request.Address.ToLowerInvariant();
+
+                var matched = workers
+                    .Where(x => (x.DisplayAddress ?? "").ToLowerInvariant().Contains(keyword))
+                    .ToList();
+
+                var unmatched = workers
+                    .Where(x => !(x.DisplayAddress ?? "").ToLowerInvariant().Contains(keyword))
+                    .ToList();
+
+                if (request.Latitude.HasValue && request.Longitude.HasValue)
                 {
-                    Worker = x,
+                    double lat = request.Latitude.Value;
+                    double lon = request.Longitude.Value;
 
-                    MatchCertificate =
-                        (request.CertificateCategories != null && request.CertificateCategories.Any())
-                        ? x.WorkerCertifications.Any(c =>
-                            request.CertificateCategories.Contains(c.Certification.Category)) ? 1 : 0
-                        : 0,
+                    matched = matched
+                        .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
+                        .ToList();
 
-                    MatchSkill =
-                        (request.SkillCategories != null && request.SkillCategories.Any())
-                        ? x.WorkerSkills.Any(s =>
-                            request.SkillCategories.Contains(s.Skill.Category)) ? 1 : 0
-                        : 0,
+                    unmatched = unmatched
+                        .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
+                        .ToList();
+                }
 
-                    Distance =
-                        (request.Latitude.HasValue && request.Longitude.HasValue)
-                        ? Math.Pow((x.Latitude ?? 0) - lat, 2) +
-                          Math.Pow((x.Longitude ?? 0) - lon, 2)
-                        : 0
-                })
-                .OrderByDescending(x => x.MatchCertificate) // ưu tiên cert
-                .ThenByDescending(x => x.MatchSkill)        // rồi skill
-                .ThenBy(x => x.Distance)                    // rồi gần nhất
-                .Select(x => x.Worker)
-                .ToListAsync();
+                workers = matched.Concat(unmatched).ToList();
+            }
+            else if (request.Latitude.HasValue && request.Longitude.HasValue)
+            {
+                double lat = request.Latitude.Value;
+                double lon = request.Longitude.Value;
 
-            return result;
+                workers = workers
+                    .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
+                    .ToList();
+            }
+
+            return workers;
         }
 
-		public Task<List<Worker>> GetWorkersByIds(List<Guid> ids)
+        public async Task<List<Worker>> FilterStrictAsync(WorkerFilterRequest request)
+        {
+            var query = _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills).ThenInclude(s => s.Skill)
+                .Include(x => x.WorkerCertifications).ThenInclude(c => c.Certification)
+                .Where(x => !x.IsDeleted);
+
+            // =========================
+            // SKILL FILTER
+            // =========================
+            if (request.SkillCategories?.Any() == true)
+            {
+                query = query.Where(x =>
+                    x.WorkerSkills.Any(s =>
+                        request.SkillCategories.Contains(s.Skill.Category)));
+            }
+
+            // =========================
+            // CERT FILTER
+            // =========================
+            if (request.CertificateCategories?.Any() == true)
+            {
+                query = query.Where(x =>
+                    x.WorkerCertifications.Any(c =>
+                        request.CertificateCategories.Contains(c.Certification.Category)));
+            }
+
+            // =========================
+            // LOCATION BOUNDING BOX (thô, chỉ để giới hạn rows EF kéo về)
+            // =========================
+            if (request.Latitude.HasValue && request.Longitude.HasValue)
+            {
+                double lat = request.Latitude.Value;
+                double lon = request.Longitude.Value;
+                const double boundingBox = 2.0; // ~220km
+
+                query = query.Where(x =>
+                    x.Latitude.HasValue &&
+                    x.Longitude.HasValue &&
+                    Math.Abs(x.Latitude.Value - lat) <= boundingBox &&
+                    Math.Abs(x.Longitude.Value - lon) <= boundingBox);
+            }
+
+            var workers = await query.ToListAsync();
+
+            // =========================
+            // SORT: matched DisplayAddress luôn lên trước
+            // Haversine chỉ sort trong nội bộ từng nhóm
+            // =========================
+            if (!string.IsNullOrWhiteSpace(request.Address))
+            {
+                var keyword = request.Address.ToLowerInvariant();
+
+                var matched = workers
+                    .Where(x => (x.DisplayAddress ?? "").ToLowerInvariant().Contains(keyword))
+                    .ToList();
+
+                var unmatched = workers
+                    .Where(x => !(x.DisplayAddress ?? "").ToLowerInvariant().Contains(keyword))
+                    .ToList();
+
+                if (request.Latitude.HasValue && request.Longitude.HasValue)
+                {
+                    double lat = request.Latitude.Value;
+                    double lon = request.Longitude.Value;
+
+                    matched = matched
+                        .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
+                        .ToList();
+
+                    unmatched = unmatched
+                        .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
+                        .ToList();
+                }
+
+                workers = matched.Concat(unmatched).ToList();
+            }
+            else if (request.Latitude.HasValue && request.Longitude.HasValue)
+            {
+                double lat = request.Latitude.Value;
+                double lon = request.Longitude.Value;
+
+                workers = workers
+                    .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
+                    .ToList();
+            }
+
+            return workers;
+        }
+
+        public static double DistanceKm(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371;
+
+            var dLat = ToRad(lat2 - lat1);
+            var dLon = ToRad(lon2 - lon1);
+
+            var a =
+                Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRad(lat1)) * Math.Cos(ToRad(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+            return R * c;
+        }
+
+        private static double ToRad(double angle) => Math.PI * angle / 180;
+
+        public Task<List<Worker>> GetWorkersByIds(List<Guid> ids)
 		{
 			return _dbContext.Set<Worker>()
 				.Where(x => ids.Contains(x.Id))

@@ -4,6 +4,7 @@ using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.Nlps;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -316,21 +317,66 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         }
 
         // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
-        public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string query)
+        public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string? query)
         {
+            // =========================
+            // 1. NULL / EMPTY → RETURN ALL
+            // =========================
             if (string.IsNullOrWhiteSpace(query))
-                throw new BadRequestException("Query không được để trống.");
-
-            var parsed = await _geminiService.ParseWorkerFilterAsync(query);
-
-            string? warning = null;
-            if (parsed.StartAt.HasValue != parsed.EndAt.HasValue)
             {
-                parsed.StartAt = null;
-                parsed.EndAt = null;
-                warning = "Không thể filter theo lịch bận vì thiếu thời gian bắt đầu hoặc kết thúc, kết quả trả về không lọc theo thời gian.";
+                var all = await _workerRepository.GetAllAsync();
+                return BuildNlpResponse(all, null);
             }
 
+            // =========================
+            // 2. NLP PARSE VIA GEMINI
+            // =========================
+            WorkerFilterNlpResult parsed;
+            try
+            {
+                parsed = await _geminiService.ParseWorkerFilterAsync(query);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NLP] Gemini parse failed: {ex.Message}");
+                parsed = new WorkerFilterNlpResult();
+            }
+
+            // =========================
+            // 3. FALLBACK: Gemini không parse được gì → dùng query gốc làm address
+            // =========================
+            bool parsedNothing =
+                string.IsNullOrWhiteSpace(parsed.Address) &&
+                (parsed.SkillCategories == null || !parsed.SkillCategories.Any()) &&
+                (parsed.CertificateCategories == null || !parsed.CertificateCategories.Any());
+
+            if (parsedNothing)
+                parsed.Address = query;
+
+            Console.WriteLine($"[NLP] Parsed → Address='{parsed.Address}' | Skills=[{string.Join(",", parsed.SkillCategories ?? new())}] | Certs=[{string.Join(",", parsed.CertificateCategories ?? new())}] | Start={parsed.StartAt} | End={parsed.EndAt}");
+
+            // =========================
+            // 4. VALIDATE DATE RANGE (không throw, chỉ bỏ qua)
+            // =========================
+            if (parsed.StartAt.HasValue && parsed.EndAt.HasValue)
+            {
+                if (parsed.StartAt > parsed.EndAt)
+                {
+                    Console.WriteLine("[NLP] StartAt > EndAt → bỏ qua date filter.");
+                    parsed.StartAt = null;
+                    parsed.EndAt = null;
+                }
+            }
+            else if (parsed.StartAt.HasValue != parsed.EndAt.HasValue)
+            {
+                Console.WriteLine("[NLP] Chỉ có 1 trong StartAt/EndAt → bỏ qua date filter.");
+                parsed.StartAt = null;
+                parsed.EndAt = null;
+            }
+
+            // =========================
+            // 5. BUILD FILTER REQUEST
+            // =========================
             var request = new WorkerFilterRequest
             {
                 Address = parsed.Address,
@@ -340,12 +386,93 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 EndAt = parsed.EndAt
             };
 
+            // =========================
+            // 6. GEOCODE ADDRESS → LAT/LNG
+            // =========================
+            if (!string.IsNullOrWhiteSpace(request.Address))
+            {
+                var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+
+                if (coords.HasValue)
+                {
+                    request.Latitude = coords.Value.lat;
+                    request.Longitude = coords.Value.lng;
+                    Console.WriteLine($"[GEOCODE] '{request.Address}' → lat={coords.Value.lat}, lng={coords.Value.lng}");
+                }
+                else
+                {
+                    Console.WriteLine($"[GEOCODE] '{request.Address}' → NULL, không geocode được.");
+                }
+            }
+
+            // =========================
+            // 7. LẤY BUSY WORKER IDS
+            // =========================
+            HashSet<Guid> busyIds = new();
+
+            if (request.StartAt.HasValue && request.EndAt.HasValue)
+            {
+                try
+                {
+                    var busyResponse = await _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
+                        new GetBusyWorkerIdsRequest
+                        {
+                            StartAt = request.StartAt.Value,
+                            EndAt = request.EndAt.Value
+                        });
+
+                    busyIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
+                    Console.WriteLine($"[BUSY] {busyIds.Count} workers đang bận.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[BUSY] Lấy busy workers thất bại: {ex.Message}");
+                }
+            }
+
+            // =========================
+            // 8. QUERY DATABASE
+            // =========================
+            var workers = await _workerRepository.FilterStrictAsync(request);
+
+            // =========================
+            // 9. LOẠI BUSY WORKERS
+            // =========================
+            if (busyIds.Any())
+                workers = workers.Where(x => !busyIds.Contains(x.Id)).ToList();
+
+            Console.WriteLine($"[NLP] Kết quả: {workers.Count} workers sau filter.");
+
+            // =========================
+            // 10. RESPONSE
+            // =========================
+            string? warning = workers.Any() ? null : "Không tìm thấy worker phù hợp.";
+            return BuildNlpResponse(workers, warning);
+        }
+
+        // -------------------------------------------------------
+        // HELPER — map + wrap response
+        // -------------------------------------------------------
+        private WorkerNlpFilterResponse BuildNlpResponse(List<Worker> workers, string? warning)
+        {
             return new WorkerNlpFilterResponse
             {
                 Warning = warning,
-                Workers = await FilterAsync(request)
+                Workers = workers.Select(x => new WorkerResponse
+                {
+                    Id = x.Id,
+                    UserId = x.UserId,
+                    FullName = x.FullName,
+                    DisplayAddress = x.DisplayAddress,
+                    Latitude = x.Latitude,
+                    Longitude = x.Longitude,
+                    AvatarUrl = x.AvatarUrl,
+                    TotalSkills = x.WorkerSkills?.Count ?? 0,
+                    TotalCertifications = x.WorkerCertifications?.Count ?? 0
+                }).ToList()
             };
         }
+
 
         // Lấy thông tin cơ bản (id, full name) của danh sách worker theo ids, dùng cho hiển thị trong dropdown khi chọn worker cho task assignment
         public async Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids)
