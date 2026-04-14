@@ -41,6 +41,12 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data.Configurations
 			 
 			builder.OwnsOne(x => x.BleInfo, ble =>
 			{
+				ble.Property(b => b.ServiceUuid);
+
+				ble.Property(b => b.TxPower);
+				ble.Property(b => b.RssiThreshold);
+				ble.Property(b => b.LastRssi); 
+
 				ble.Property(b => b.BatteryLevel);
 				ble.Property(b => b.LastSeenAt);
 				ble.Property(b => b.LastMaintenanceAt);

@@ -10,6 +10,7 @@ using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Request;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response;
 using CleanOpsAi.Modules.WorkareaCheckin.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 {
@@ -56,7 +57,7 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 			for (int i = 0; i < maxRetry; i++)
 			{
 				var id = _idGenerator.Generate();
-				var generatedCode = $"WCP-{id.ToString()[..6].ToUpper()}";
+				var generatedCode = GenerateShortCode(id);
 
 				var entity = _mapper.Map<WorkareaCheckinPoint>(request);
 				entity.Id = id;
@@ -80,6 +81,15 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 
 			throw new BadRequestException("Unexpected error"); 
 		}
+
+		private string GenerateShortCode(Guid id)
+		{
+			using var sha256 = SHA256.Create();
+			var hashBytes = sha256.ComputeHash(id.ToByteArray());
+			var hex = Convert.ToHexString(hashBytes);
+			return $"WCP-{hex[..6]}"; 
+		}
+
 
 		public async Task<bool> Delete(Guid id, CancellationToken ct = default)
 		{
