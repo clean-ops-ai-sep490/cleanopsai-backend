@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Common;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Request;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response; 
 
@@ -18,5 +19,8 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Servi
 		Task<Result> Deactivate(Guid id, CancellationToken ct = default);
 
 		Task<WorkareaCheckinPointDto?> GetFirstByWorkarea(Guid workareaId, CancellationToken ct); 
+
+
+		Task<PaginatedResult<WorkareaCheckinPointDto>> Gets(GetsCheckinPointQuery query , PaginationRequest request, CancellationToken ct = default);
 	}
 }

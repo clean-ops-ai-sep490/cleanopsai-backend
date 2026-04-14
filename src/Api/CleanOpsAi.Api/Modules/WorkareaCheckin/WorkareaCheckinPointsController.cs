@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Services;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Request;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,22 @@ namespace CleanOpsAi.Api.Modules.WorkareaCheckin
 		{
 			_service = service;
 			_qrService = qrService;
+		}
+
+		[HttpGet]
+		[SwaggerOperation(
+			Summary = "Get paginated check-in points",
+			Description = "Retrieves a paginated list of workarea check-in points with optional filtering.",
+			Tags = new[] { "WorkareaCheckinPoint" }
+		)]
+		[ProducesResponseType(typeof(PaginatedResult<WorkareaCheckinPointDto>), StatusCodes.Status200OK)]
+		public async Task<IActionResult> Gets(
+		[FromQuery] GetsCheckinPointQuery query,
+		[FromQuery] PaginationRequest request,
+		CancellationToken ct = default)
+		{
+			var result = await _service.Gets(query, request, ct);
+			return Ok(result);
 		}
 
 		[HttpGet("workarea/{workareaId:guid}/qr")]

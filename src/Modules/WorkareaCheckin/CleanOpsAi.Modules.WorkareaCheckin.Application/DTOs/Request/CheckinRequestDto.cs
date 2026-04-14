@@ -3,6 +3,7 @@
 	public class CheckinRequestDto
 	{
 		public Guid CheckinPointId { get; set; }
+		public string Code { get; set; } = null!;
 
 		public Guid WorkerId { get; set; }
 
