@@ -22,9 +22,7 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Domain.Entities
 		[MaxLength(200)]
 		public string? Identifier { get; set; }
 
-		public DeviceStatus Status { get; set; } = DeviceStatus.Active;
-
-		public string? Metadata { get; set; }
+		public DeviceStatus Status { get; set; } = DeviceStatus.Active; 
 
 		public DevicePosition? Position { get; set; }
 		public BleBeaconInfo? BleInfo { get; set; }

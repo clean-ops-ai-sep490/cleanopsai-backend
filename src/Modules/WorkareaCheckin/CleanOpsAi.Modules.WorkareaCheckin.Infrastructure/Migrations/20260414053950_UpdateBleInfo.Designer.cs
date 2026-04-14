@@ -3,6 +3,7 @@ using System;
 using CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkareaCheckinDbContext))]
-    partial class WorkareaCheckinDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260414053950_UpdateBleInfo")]
+    partial class UpdateBleInfo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
