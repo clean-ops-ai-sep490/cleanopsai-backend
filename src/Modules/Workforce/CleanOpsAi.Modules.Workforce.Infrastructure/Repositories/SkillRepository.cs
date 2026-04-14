@@ -103,5 +103,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<Skill>> GetByIdsAsync(List<Guid> ids)
+        {
+            return await _dbContext.Set<Skill>()
+                .AsNoTracking()
+                .Where(x => ids.Contains(x.Id) && !x.IsDeleted)
+                .ToListAsync();
+        }
+
     }
 }

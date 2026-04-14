@@ -139,5 +139,25 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return Ok(result);
         }
 
+        [HttpGet("by-ids")]
+        [SwaggerOperation(
+            Summary = "Get skills and certifications by ids",
+            Description = "Return detail of skills and certifications using list of ids",
+            Tags = new[] { "Certifications" })]
+        public async Task<IActionResult> GetByIds(
+            [FromQuery] List<Guid> skillIds,
+            [FromQuery] List<Guid> certificationIds)
+        {
+            if ((skillIds == null || skillIds.Count == 0) &&
+                (certificationIds == null || certificationIds.Count == 0))
+            {
+                return BadRequest("At least one skillId or certificationId is required.");
+            }
+
+            var result = await _service.GetByIdsAsync(skillIds, certificationIds);
+
+            return Ok(result);
+        }
+
     }
 }
