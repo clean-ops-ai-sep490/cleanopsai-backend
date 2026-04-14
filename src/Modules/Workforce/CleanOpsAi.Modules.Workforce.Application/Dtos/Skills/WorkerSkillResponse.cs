@@ -13,6 +13,5 @@ namespace CleanOpsAi.Modules.Workforce.Application.Dtos.Skills
         public string Name { get; set; }
         public string Category { get; set; }
         public string? Description { get; set; }
-        public SkillLevelType SkillLevel { get; set; }
     }
 }

@@ -250,7 +250,6 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
                 {
                     SkillId = Guid.NewGuid(),
                     Skill = new Skill { Name = "Cleaning", Category = "General" },
-                    SkillLevel = SkillLevelType.Beginner,
                 }
             };
 
