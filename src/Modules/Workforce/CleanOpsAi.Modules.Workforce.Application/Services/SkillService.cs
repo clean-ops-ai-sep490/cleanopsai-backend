@@ -167,6 +167,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Name = ws.Skill.Name,
                 Category = ws.Skill.Category,
                 Description = ws.Skill.Description,
+                SkillLevel = ws.SkillLevel
             }).ToList();
         }
 

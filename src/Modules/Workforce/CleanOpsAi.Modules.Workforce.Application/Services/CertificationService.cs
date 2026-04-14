@@ -208,7 +208,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     SkillId = x.Id,
                     Name = x.Name,
                     Category = x.Category,
-                    Description = x.Description
+                    Description = x.Description,
                 }).ToList(),
 
                 Certifications = certs.Select(x => new WorkerCertificationResponse

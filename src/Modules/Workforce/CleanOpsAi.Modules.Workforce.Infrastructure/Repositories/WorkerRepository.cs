@@ -42,6 +42,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         public async Task<List<Worker>> GetAllAsync()
         {
             var workers = await _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
                 .OrderByDescending(x => x.Id)
                 .ToListAsync();
@@ -54,6 +56,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             int pageSize)
         {
             var query = _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
                 .OrderByDescending(x => x.Id);
 
@@ -98,67 +102,76 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
         public async Task<List<Worker>> FilterAsync(WorkerFilterRequest request)
         {
-            var query = _dbContext.Set<Worker>()
-                .Include(x => x.WorkerSkills).ThenInclude(ws => ws.Skill)
-                .Include(x => x.WorkerCertifications).ThenInclude(wc => wc.Certification)
-                .Where(x => !x.IsDeleted);
+            // =========================
+            // 1. BASE QUERY
+            // =========================
+            var workers = await _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                    .ThenInclude(ws => ws.Skill)
+                .Include(x => x.WorkerCertifications)
+                    .ThenInclude(wc => wc.Certification)
+                .Where(x => !x.IsDeleted)
+                .ToListAsync();
 
             // =========================
-            // SKILL FILTER
+            // 2. PREPARE DATA
             // =========================
-            if (request.SkillCategories?.Any() == true)
-            {
-                query = query.Where(x =>
-                    x.WorkerSkills.Any(s =>
-                        request.SkillCategories.Contains(s.Skill.Category)));
-            }
+            var skillCategories = request.SkillCategories ?? new List<string>();
+            var certCategories = request.CertificateCategories ?? new List<string>();
+            var keyword = request.Address?.Trim().ToLowerInvariant();
 
-            // =========================
-            // CERT FILTER
-            // =========================
-            if (request.CertificateCategories?.Any() == true)
-            {
-                query = query.Where(x =>
-                    x.WorkerCertifications.Any(c =>
-                        request.CertificateCategories.Contains(c.Certification.Category)));
-            }
+            bool hasLocation = request.Latitude.HasValue && request.Longitude.HasValue;
+            double reqLat = request.Latitude ?? 0;
+            double reqLon = request.Longitude ?? 0;
 
             // =========================
-            // ADDRESS FILTER (TEXT ONLY - KHÔNG DROP DATA)
+            // 3. RANKING + SORT
             // =========================
-            var workers = await query.ToListAsync();
+            var result = workers
+                .Select(w => new
+                {
+                    Worker = w,
 
-            if (!string.IsNullOrWhiteSpace(request.Address))
-            {
-                var keyword = request.Address.Trim().ToLowerInvariant();
+                    // 🔥 SCORE (skill + cert)
+                    Score =
+                        // skill score
+                        (skillCategories.Count > 0
+                            ? w.WorkerSkills?.Count(s =>
+                                s.Skill != null &&
+                                s.Skill.Category != null &&
+                                skillCategories.Contains(s.Skill.Category))
+                            : 0)
+                        +
+                        // cert score
+                        (certCategories.Count > 0
+                            ? w.WorkerCertifications?.Count(c =>
+                                c.Certification != null &&
+                                c.Certification.Category != null &&
+                                certCategories.Contains(c.Certification.Category))
+                            : 0),
 
-                workers = workers
-                    .OrderByDescending(x =>
-                        (!string.IsNullOrEmpty(x.DisplayAddress) &&
-                         x.DisplayAddress.ToLowerInvariant().Contains(keyword)))
-                    .ToList();
-            }
+                    // 📍 ADDRESS MATCH
+                    AddressMatch =
+                        !string.IsNullOrEmpty(keyword) &&
+                        !string.IsNullOrEmpty(w.DisplayAddress) &&
+                        w.DisplayAddress.ToLowerInvariant().Contains(keyword),
 
-            // =========================
-            // DISTANCE SORT (KHÔNG FILTER NULL LAT/LNG)
-            // =========================
-            if (request.Latitude.HasValue && request.Longitude.HasValue)
-            {
-                double lat = request.Latitude.Value;
-                double lon = request.Longitude.Value;
+                    // 📏 DISTANCE
+                    Distance =
+                        (hasLocation && w.Latitude.HasValue && w.Longitude.HasValue)
+                            ? DistanceKm(w.Latitude.Value, w.Longitude.Value, reqLat, reqLon)
+                            : double.MaxValue
+                })
+                // =========================
+                // SORT PRIORITY
+                // =========================
+                .OrderByDescending(x => x.Score)          // ưu tiên skill + cert
+                .ThenByDescending(x => x.AddressMatch)    // ưu tiên address match
+                .ThenBy(x => x.Distance)                  // gần hơn lên trước
+                .Select(x => x.Worker)
+                .ToList();
 
-                workers = workers
-                    .OrderBy(x =>
-                    {
-                        if (!x.Latitude.HasValue || !x.Longitude.HasValue)
-                            return double.MaxValue; // đẩy xuống cuối
-
-                        return DistanceKm(x.Latitude.Value, x.Longitude.Value, lat, lon);
-                    })
-                    .ToList();
-            }
-
-            return workers;
+            return result;
         }
 
         public async Task<List<Worker>> FilterStrictAsync(WorkerFilterRequest request)
@@ -200,10 +213,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
             var workers = await query.ToListAsync();
 
-            // =========================
-            // SEARCH FIX (QUAN TRỌNG)
-            // =========================
-            if (!string.IsNullOrWhiteSpace(request.Address))
+            // ✅ FIX: Chỉ text-filter address khi KHÔNG có tọa độ
+            // Tránh double filter loại hết worker
+            if (!string.IsNullOrWhiteSpace(request.Address)
+                && !request.Latitude.HasValue
+                && !request.Longitude.HasValue)
             {
                 var keyword = request.Address.Trim().ToLowerInvariant();
 
@@ -214,7 +228,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                     .ToList();
             }
 
-            // SORT
+            // SORT by distance
             if (request.Latitude.HasValue && request.Longitude.HasValue)
             {
                 double lat = request.Latitude.Value;
@@ -225,6 +239,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                     .ToList();
             }
 
+            Console.WriteLine($"[FILTER] Kết quả FilterStrictAsync: {workers.Count} workers.");
             return workers;
         }
 

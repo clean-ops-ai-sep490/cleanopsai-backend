@@ -13,10 +13,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
     public class WorkerSkillService : IWorkerSkillService
     {
         private readonly IWorkerSkillRepository _repository;
+        private readonly IWorkerRepository _workerRepository;
+        private readonly ISkillRepository _skillRepository;
 
-        public WorkerSkillService(IWorkerSkillRepository repository)
+        public WorkerSkillService(IWorkerSkillRepository repository, IWorkerRepository workerRepository, ISkillRepository skillRepository)
         {
             _repository = repository;
+            _workerRepository = workerRepository;
+            _skillRepository = skillRepository;
         }
 
         public async Task<WorkerSkillResponse?> GetByIdAsync(Guid workerId, Guid skillId)
@@ -73,8 +77,25 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
-        public async Task<WorkerSkillResponse?> CreateAsync(WorkerSkillCreateRequest request)
+        public async Task<WorkerSkillResponse> CreateAsync(WorkerSkillCreateRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            // validate input
+            if (request.WorkerId == Guid.Empty || request.SkillId == Guid.Empty)
+                throw new Exception("WorkerId hoặc SkillId không hợp lệ");
+
+            // check worker tồn tại
+            var worker = await _workerRepository.GetByIdAsync(request.WorkerId);
+            if (worker == null)
+                throw new Exception("Worker không tồn tại");
+
+            // check skill tồn tại
+            var skill = await _skillRepository.GetByIdAsync(request.SkillId);
+            if (skill == null)
+                throw new Exception("Skill không tồn tại");
+
             var entity = new WorkerSkill
             {
                 WorkerId = request.WorkerId,
@@ -84,12 +105,13 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             await _repository.CreateAsync(entity);
 
+            // tránh null reference ở đây
             return new WorkerSkillResponse
             {
-                WorkerId = entity.WorkerId,
-                SkillId = entity.SkillId,
-                WorkerName = entity.Worker.FullName,
-                SkillName = entity.Skill.Name,
+                WorkerId = worker.Id,
+                WorkerName = worker.FullName, // nhớ check null nếu nullable
+                SkillId = skill.Id,
+                SkillName = skill.Name,
                 SkillLevel = entity.SkillLevel
             };
         }

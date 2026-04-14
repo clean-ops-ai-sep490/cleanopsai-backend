@@ -54,9 +54,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
             var nowStr = now.ToString("yyyy-MM-ddTHH:mm:ss");
             var todayStr = now.ToString("yyyy-MM-dd");
 
-            //  FIX: dùng $$""" để tránh lỗi {}
             var prompt = $$"""
-                Extract worker search parameters from this query and return ONLY JSON.
+                Extract worker search parameters from this query and return ONLY raw JSON, no markdown, no explanation.
 
                 Current datetime (UTC): {{nowStr}}
                 Query: "{{query}}"
@@ -74,11 +73,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                 - "sáng" = 08:00, "chiều" = 13:00, "tối" = 18:00
                 - "hôm nay" = {{todayStr}}
                 - Nếu thiếu start hoặc end → set cả 2 = null
+                - skillCategories và certificateCategories phải là lowercase, ví dụ: "cleaning", "glass cleaning"
+                - Chỉ trả về JSON, không giải thích gì thêm
 
-                Example:
+                Example output:
                 {
                   "address": "District 1",
-                  "skillCategories": ["cleaning"],
+                  "skillCategories": ["glass cleaning"],
                   "certificateCategories": [],
                   "startAt": "{{todayStr}}T08:00:00",
                   "endAt": "{{todayStr}}T10:00:00"
@@ -92,16 +93,12 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                     new
                     {
                         role = "user",
-                        parts = new[]
-                        {
-                            new { text = prompt }
-                        }
+                        parts = new[] { new { text = prompt } }
                     }
                 }
             };
 
             var json = await SendWithRetry(body);
-
             var rawText = ExtractText(json);
             var cleaned = CleanJson(rawText);
 
@@ -109,12 +106,24 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
             {
                 var result = JsonSerializer.Deserialize<WorkerFilterNlpResult>(
                     cleaned,
-                    new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                return result ?? new WorkerFilterNlpResult();
+                if (result == null) return new WorkerFilterNlpResult();
+
+                // ✅ Normalize về lowercase để khớp DB
+                if (result.SkillCategories != null)
+                    result.SkillCategories = result.SkillCategories
+                        .Select(s => s.Trim().ToLowerInvariant())
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .ToList();
+
+                if (result.CertificateCategories != null)
+                    result.CertificateCategories = result.CertificateCategories
+                        .Select(s => s.Trim().ToLowerInvariant())
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .ToList();
+
+                return result;
             }
             catch
             {
@@ -134,7 +143,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
 
             for (int i = 0; i < maxRetry; i++)
             {
-                // FIX: tạo mới mỗi lần (tránh 400)
                 var requestContent = new StringContent(
                     JsonSerializer.Serialize(body),
                     Encoding.UTF8,
@@ -147,7 +155,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                 if (response.IsSuccessStatusCode)
                     return json;
 
-                // retry cho 503 và 400 (Gemini free hay lỗi)
                 if ((int)response.StatusCode == 503 || (int)response.StatusCode == 400)
                 {
                     await Task.Delay(1000 * (i + 1));
@@ -190,9 +197,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
             var end = cleaned.LastIndexOf('}');
 
             if (start >= 0 && end > start)
-            {
                 cleaned = cleaned.Substring(start, end - start + 1);
-            }
 
             return cleaned;
         }
