@@ -22,9 +22,10 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Domain.Entities
 		[MaxLength(200)]
 		public string? Identifier { get; set; }
 
-		public DeviceStatus Status { get; set; } = DeviceStatus.Active; 
+		public string? InstallationLocation { get; set; }
 
-		public DevicePosition? Position { get; set; }
+		public DeviceStatus Status { get; set; } = DeviceStatus.Active;  
+
 		public BleBeaconInfo? BleInfo { get; set; }
 
 		public WorkareaCheckinPoint WorkareaCheckinPoint { get; set; } = null!;

@@ -2,6 +2,7 @@
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Request;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response;
 using CleanOpsAi.Modules.WorkareaCheckin.Domain.Entities;
+using CleanOpsAi.Modules.WorkareaCheckin.Domain.Owned;
 
 namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Mappings
 {
@@ -13,6 +14,13 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Mappings
 			CreateMap<WorkareaCheckinPointUpdateDto, WorkareaCheckinPoint>();
 
 			CreateMap<WorkareaCheckinPoint, WorkareaCheckinPointDto>();
+
+			CreateMap<AccessDevice, AccessDeviceDto>();
+			CreateMap<AccessDeviceCreateDto, AccessDevice>();
+
+			CreateMap<BleBeaconInfoDto, BleBeaconInfo>();
+			CreateMap<BleBeaconInfo, BleBeaconInfoDto>();
+
 		}
 	}
 }
