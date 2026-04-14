@@ -44,6 +44,11 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 			if (checkPoint == null)
 				throw new NotFoundException("CheckinPoint not found");
 
+			if (!string.Equals(checkPoint.Code, request.Code, StringComparison.OrdinalIgnoreCase))
+			{
+				throw new BadRequestException("Invalid QR data");
+			}
+
 			Guid pointId = checkPoint.Id;
 			Guid? deviceId = null;
 			CheckinType type;

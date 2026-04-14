@@ -3,6 +3,7 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Request;
@@ -50,44 +51,34 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 			if (string.IsNullOrWhiteSpace(request.Name))
 				throw new BadRequestException("Name is required");
 
-			string code;
+			const int maxRetry = 2;
 
-			if (string.IsNullOrWhiteSpace(request.Code))
+			for (int i = 0; i < maxRetry; i++)
 			{
-				var count = await _workareaCheckinPointRepository
-					.CountByWorkarea(request.WorkareaId, ct);
+				var id = _idGenerator.Generate();
+				var generatedCode = $"WCP-{id.ToString()[..6].ToUpper()}";
 
-				code = $"WCP-{request.WorkareaId.ToString()[..4].ToUpper()}-{(count + 1):D3}";
-			}
-			else
-			{
-				code = request.Code.Trim().ToUpper();
+				var entity = _mapper.Map<WorkareaCheckinPoint>(request);
+				entity.Id = id;
+				entity.Code = generatedCode;
+				entity.Created = _dateTimeProvider.UtcNow;
+				entity.CreatedBy = _userContext.UserId.ToString();
 
-				var isExist = await _workareaCheckinPointRepository
-					.ExistsByWorkareaAndCode(request.WorkareaId, code, ct);
+				try
+				{
+					await _workareaCheckinPointRepository.InsertAsync(entity, ct);
+					await _workareaCheckinPointRepository.SaveChangesAsync(ct);
 
-				if (isExist)
-					throw new BadRequestException("Code already exists in this workarea");
-			}
-
-			var entity = _mapper.Map<WorkareaCheckinPoint>(request);
-			entity.Id = _idGenerator.Generate();
-			entity.Code = code;
-
-			entity.Created = _dateTimeProvider.UtcNow;
-			entity.CreatedBy = _userContext.UserId.ToString();
-
-			try
-			{
-				await _workareaCheckinPointRepository.InsertAsync(entity, ct);
-				await _workareaCheckinPointRepository.SaveChangesAsync(ct);
-			}
-			catch (DbUpdateException)
-			{
-				throw new BadRequestException("Duplicate code, please retry");
+					return _mapper.Map<WorkareaCheckinPointDto>(entity);
+				}
+				catch (DbUpdateException)
+				{
+					if (i == maxRetry - 1)
+						throw new BadRequestException("Cannot generate unique code");
+				}
 			}
 
-			return _mapper.Map<WorkareaCheckinPointDto>(entity);
+			throw new BadRequestException("Unexpected error"); 
 		}
 
 		public async Task<bool> Delete(Guid id, CancellationToken ct = default)
@@ -107,9 +98,9 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 		}
 
 		public async Task<WorkareaCheckinPointDto> Update(
-			Guid id,
-			WorkareaCheckinPointUpdateDto request,
-			CancellationToken ct = default)
+		Guid id,
+		WorkareaCheckinPointUpdateDto request,
+		CancellationToken ct = default)
 		{
 			var entity = await _workareaCheckinPointRepository.GetByIdAsync(id);
 			if (entity == null)
@@ -117,25 +108,9 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 
 			if (!string.IsNullOrWhiteSpace(request.Name))
 				entity.Name = request.Name.Trim();
-			 
-			if (!string.IsNullOrWhiteSpace(request.Code))
-			{
-				var newCode = request.Code.Trim().ToUpper();
-
-				if (newCode != entity.Code)
-				{
-					var isExist = await _workareaCheckinPointRepository
-						.ExistsByWorkareaAndCode(entity.WorkareaId, newCode, ct);
-
-					if (isExist)
-						throw new BadRequestException("Code already exists in this workarea");
-
-					entity.Code = newCode;
-				}
-			}
 
 			entity.LastModified = _dateTimeProvider.UtcNow;
-			entity.LastModifiedBy = _userContext.UserId.ToString(); 
+			entity.LastModifiedBy = _userContext.UserId.ToString();
 
 			await _workareaCheckinPointRepository.SaveChangesAsync(ct);
 
@@ -185,6 +160,17 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 				throw new NotFoundException("", $"No check-in point found for workarea {workareaId}");
 
 			return _mapper.Map<WorkareaCheckinPointDto>(entity);
+		}
+
+		public async Task<PaginatedResult<WorkareaCheckinPointDto>> Gets(GetsCheckinPointQuery query, PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _workareaCheckinPointRepository.GetsPaging(query, request, ct);
+
+			return new PaginatedResult<WorkareaCheckinPointDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<WorkareaCheckinPointDto>>(result.Content));
 		}
 	}
 }
