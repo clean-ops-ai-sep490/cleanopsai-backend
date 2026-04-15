@@ -10,6 +10,7 @@ using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using MassTransit;
 using Medo;
+using System.Diagnostics;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -319,32 +320,66 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
         public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string? query)
         {
+            var traceId = Guid.NewGuid().ToString("N");
+            var sw = Stopwatch.StartNew();
+
+            Console.WriteLine($"\n========== NLP TRACE START [{traceId}] ==========");
+
             // =========================
-            // 1. NULL / EMPTY → RETURN ALL
+            // 0. HARD GUARD (NULL INPUT)
             // =========================
             if (string.IsNullOrWhiteSpace(query))
             {
                 var all = await _workerRepository.GetAllAsync();
+                Console.WriteLine($"[{traceId}] EMPTY QUERY → return all | count={all.Count}");
                 return BuildNlpResponse(all, null);
             }
 
             // =========================
-            // 2. NLP PARSE VIA GEMINI
+            // 1. GEMINI (FAIL FAST + TIMEOUT)
             // =========================
             WorkerFilterNlpResult parsed;
+
             try
             {
-                parsed = await _geminiService.ParseWorkerFilterAsync(query);
+                Console.WriteLine($"[{traceId}] [1] GEMINI START");
+
+                var geminiTask = _geminiService.ParseWorkerFilterAsync(query);
+
+                var completed = await Task.WhenAny(
+                    geminiTask,
+                    Task.Delay(2000) // ⛔ hard timeout 2s
+                );
+
+                if (completed == geminiTask)
+                {
+                    parsed = await geminiTask;
+                    Console.WriteLine($"[{traceId}] [1] GEMINI DONE");
+                }
+                else
+                {
+                    Console.WriteLine($"[{traceId}] [1] GEMINI TIMEOUT → fallback local");
+                    parsed = new WorkerFilterNlpResult();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NLP] Gemini parse failed: {ex.Message}");
+                Console.WriteLine($"[{traceId}] [1] GEMINI FAIL: {ex.Message}");
                 parsed = new WorkerFilterNlpResult();
             }
 
             // =========================
-            // 3. FALLBACK: Gemini không parse được gì → dùng query gốc làm address
+            // 2. LOG PARSED
             // =========================
+            Console.WriteLine("========== PARSED RESULT ==========");
+            Console.WriteLine($"Address: {parsed.Address}");
+            Console.WriteLine($"Skills: {string.Join(",", parsed.SkillCategories ?? new())}");
+            Console.WriteLine($"Certs: {string.Join(",", parsed.CertificateCategories ?? new())}");
+            Console.WriteLine($"StartAt: {parsed.StartAt}");
+            Console.WriteLine($"EndAt: {parsed.EndAt}");
+            Console.WriteLine("===================================");
+
+            // fallback
             bool parsedNothing =
                 string.IsNullOrWhiteSpace(parsed.Address) &&
                 (parsed.SkillCategories == null || !parsed.SkillCategories.Any()) &&
@@ -353,29 +388,19 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             if (parsedNothing)
                 parsed.Address = query;
 
-            Console.WriteLine($"[NLP] Parsed → Address='{parsed.Address}' | Skills=[{string.Join(",", parsed.SkillCategories ?? new())}] | Certs=[{string.Join(",", parsed.CertificateCategories ?? new())}] | Start={parsed.StartAt} | End={parsed.EndAt}");
-
             // =========================
-            // 4. VALIDATE DATE RANGE (không throw, chỉ bỏ qua)
+            // 3. DATE VALIDATION
             // =========================
-            if (parsed.StartAt.HasValue && parsed.EndAt.HasValue)
+            if (parsed.StartAt.HasValue && parsed.EndAt.HasValue &&
+                parsed.StartAt > parsed.EndAt)
             {
-                if (parsed.StartAt > parsed.EndAt)
-                {
-                    Console.WriteLine("[NLP] StartAt > EndAt → bỏ qua date filter.");
-                    parsed.StartAt = null;
-                    parsed.EndAt = null;
-                }
-            }
-            else if (parsed.StartAt.HasValue != parsed.EndAt.HasValue)
-            {
-                Console.WriteLine("[NLP] Chỉ có 1 trong StartAt/EndAt → bỏ qua date filter.");
+                Console.WriteLine($"[{traceId}] INVALID DATE RANGE → ignored");
                 parsed.StartAt = null;
                 parsed.EndAt = null;
             }
 
             // =========================
-            // 5. BUILD FILTER REQUEST
+            // 4. BUILD REQUEST
             // =========================
             var request = new WorkerFilterRequest
             {
@@ -387,26 +412,46 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
 
             // =========================
-            // 6. GEOCODE ADDRESS → LAT/LNG
+            // 5. GEOCODE (SAFE)
             // =========================
             if (!string.IsNullOrWhiteSpace(request.Address))
             {
-                var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+                try
+                {
+                    Console.WriteLine($"[{traceId}] [2] GEOCODE START");
 
-                if (coords.HasValue)
-                {
-                    request.Latitude = coords.Value.lat;
-                    request.Longitude = coords.Value.lng;
-                    Console.WriteLine($"[GEOCODE] '{request.Address}' → lat={coords.Value.lat}, lng={coords.Value.lng}");
+                    var geoTask = _goongMapService.GetCoordinatesAsync(request.Address);
+
+                    var completed = await Task.WhenAny(
+                        geoTask,
+                        Task.Delay(2000)
+                    );
+
+                    if (completed == geoTask)
+                    {
+                        var coords = await geoTask;
+
+                        if (coords.HasValue)
+                        {
+                            request.Latitude = coords.Value.lat;
+                            request.Longitude = coords.Value.lng;
+                        }
+
+                        Console.WriteLine($"[{traceId}] [2] GEOCODE DONE");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[{traceId}] GEOCODE TIMEOUT");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"[GEOCODE] '{request.Address}' → NULL, không geocode được.");
+                    Console.WriteLine($"[{traceId}] GEOCODE FAIL: {ex.Message}");
                 }
             }
 
             // =========================
-            // 7. LẤY BUSY WORKER IDS
+            // 6. BUSY WORKER (SAFE MASS TRANSIT CALL)
             // =========================
             HashSet<Guid> busyIds = new();
 
@@ -414,39 +459,65 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 try
                 {
-                    var busyResponse = await _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
+                    Console.WriteLine($"[{traceId}] [3] BUSY WORKER START");
+
+                    var busyTask = _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
                         new GetBusyWorkerIdsRequest
                         {
                             StartAt = request.StartAt.Value,
                             EndAt = request.EndAt.Value
                         });
 
-                    busyIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
-                    Console.WriteLine($"[BUSY] {busyIds.Count} workers đang bận.");
+                    var completed = await Task.WhenAny(
+                        busyTask,
+                        Task.Delay(2000)
+                    );
+
+                    if (completed == busyTask)
+                    {
+                        var busyResponse = await busyTask;
+                        busyIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
+
+                        Console.WriteLine($"[{traceId}] [3] BUSY DONE | count={busyIds.Count}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[{traceId}] BUSY TIMEOUT → skip busy filter");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[BUSY] Lấy busy workers thất bại: {ex.Message}");
+                    Console.WriteLine($"[{traceId}] BUSY FAIL: {ex.Message}");
                 }
             }
 
             // =========================
-            // 8. QUERY DATABASE
+            // 7. DB QUERY (FASTEST PART)
             // =========================
+            Console.WriteLine($"[{traceId}] [4] DB FILTER START");
+
+            var dbSw = Stopwatch.StartNew();
             var workers = await _workerRepository.FilterStrictAsync(request);
+            dbSw.Stop();
+
+            Console.WriteLine($"[{traceId}] [4] DB DONE in {dbSw.ElapsedMilliseconds}ms | count={workers.Count}");
 
             // =========================
-            // 9. LOẠI BUSY WORKERS
+            // 8. REMOVE BUSY WORKERS
             // =========================
-            if (busyIds.Any())
+            if (busyIds.Count > 0)
                 workers = workers.Where(x => !busyIds.Contains(x.Id)).ToList();
 
-            Console.WriteLine($"[NLP] Kết quả: {workers.Count} workers sau filter.");
+            // =========================
+            // 9. FINAL RESPONSE
+            // =========================
+            sw.Stop();
 
-            // =========================
-            // 10. RESPONSE
-            // =========================
+            Console.WriteLine($"[{traceId}] FINAL COUNT = {workers.Count}");
+            Console.WriteLine($"========== NLP TRACE END [{traceId}] TOTAL {sw.ElapsedMilliseconds}ms ==========\n");
+
             string? warning = workers.Any() ? null : "Không tìm thấy worker phù hợp.";
+
             return BuildNlpResponse(workers, warning);
         }
 

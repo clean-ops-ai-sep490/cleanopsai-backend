@@ -16,6 +16,9 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
         {
             _httpClient = httpClient;
             _apiKey = config["Gemini:ApiKey"]!;
+
+            // timeout ngắn để tránh treo request
+            _httpClient.Timeout = TimeSpan.FromSeconds(2);
         }
 
         private string BuildUrl()
@@ -23,10 +26,9 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
             return $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
         }
 
+        // ========================= CHAT =========================
         public async Task<string> ChatAsync(string message)
         {
-            message = Sanitize(message);
-
             var body = new
             {
                 contents = new[]
@@ -34,179 +36,207 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                     new
                     {
                         role = "user",
-                        parts = new[]
-                        {
-                            new { text = message }
-                        }
+                        parts = new[] { new { text = message?.Trim() ?? "" } }
                     }
                 }
             };
 
-            var json = await SendWithRetry(body);
+            var json = await Send(body);
             return ExtractText(json);
         }
 
+        // ========================= NLP =========================
         public async Task<WorkerFilterNlpResult> ParseWorkerFilterAsync(string query)
         {
-            query = Sanitize(query);
+            query = query?.Trim() ?? "";
 
-            var now = DateTime.UtcNow;
-            var nowStr = now.ToString("yyyy-MM-ddTHH:mm:ss");
-            var todayStr = now.ToString("yyyy-MM-dd");
-
-            var prompt = $$"""
-                Extract worker search parameters from this query and return ONLY raw JSON, no markdown, no explanation.
-
-                Current datetime (UTC): {{nowStr}}
-                Query: "{{query}}"
-
-                JSON format:
-                {
-                  "address": string or null,
-                  "skillCategories": string[],
-                  "certificateCategories": string[],
-                  "startAt": ISO datetime or null,
-                  "endAt": ISO datetime or null
-                }
-
-                Rules:
-                - "sáng" = 08:00, "chiều" = 13:00, "tối" = 18:00
-                - "hôm nay" = {{todayStr}}
-                - Nếu thiếu start hoặc end → set cả 2 = null
-                - skillCategories và certificateCategories phải là lowercase, ví dụ: "cleaning", "glass cleaning"
-                - Chỉ trả về JSON, không giải thích gì thêm
-
-                Example output:
-                {
-                  "address": "District 1",
-                  "skillCategories": ["glass cleaning"],
-                  "certificateCategories": [],
-                  "startAt": "{{todayStr}}T08:00:00",
-                  "endAt": "{{todayStr}}T10:00:00"
-                }
-                """;
-
-            var body = new
-            {
-                contents = new[]
-                {
-                    new
-                    {
-                        role = "user",
-                        parts = new[] { new { text = prompt } }
-                    }
-                }
-            };
-
-            var json = await SendWithRetry(body);
-            var rawText = ExtractText(json);
-            var cleaned = CleanJson(rawText);
+            // 🔥 LOCAL FIRST (FAST PATH)
+            var local = LocalParse(query);
 
             try
             {
-                var result = JsonSerializer.Deserialize<WorkerFilterNlpResult>(
+                var prompt = BuildPrompt(query);
+
+                var body = new
+                {
+                    contents = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            parts = new[] { new { text = prompt } }
+                        }
+                    }
+                };
+
+                var json = await Send(body);
+                var raw = ExtractText(json);
+                var cleaned = CleanJson(raw);
+
+                var geminiResult = JsonSerializer.Deserialize<WorkerFilterNlpResult>(
                     cleaned,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }
+                );
 
-                if (result == null) return new WorkerFilterNlpResult();
+                if (geminiResult == null)
+                    return local;
 
-                // ✅ Normalize về lowercase để khớp DB
-                if (result.SkillCategories != null)
-                    result.SkillCategories = result.SkillCategories
-                        .Select(s => s.Trim().ToLowerInvariant())
-                        .Where(s => !string.IsNullOrEmpty(s))
-                        .ToList();
+                Normalize(geminiResult);
 
-                if (result.CertificateCategories != null)
-                    result.CertificateCategories = result.CertificateCategories
-                        .Select(s => s.Trim().ToLowerInvariant())
-                        .Where(s => !string.IsNullOrEmpty(s))
-                        .ToList();
+                if (IsEmpty(geminiResult))
+                    return local;
 
-                return result;
+                return geminiResult;
             }
             catch
             {
-                return new WorkerFilterNlpResult();
+                // fallback nhanh, không throw
+                return local;
             }
         }
 
-        // ================= CORE =================
-
-        private async Task<string> SendWithRetry(object body)
+        // ========================= GEMINI HTTP (NO RETRY) =========================
+        private async Task<string> Send(object body)
         {
             var url = BuildUrl();
-            HttpResponseMessage response = null!;
-            string json = "";
 
-            int maxRetry = 3;
-
-            for (int i = 0; i < maxRetry; i++)
-            {
-                var requestContent = new StringContent(
-                    JsonSerializer.Serialize(body),
-                    Encoding.UTF8,
-                    "application/json"
-                );
-
-                response = await _httpClient.PostAsync(url, requestContent);
-                json = await response.Content.ReadAsStringAsync();
-
-                if (response.IsSuccessStatusCode)
-                    return json;
-
-                if ((int)response.StatusCode == 503 || (int)response.StatusCode == 400)
-                {
-                    await Task.Delay(1000 * (i + 1));
-                    continue;
-                }
-
-                throw new BadRequestException(
-                    $"Gemini API lỗi: {response.StatusCode} - {json}"
-                );
-            }
-
-            throw new BadRequestException(
-                $"Gemini API không khả dụng sau retry. Response: {json}"
+            var requestContent = new StringContent(
+                JsonSerializer.Serialize(body),
+                Encoding.UTF8,
+                "application/json"
             );
+
+            var response = await _httpClient.PostAsync(url, requestContent);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+                return json;
+
+            // ❌ KHÔNG retry để tránh treo system
+            if ((int)response.StatusCode == 429)
+                throw new BadRequestException("Gemini rate limit (429)");
+
+            throw new BadRequestException($"Gemini error: {(int)response.StatusCode} - {json}");
         }
 
+        // ========================= LOCAL PARSE =========================
+        private WorkerFilterNlpResult LocalParse(string query)
+        {
+            var result = new WorkerFilterNlpResult
+            {
+                Address = null,
+                SkillCategories = new List<string>(),
+                CertificateCategories = new List<string>()
+            };
+
+            if (string.IsNullOrWhiteSpace(query))
+                return result;
+
+            var lower = query.ToLower();
+
+            // skill
+            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
+            if (skill.Success)
+                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
+
+            // cert
+            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
+            if (cert.Success)
+                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
+
+            // address fix
+            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
+            if (addr.Success)
+            {
+                var value = addr.Groups[2].Value.Trim();
+
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"skill.*", "").Trim();
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"certificate.*", "").Trim();
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"\s+", " ").Trim();
+
+                if (value.Length > 2)
+                    result.Address = value;
+            }
+
+            return result;
+        }
+
+        // ========================= NORMALIZE =========================
+        private void Normalize(WorkerFilterNlpResult r)
+        {
+            r.SkillCategories = r.SkillCategories?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim().ToLower())
+                .Distinct()
+                .ToList() ?? new();
+
+            r.CertificateCategories = r.CertificateCategories?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim().ToLower())
+                .Distinct()
+                .ToList() ?? new();
+
+            if (!string.IsNullOrWhiteSpace(r.Address))
+                r.Address = r.Address.Trim();
+        }
+
+        private bool IsEmpty(WorkerFilterNlpResult r)
+        {
+            return string.IsNullOrWhiteSpace(r.Address)
+                && !r.SkillCategories.Any()
+                && !r.CertificateCategories.Any();
+        }
+
+        // ========================= PROMPT =========================
+        private string BuildPrompt(string query)
+        {
+            return $@"
+Extract worker search filters.
+
+INPUT:
+{query}
+
+OUTPUT JSON ONLY:
+{{
+  ""address"": """",
+  ""skillCategories"": [],
+  ""certificateCategories"": []
+}}";
+        }
+
+        // ========================= EXTRACT =========================
         private string ExtractText(string json)
         {
             using var doc = JsonDocument.Parse(json);
 
-            if (!doc.RootElement.TryGetProperty("candidates", out var candidates)
-                || candidates.GetArrayLength() == 0)
-                return "{}";
+            if (!doc.RootElement.TryGetProperty("candidates", out var c) || c.GetArrayLength() == 0)
+                throw new Exception("Invalid Gemini response");
 
-            return candidates[0]
+            return c[0]
                 .GetProperty("content")
                 .GetProperty("parts")[0]
                 .GetProperty("text")
-                .GetString() ?? "{}";
+                .GetString() ?? "";
         }
 
+        // ========================= CLEAN JSON =========================
         private string CleanJson(string raw)
         {
-            var cleaned = raw
-                .Replace("```json", "")
-                .Replace("```", "")
-                .Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+                return "{}";
+
+            var cleaned = raw.Replace("```json", "").Replace("```", "").Trim();
 
             var start = cleaned.IndexOf('{');
             var end = cleaned.LastIndexOf('}');
 
             if (start >= 0 && end > start)
-                cleaned = cleaned.Substring(start, end - start + 1);
+                return cleaned.Substring(start, end - start + 1);
 
-            return cleaned;
-        }
-
-        private string Sanitize(string input)
-        {
-            return input
-                .Replace("\"", "'")
-                .Trim();
+            return "{}";
         }
     }
 }

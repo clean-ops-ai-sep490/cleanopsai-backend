@@ -174,7 +174,9 @@ namespace CleanOpsAi.Api.Modules.Workforce
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Query không hợp lệ")]
         public async Task<IActionResult> NlpFilter([FromQuery] string? search)
         {
+            Console.WriteLine(">>> CONTROLLER HIT");
             var result = await _service.NlpFilterAsync(search);
+            Console.WriteLine(">>> CONTROLLER DONE");
             return Ok(result);
         }
 
