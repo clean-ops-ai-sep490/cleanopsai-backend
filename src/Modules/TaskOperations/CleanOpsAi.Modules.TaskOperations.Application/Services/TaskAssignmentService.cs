@@ -59,7 +59,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         public async Task<bool> Delete(Guid id)
 		{
 			var taskAssignment = await _taskAssignmentRepository.GetByIdAsync(id); 
-			if (taskAssignment == null) return false;
+			if (taskAssignment == null)
+				throw new NotFoundException(nameof(TaskAssignment), id);
 
 			taskAssignment.IsDeleted = true; 
 			await _taskAssignmentRepository.SaveChangesAsync(); 
@@ -69,7 +70,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		public async Task<TaskAssignmentDto?> GetById(Guid id, CancellationToken ct = default)
 		{
 			var taskAssignment = await _taskAssignmentRepository.GetByIdExist(id, ct);
-			if (taskAssignment == null) return null; 
+			if (taskAssignment == null)
+				throw new NotFoundException(nameof(TaskAssignment), id);
 
 			return _mapper.Map<TaskAssignmentDto>(taskAssignment);
 		}
@@ -79,7 +81,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			var taskAssignment = await _taskAssignmentRepository.GetByIdAsync(id);
 
 			if (taskAssignment == null)
-				return null;
+				throw new NotFoundException(nameof(TaskAssignment), id);
 
 			_mapper.Map(dto, taskAssignment);
 			taskAssignment.LastModified = DateTime.UtcNow;
@@ -93,7 +95,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		public async Task<bool> UpdateStatus(Guid id, TaskAssignmentStatus status)
 		{
 			var taskAssignment = await _taskAssignmentRepository.GetByIdAsync(id);
-			if (taskAssignment == null) return false;
+			if (taskAssignment == null) throw new NotFoundException(nameof(TaskAssignment), id);
 
 			taskAssignment.Status = status; 
 			await _taskAssignmentRepository.SaveChangesAsync(); 
@@ -264,7 +266,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				result.PageNumber,
 				result.PageSize,
 				result.TotalElements,
-				_mapper.Map<List<TaskAssignmentDto>>(result.Content));
+				_mapper.Map<List<TaskAssignmentDto>>(result.Content ?? new List<TaskAssignment>())
+);
 		}
 
 		public async Task<StartTaskDto> CompleteTaskAsync(Guid taskAssignmentId, TaskCompletedDto dto, CancellationToken ct = default)

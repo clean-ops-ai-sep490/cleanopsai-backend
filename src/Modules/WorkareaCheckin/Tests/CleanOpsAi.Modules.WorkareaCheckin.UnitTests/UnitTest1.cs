@@ -1,4 +1,4 @@
-namespace CleanOpsAi.Modules.QualityControl.UnitTests
+namespace CleanOpsAi.Modules.WorkareaCheckin.UnitTests
 {
 	public class UnitTest1
 	{

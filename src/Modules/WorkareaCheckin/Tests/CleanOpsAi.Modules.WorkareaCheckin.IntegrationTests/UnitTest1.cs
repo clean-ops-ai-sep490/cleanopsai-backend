@@ -1,4 +1,4 @@
-namespace CleanOpsAi.Modules.QualityControl.ArchTests
+namespace CleanOpsAi.Modules.WorkareaCheckin.IntegrationTests
 {
 	public class UnitTest1
 	{
