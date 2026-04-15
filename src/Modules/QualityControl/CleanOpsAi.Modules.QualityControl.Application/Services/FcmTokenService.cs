@@ -26,39 +26,36 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			_userContext = userContext;
 
 		}
-		public async Task<FcmTokenDto> CreateOrUpdateAsync(FcmTokenCreateDto dto, CancellationToken cancellationToken = default)
+		public async Task<FcmTokenDto> RegisterAsync(FcmTokenRegisterDto dto,
+			CancellationToken cancellationToken = default)
 		{
-			var existing = await _fcmTokenRepository.GetActiveTokenAsync(dto.UniqueId, _userContext.UserId, cancellationToken);
+			var now = _dateTimeProvider.UtcNow;
+			var userId = _userContext.UserId;
+
+			await DeactivateDuplicateTokenAsync(dto.Token, dto.UniqueId, cancellationToken);
+
+			var existing = await _fcmTokenRepository
+				.GetByUniqueIdAsync(dto.UniqueId, cancellationToken);
 
 			if (existing is not null)
 			{
-				existing.Token = dto.Token;
-				existing.Platform = dto.Platform;
-				existing.DeviceName = dto.DeviceName;
-				existing.WorkerId = dto.WorkerId;
+				_mapper.Map(dto, existing);
+				existing.UserId = userId;
 				existing.IsActive = true;
-				existing.LastUsed = _dateTimeProvider.UtcNow;
-
+				existing.LastUsed = now;
 				await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
 				return _mapper.Map<FcmTokenDto>(existing);
 			}
 
-			var duplicateToken = await _fcmTokenRepository.GetByTokenAsync(dto.Token, cancellationToken);
-			if (duplicateToken is not null)
-			{
-				duplicateToken.IsActive = false;
-			}
-
-			var fcmToken = _mapper.Map<FcmToken>(dto); 
-			fcmToken.Created = _dateTimeProvider.UtcNow;
-			fcmToken.CreatedBy = _userContext.UserId.ToString();
+			var fcmToken = _mapper.Map<FcmToken>(dto);
+			fcmToken.UserId = userId;
+			fcmToken.Created = now;
+			fcmToken.CreatedBy = userId.ToString();
+			fcmToken.LastUsed = now;
 			fcmToken.IsActive = true;
-
 			await _fcmTokenRepository.InsertAsync(fcmToken, cancellationToken);
 			await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
-
 			return _mapper.Map<FcmTokenDto>(fcmToken);
-
 		}
 
 		public async Task DeactivateTokenAsync(string uniqueId, CancellationToken cancellationToken = default)
@@ -69,7 +66,37 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			token.IsActive = false;
 			token.LastUsed = _dateTimeProvider.UtcNow;
 
+			token.LastModified = _dateTimeProvider.UtcNow;
+			token.LastModifiedBy = _userContext.UserId.ToString();
+
 			await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
+		}
+
+		public async Task RefreshTokenAsync(FcmTokenRefreshDto dto, CancellationToken cancellationToken = default)
+		{
+			var existing = await _fcmTokenRepository.GetByUniqueIdAsync(dto.UniqueId, cancellationToken);
+
+			if (existing is null) return;
+			await DeactivateDuplicateTokenAsync(dto.Token, dto.UniqueId, cancellationToken);
+
+			existing.Token = dto.Token;
+			existing.LastUsed = _dateTimeProvider.UtcNow;
+
+			await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
+		}
+
+		private async Task DeactivateDuplicateTokenAsync(
+			string token,
+			string uniqueId,
+			CancellationToken cancellationToken)
+		{
+			var duplicate = await _fcmTokenRepository
+				.GetByTokenAsync(token, cancellationToken);
+
+			if (duplicate is not null && duplicate.UniqueId != uniqueId)
+			{
+				duplicate.IsActive = false; 
+			}
 		}
 	}
 }

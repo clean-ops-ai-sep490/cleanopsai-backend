@@ -26,6 +26,12 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 			.FirstOrDefaultAsync(x => x.UniqueId == uniqueId && x.UserId == userId && x.IsActive, cancellationToken);
 		}
 
+		public async Task<FcmToken?> GetByUniqueIdAsync(string uniqueId, CancellationToken cancellationToken = default)
+		{
+			return await _context.FcmTokens
+				.FirstOrDefaultAsync(x => x.UniqueId == uniqueId, cancellationToken);
+		}
+
 		public async Task<List<FcmToken>> GetActiveTokensByUserIdsAsync(List<Guid> userIds, CancellationToken ct = default)
 		{
 			return await _context.FcmTokens
