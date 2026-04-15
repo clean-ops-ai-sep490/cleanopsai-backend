@@ -37,6 +37,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public string Source { get; set; } = null!;
 		public string Verdict { get; set; } = null!;
 		public double QualityScore { get; set; }
+		public string? VisualizationBlobUrl { get; set; }
 		public string PayloadJson { get; set; } = "{}";
 	}
 }

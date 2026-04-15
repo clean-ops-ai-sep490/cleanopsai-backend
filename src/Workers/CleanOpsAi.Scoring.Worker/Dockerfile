@@ -7,5 +7,6 @@ RUN dotnet publish "Workers/CleanOpsAi.Scoring.Worker/CleanOpsAi.Scoring.Worker.
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "CleanOpsAi.Scoring.Worker.dll"]

@@ -3,6 +3,7 @@ using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.Scoring.Infrastructure.Services
@@ -46,6 +47,31 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Services
 
 			var payload = JsonSerializer.Deserialize<ScoringInferenceBatchResponse>(body, JsonOptions);
 			return payload ?? throw new InvalidOperationException("Scoring service returned empty payload.");
+		}
+
+		public async Task<ScoringVisualizationLinkResponse> EvaluateUrlVisualizeLinkAsync(string environmentKey, string imageUrl, CancellationToken ct = default)
+		{
+			var requestPayload = JsonSerializer.Serialize(new
+			{
+				url = imageUrl,
+				env = environmentKey,
+			});
+
+			using var request = new HttpRequestMessage(HttpMethod.Post, _options.EvaluateUrlVisualizeLinkPath)
+			{
+				Content = new StringContent(requestPayload, Encoding.UTF8, "application/json"),
+			};
+			request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+			using var response = await _httpClient.SendAsync(request, ct);
+			var body = await response.Content.ReadAsStringAsync(ct);
+			if (!response.IsSuccessStatusCode)
+			{
+				throw new InvalidOperationException($"Scoring visualization service returned {(int)response.StatusCode}: {body}");
+			}
+
+			var payload = JsonSerializer.Deserialize<ScoringVisualizationLinkResponse>(body, JsonOptions);
+			return payload ?? throw new InvalidOperationException("Scoring visualization service returned empty payload.");
 		}
 	}
 }
