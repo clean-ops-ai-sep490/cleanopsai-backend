@@ -321,90 +321,59 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string? query)
         {
             var traceId = Guid.NewGuid().ToString("N");
-            var sw = Stopwatch.StartNew();
 
-            Console.WriteLine($"\n========== NLP TRACE START [{traceId}] ==========");
+            Console.WriteLine($"\n===== NLP START {traceId} =====");
 
-            // =========================
-            // 0. HARD GUARD (NULL INPUT)
-            // =========================
             if (string.IsNullOrWhiteSpace(query))
             {
                 var all = await _workerRepository.GetAllAsync();
-                Console.WriteLine($"[{traceId}] EMPTY QUERY → return all | count={all.Count}");
                 return BuildNlpResponse(all, null);
             }
 
-            // =========================
-            // 1. GEMINI (FAIL FAST + TIMEOUT)
-            // =========================
             WorkerFilterNlpResult parsed;
 
+            // =========================
+            // 1. GEMINI SAFE CALL (NO BLOCK)
+            // =========================
             try
             {
-                Console.WriteLine($"[{traceId}] [1] GEMINI START");
+                var task = _geminiService.ParseWorkerFilterAsync(query);
 
-                var geminiTask = _geminiService.ParseWorkerFilterAsync(query);
+                var completed = await Task.WhenAny(task, Task.Delay(1500));
 
-                var completed = await Task.WhenAny(
-                    geminiTask,
-                    Task.Delay(2000) // ⛔ hard timeout 2s
-                );
-
-                if (completed == geminiTask)
-                {
-                    parsed = await geminiTask;
-                    Console.WriteLine($"[{traceId}] [1] GEMINI DONE");
-                }
+                if (completed == task)
+                    parsed = await task;
                 else
                 {
-                    Console.WriteLine($"[{traceId}] [1] GEMINI TIMEOUT → fallback local");
+                    Console.WriteLine("GEMINI TIMEOUT → LOCAL ONLY");
                     parsed = new WorkerFilterNlpResult();
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[{traceId}] [1] GEMINI FAIL: {ex.Message}");
                 parsed = new WorkerFilterNlpResult();
             }
 
             // =========================
-            // 2. LOG PARSED
+            // 2. SAFE FALLBACK (KHÔNG DÙNG QUERY LÀ ADDRESS)
             // =========================
-            Console.WriteLine("========== PARSED RESULT ==========");
-            Console.WriteLine($"Address: {parsed.Address}");
-            Console.WriteLine($"Skills: {string.Join(",", parsed.SkillCategories ?? new())}");
-            Console.WriteLine($"Certs: {string.Join(",", parsed.CertificateCategories ?? new())}");
-            Console.WriteLine($"StartAt: {parsed.StartAt}");
-            Console.WriteLine($"EndAt: {parsed.EndAt}");
-            Console.WriteLine("===================================");
-
-            // fallback
-            bool parsedNothing =
-                string.IsNullOrWhiteSpace(parsed.Address) &&
-                (parsed.SkillCategories == null || !parsed.SkillCategories.Any()) &&
-                (parsed.CertificateCategories == null || !parsed.CertificateCategories.Any());
-
-            if (parsedNothing)
-                parsed.Address = query;
-
-            // =========================
-            // 3. DATE VALIDATION
-            // =========================
-            if (parsed.StartAt.HasValue && parsed.EndAt.HasValue &&
-                parsed.StartAt > parsed.EndAt)
+            if (IsEmpty(parsed))
             {
-                Console.WriteLine($"[{traceId}] INVALID DATE RANGE → ignored");
+                parsed = LocalParse(query); // 🔥 FIX QUAN TRỌNG
+            }
+
+            // =========================
+            // 3. VALIDATE DATE
+            // =========================
+            if (parsed.StartAt > parsed.EndAt)
+            {
                 parsed.StartAt = null;
                 parsed.EndAt = null;
             }
 
-            // =========================
-            // 4. BUILD REQUEST
-            // =========================
             var request = new WorkerFilterRequest
             {
-                Address = parsed.Address,
+                Address = CleanAddress(parsed.Address),
                 SkillCategories = parsed.SkillCategories,
                 CertificateCategories = parsed.CertificateCategories,
                 StartAt = parsed.StartAt,
@@ -412,46 +381,28 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
 
             // =========================
-            // 5. GEOCODE (SAFE)
+            // 4. GEOCODE SAFE
             // =========================
             if (!string.IsNullOrWhiteSpace(request.Address))
             {
                 try
                 {
-                    Console.WriteLine($"[{traceId}] [2] GEOCODE START");
+                    var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
 
-                    var geoTask = _goongMapService.GetCoordinatesAsync(request.Address);
-
-                    var completed = await Task.WhenAny(
-                        geoTask,
-                        Task.Delay(2000)
-                    );
-
-                    if (completed == geoTask)
+                    if (coords.HasValue)
                     {
-                        var coords = await geoTask;
-
-                        if (coords.HasValue)
-                        {
-                            request.Latitude = coords.Value.lat;
-                            request.Longitude = coords.Value.lng;
-                        }
-
-                        Console.WriteLine($"[{traceId}] [2] GEOCODE DONE");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[{traceId}] GEOCODE TIMEOUT");
+                        request.Latitude = coords.Value.lat;
+                        request.Longitude = coords.Value.lng;
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Console.WriteLine($"[{traceId}] GEOCODE FAIL: {ex.Message}");
+                    Console.WriteLine("GEOCODE FAIL → SKIP");
                 }
             }
 
             // =========================
-            // 6. BUSY WORKER (SAFE MASS TRANSIT CALL)
+            // 5. BUSY WORKER SAFE
             // =========================
             HashSet<Guid> busyIds = new();
 
@@ -459,8 +410,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 try
                 {
-                    Console.WriteLine($"[{traceId}] [3] BUSY WORKER START");
-
                     var busyTask = _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
                         new GetBusyWorkerIdsRequest
                         {
@@ -468,58 +417,90 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                             EndAt = request.EndAt.Value
                         });
 
-                    var completed = await Task.WhenAny(
-                        busyTask,
-                        Task.Delay(2000)
-                    );
+                    var completed = await Task.WhenAny(busyTask, Task.Delay(1500));
 
                     if (completed == busyTask)
                     {
-                        var busyResponse = await busyTask;
-                        busyIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
-
-                        Console.WriteLine($"[{traceId}] [3] BUSY DONE | count={busyIds.Count}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[{traceId}] BUSY TIMEOUT → skip busy filter");
+                        var res = await busyTask;
+                        busyIds = res.Message.BusyWorkerIds.ToHashSet();
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Console.WriteLine($"[{traceId}] BUSY FAIL: {ex.Message}");
+                    Console.WriteLine("BUSY WORKER FAIL → SKIP");
                 }
             }
 
             // =========================
-            // 7. DB QUERY (FASTEST PART)
+            // 6. DB FAST QUERY (IMPORTANT FIX)
             // =========================
-            Console.WriteLine($"[{traceId}] [4] DB FILTER START");
-
-            var dbSw = Stopwatch.StartNew();
             var workers = await _workerRepository.FilterStrictAsync(request);
-            dbSw.Stop();
-
-            Console.WriteLine($"[{traceId}] [4] DB DONE in {dbSw.ElapsedMilliseconds}ms | count={workers.Count}");
 
             // =========================
-            // 8. REMOVE BUSY WORKERS
+            // 7. REMOVE BUSY
             // =========================
             if (busyIds.Count > 0)
                 workers = workers.Where(x => !busyIds.Contains(x.Id)).ToList();
 
-            // =========================
-            // 9. FINAL RESPONSE
-            // =========================
-            sw.Stop();
+            Console.WriteLine($"FINAL COUNT = {workers.Count}");
 
-            Console.WriteLine($"[{traceId}] FINAL COUNT = {workers.Count}");
-            Console.WriteLine($"========== NLP TRACE END [{traceId}] TOTAL {sw.ElapsedMilliseconds}ms ==========\n");
-
-            string? warning = workers.Any() ? null : "Không tìm thấy worker phù hợp.";
-
-            return BuildNlpResponse(workers, warning);
+            return BuildNlpResponse(workers, workers.Any() ? null : "Không tìm thấy worker phù hợp.");
         }
+
+        private bool IsEmpty(WorkerFilterNlpResult r)
+        {
+            return r == null ||
+                   (string.IsNullOrWhiteSpace(r.Address)
+                    && (r.SkillCategories == null || !r.SkillCategories.Any())
+                    && (r.CertificateCategories == null || !r.CertificateCategories.Any()));
+        }
+
+        private WorkerFilterNlpResult LocalParse(string query)
+        {
+            var result = new WorkerFilterNlpResult
+            {
+                Address = null,
+                SkillCategories = new List<string>(),
+                CertificateCategories = new List<string>()
+            };
+
+            if (string.IsNullOrWhiteSpace(query))
+                return result;
+
+            var lower = query.ToLower();
+
+            // skill
+            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
+            if (skill.Success)
+                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
+
+            // cert
+            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
+            if (cert.Success)
+                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
+
+            // address
+            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
+            if (addr.Success)
+                result.Address = addr.Groups[2].Value.Trim();
+
+            return result;
+        }
+
+        private string CleanAddress(string? address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return null;
+
+            address = address.ToLower().Trim();
+
+            if (address.Contains("skill") ||
+                address.Contains("certificate"))
+                return null;
+
+            return address;
+        }
+
 
         // -------------------------------------------------------
         // HELPER — map + wrap response

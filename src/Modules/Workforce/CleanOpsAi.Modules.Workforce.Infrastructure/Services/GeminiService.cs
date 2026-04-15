@@ -50,7 +50,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
         {
             query = query?.Trim() ?? "";
 
-            // 🔥 LOCAL FIRST (FAST PATH)
+            // 🔥 LOCAL FIRST (luôn chạy nhanh)
             var local = LocalParse(query);
 
             try
@@ -61,19 +61,19 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                 {
                     contents = new[]
                     {
-                        new
-                        {
-                            role = "user",
-                            parts = new[] { new { text = prompt } }
-                        }
-                    }
+                new
+                {
+                    role = "user",
+                    parts = new[] { new { text = prompt } }
+                }
+            }
                 };
 
                 var json = await Send(body);
                 var raw = ExtractText(json);
                 var cleaned = CleanJson(raw);
 
-                var geminiResult = JsonSerializer.Deserialize<WorkerFilterNlpResult>(
+                var result = JsonSerializer.Deserialize<WorkerFilterNlpResult>(
                     cleaned,
                     new JsonSerializerOptions
                     {
@@ -81,19 +81,17 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                     }
                 );
 
-                if (geminiResult == null)
+                if (result == null)
                     return local;
 
-                Normalize(geminiResult);
+                Normalize(result);
 
-                if (IsEmpty(geminiResult))
-                    return local;
-
-                return geminiResult;
+                return IsEmpty(result) ? local : result;
             }
-            catch
+            catch (Exception ex)
             {
-                // fallback nhanh, không throw
+                // 🔥 QUAN TRỌNG: FAIL FAST → KHÔNG THROW RA PIPELINE
+                Console.WriteLine($"Gemini fail: {ex.Message}");
                 return local;
             }
         }

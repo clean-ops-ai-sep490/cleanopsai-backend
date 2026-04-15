@@ -178,60 +178,89 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         {
             var skillCategories = request.SkillCategories ?? new List<string>();
             var certCategories = request.CertificateCategories ?? new List<string>();
-
-            var keyword = Normalize(request.Address ?? "");
+            var keyword = Normalize(request.Address);
 
             bool hasLocation = request.Latitude.HasValue && request.Longitude.HasValue;
             double reqLat = request.Latitude ?? 0;
             double reqLon = request.Longitude ?? 0;
-            const double RadiusKm = 30.0;
+            const double RadiusKm = 30;
 
-            var workers = await _dbContext.Set<Worker>()
-                .Include(x => x.WorkerSkills)
-                    .ThenInclude(ws => ws.Skill)
-                .Include(x => x.WorkerCertifications)
-                    .ThenInclude(wc => wc.Certification)
-                .Where(x => !x.IsDeleted)
+            // =========================
+            // 1. QUERY BASE (NO FULL LOAD)
+            // =========================
+            var query = _dbContext.Set<Worker>()
                 .AsNoTracking()
-                .ToListAsync();
+                .Where(x => !x.IsDeleted);
 
-            var filtered = workers.Where(w =>
+            // =========================
+            // 2. LOCATION PRE-FILTER (SQL LEVEL)
+            // =========================
+            if (hasLocation)
             {
-                // =========================
-                // SKILL (STRICT)
-                // =========================
-                bool matchSkill = skillCategories.Count == 0 ||
-                    (w.WorkerSkills?.Any(s =>
-                        s.Skill != null &&
-                        skillCategories.Any(cat =>
-                            MatchText(s.Skill.Category, cat) ||
-                            MatchText(s.Skill.Name, cat) ||
-                            MatchText(s.Skill.Description, cat)
-                        )
-                    ) == true);
+                double latDelta = 0.27;
+                double lonDelta = 0.27 / Math.Cos(reqLat * Math.PI / 180.0);
 
-                // =========================
-                // CERT (STRICT)
-                // =========================
-                bool matchCert = certCategories.Count == 0 ||
-                    (w.WorkerCertifications?.Any(c =>
-                        c.Certification != null &&
-                        certCategories.Any(cat =>
-                            MatchText(c.Certification.Category, cat) ||
-                            MatchText(c.Certification.Name, cat)
-                        )
-                    ) == true);
+                query = query.Where(w =>
+                    w.Latitude.HasValue &&
+                    w.Longitude.HasValue &&
+                    w.Latitude >= reqLat - latDelta &&
+                    w.Latitude <= reqLat + latDelta &&
+                    w.Longitude >= reqLon - lonDelta &&
+                    w.Longitude <= reqLon + lonDelta
+                );
+            }
 
-                // 🔥 STRICT RULE
-                if (skillCategories.Count > 0 && !matchSkill)
-                    return false;
+            // =========================
+            // 3. INCLUDE (SAU FILTER THÔ)
+            // =========================
+            query = query
+                .Include(x => x.WorkerSkills)
+                    .ThenInclude(s => s.Skill)
+                .Include(x => x.WorkerCertifications)
+                    .ThenInclude(c => c.Certification);
 
-                if (certCategories.Count > 0 && !matchCert)
-                    return false;
+            var candidates = await query.ToListAsync();
 
-                // =========================
-                // LOCATION FILTER (HARD FILTER)
-                // =========================
+            // =========================
+            // 4. FILTER STRICT (RAM - FINAL CHECK)
+            // =========================
+            var filtered = candidates.Where(w =>
+            {
+                // ================= SKILL (AND)
+                if (skillCategories.Any())
+                {
+                    bool okSkill = w.WorkerSkills != null &&
+                        skillCategories.All(cat =>
+                            w.WorkerSkills.Any(s =>
+                                s.Skill != null &&
+                                MatchText(s.Skill.Name, cat) ||
+                                MatchText(s.Skill.Category, cat) ||
+                                MatchText(s.Skill.Description, cat)
+                            )
+                        );
+
+                    if (!okSkill) return false;
+                }
+
+                // ================= CERT (AND - FIX QUAN TRỌNG)
+                if (certCategories.Any())
+                {
+                    bool okCert = w.WorkerCertifications != null &&
+                        certCategories.All(cat =>
+                            w.WorkerCertifications.Any(c =>
+                                c.Certification != null &&
+                                (
+                                    MatchText(c.Certification.Name, cat) ||
+                                    MatchText(c.Certification.Category, cat) ||
+                                    MatchText(c.Certification.IssuingOrganization, cat)
+                                )
+                            )
+                        );
+
+                    if (!okCert) return false;
+                }
+
+                // ================= LOCATION (STRICT)
                 if (hasLocation)
                 {
                     if (!w.Latitude.HasValue || !w.Longitude.HasValue)
@@ -248,51 +277,31 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                         return false;
                 }
 
+                // ================= KEYWORD ADDRESS (OPTIONAL BUT STRICT IF EXISTS)
+                if (!string.IsNullOrEmpty(keyword))
+                {
+                    if (string.IsNullOrEmpty(w.DisplayAddress) ||
+                        !Normalize(w.DisplayAddress).Contains(keyword))
+                        return false;
+                }
+
                 return true;
             });
 
             // =========================
-            // RANKING FIX (QUAN TRỌNG)
+            // 5. RANKING
             // =========================
-            var result = filtered
-                .Select(w =>
-                {
-                    var normalizedAddress = Normalize(w.DisplayAddress ?? "");
-
-                    bool addressMatch =
-                        !string.IsNullOrEmpty(keyword) &&
-                        (normalizedAddress.Contains(keyword) || keyword.Contains(normalizedAddress));
-
-                    double distanceScore =
-                        hasLocation && w.Latitude.HasValue && w.Longitude.HasValue
-                            ? Math.Max(0, 100 - DistanceKm(w.Latitude.Value, w.Longitude.Value, reqLat, reqLon))
-                            : 0;
-
-                    int skillScore = skillCategories.Count > 0
-                        ? w.WorkerSkills?.Count(s =>
-                            s.Skill != null &&
-                            skillCategories.Any(cat => MatchText(s.Skill.Name, cat)))
-                          ?? 0
-                        : 0;
-
-                    int certScore = certCategories.Count > 0
-                        ? w.WorkerCertifications?.Count(c =>
-                            c.Certification != null &&
-                            certCategories.Any(cat => MatchText(c.Certification.Name, cat)))
-                          ?? 0
-                        : 0;
-
-                    return new
-                    {
-                        Worker = w,
-                        TotalScore = (skillScore * 10) + (certScore * 8) + (addressMatch ? 20 : 0) + (int)distanceScore
-                    };
-                })
-                .OrderByDescending(x => x.TotalScore)
-                .Select(x => x.Worker)
+            return filtered
+                .OrderByDescending(w =>
+                    (skillCategories.Count > 0 ? w.WorkerSkills.Count : 0) +
+                    (certCategories.Count > 0 ? w.WorkerCertifications.Count : 0)
+                )
+                .ThenBy(w =>
+                    hasLocation && w.Latitude.HasValue && w.Longitude.HasValue
+                        ? DistanceKm(w.Latitude.Value, w.Longitude.Value, reqLat, reqLon)
+                        : double.MaxValue
+                )
                 .ToList();
-
-            return result;
         }
 
         private static string Normalize(string input)

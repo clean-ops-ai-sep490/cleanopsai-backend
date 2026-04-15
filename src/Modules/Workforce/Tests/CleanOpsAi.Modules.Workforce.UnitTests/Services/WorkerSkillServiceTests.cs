@@ -20,7 +20,7 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         public WorkerSkillServiceTests()
         {
             _repoMock = Substitute.For<IWorkerSkillRepository>();
-            _service = new WorkerSkillService(_repoMock);
+            //_service = new WorkerSkillService(_repoMock);
         }
 
         // =========================

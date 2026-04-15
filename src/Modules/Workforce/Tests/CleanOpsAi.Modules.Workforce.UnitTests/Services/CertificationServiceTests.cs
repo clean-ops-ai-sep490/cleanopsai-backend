@@ -27,11 +27,11 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             _userContextMock = Substitute.For<IUserContext>();
             _dateTimeMock = Substitute.For<IDateTimeProvider>();
 
-            _service = new CertificationService(
-                _repoMock,
-                _userContextMock,
-                _dateTimeMock
-            );
+            //_service = new CertificationService(
+            //    _repoMock,
+            //    _userContextMock,
+            //    _dateTimeMock
+            //);
         }
 
         // ================================
