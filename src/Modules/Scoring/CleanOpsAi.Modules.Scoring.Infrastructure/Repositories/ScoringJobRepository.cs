@@ -1,5 +1,6 @@
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.Scoring.Domain.Entities;
+using CleanOpsAi.Modules.Scoring.Domain.Enums;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,41 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 			return await _dbContext.ScoringJobs
 				.Include(x => x.Results)
 				.FirstOrDefaultAsync(x => x.Id == jobId, ct);
+		}
+
+		public async Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(int take, CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 500);
+
+			return await _dbContext.ScoringJobResults
+				.Include(x => x.ScoringJob)
+				.Where(x => x.ScoringJob.Status == ScoringJobStatus.Succeeded
+					&& x.Verdict == "PENDING")
+				.OrderByDescending(x => x.Created)
+				.Take(safeTake)
+				.ToListAsync(ct);
+		}
+
+		public async Task<IReadOnlyCollection<ScoringJobResult>> GetReviewedResultsForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 5000);
+
+			return await _dbContext.ScoringJobResults
+				.Include(x => x.ScoringJob)
+				.Where(x => x.ScoringJob.Status == ScoringJobStatus.Succeeded
+					&& x.LastModified >= sinceUtc
+					&& (x.Verdict == "PASS" || x.Verdict == "FAIL")
+					&& EF.Functions.ILike(x.PayloadJson, "%\"original_verdict\":\"PENDING\"%"))
+				.OrderByDescending(x => x.LastModified)
+				.Take(safeTake)
+				.ToListAsync(ct);
+		}
+
+		public async Task<ScoringJobResult?> GetResultByIdWithJobAsync(Guid resultId, CancellationToken ct = default)
+		{
+			return await _dbContext.ScoringJobResults
+				.Include(x => x.ScoringJob)
+				.FirstOrDefaultAsync(x => x.Id == resultId, ct);
 		}
 
 		public async Task ReplaceResultsAsync(Guid jobId, IReadOnlyCollection<ScoringJobResult> results, CancellationToken ct = default)

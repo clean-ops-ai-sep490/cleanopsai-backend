@@ -6,6 +6,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories
 	{
 		Task<ScoringJob?> GetByRequestIdAsync(string requestId, CancellationToken ct = default);
 		Task<ScoringJob?> GetByIdWithResultsAsync(Guid jobId, CancellationToken ct = default);
+		Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(int take, CancellationToken ct = default);
+		Task<IReadOnlyCollection<ScoringJobResult>> GetReviewedResultsForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default);
+		Task<ScoringJobResult?> GetResultByIdWithJobAsync(Guid resultId, CancellationToken ct = default);
 		Task ReplaceResultsAsync(Guid jobId, IReadOnlyCollection<ScoringJobResult> results, CancellationToken ct = default);
 		Task InsertAsync(ScoringJob job, CancellationToken ct = default);
 		Task<int> SaveChangesAsync(CancellationToken ct = default);

@@ -16,6 +16,11 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 	public class ScoringJobService : IScoringJobService
 	{
 		private const int MaxBatchImages = 5;
+		private static readonly HashSet<string> AllowedReviewedVerdicts = new(StringComparer.OrdinalIgnoreCase)
+		{
+			"PASS",
+			"FAIL",
+		};
 		private static readonly JsonSerializerOptions PayloadSerializerOptions = new()
 		{
 			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
@@ -138,6 +143,127 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			return response;
 		}
 
+		public async Task<IReadOnlyCollection<PendingScoringReviewItemResponse>> GetPendingResultsAsync(int take = 100, CancellationToken ct = default)
+		{
+			var pendingResults = await _repository.GetPendingResultsAsync(take, ct);
+
+			return pendingResults
+				.Select(x => new PendingScoringReviewItemResponse
+				{
+					ResultId = x.Id,
+					JobId = x.ScoringJobId,
+					RequestId = x.ScoringJob.RequestId,
+					EnvironmentKey = x.ScoringJob.EnvironmentKey,
+					SourceType = x.SourceType,
+					Source = x.Source,
+					Verdict = x.Verdict,
+					QualityScore = x.QualityScore,
+					CreatedAt = x.Created,
+				})
+				.ToList();
+		}
+
+		public async Task<ScoringResultReviewResponse?> ReviewPendingResultAsync(Guid resultId, ReviewScoringResultRequest request, CancellationToken ct = default)
+		{
+			if (resultId == Guid.Empty)
+			{
+				throw new ArgumentException("Result id cannot be empty.", nameof(resultId));
+			}
+
+			if (request is null)
+			{
+				throw new ArgumentException("Review payload cannot be null.", nameof(request));
+			}
+
+			var reviewedVerdict = string.IsNullOrWhiteSpace(request.Verdict)
+				? string.Empty
+				: request.Verdict.Trim().ToUpperInvariant();
+
+			if (!AllowedReviewedVerdicts.Contains(reviewedVerdict))
+			{
+				throw new ArgumentException("Reviewed verdict must be PASS or FAIL.", nameof(request));
+			}
+
+			var result = await _repository.GetResultByIdWithJobAsync(resultId, ct);
+			if (result is null)
+			{
+				return null;
+			}
+
+			var originalVerdict = string.IsNullOrWhiteSpace(result.Verdict)
+				? "UNKNOWN"
+				: result.Verdict.Trim().ToUpperInvariant();
+
+			if (!string.Equals(originalVerdict, "PENDING", StringComparison.OrdinalIgnoreCase))
+			{
+				throw new InvalidOperationException($"Only PENDING results can be reviewed. Current verdict: {originalVerdict}.");
+			}
+
+			var now = DateTime.UtcNow;
+			var reviewReason = string.IsNullOrWhiteSpace(request.Reason)
+				? null
+				: request.Reason.Trim();
+
+			var payloadNode = BuildPayloadWithHumanReview(
+				result.PayloadJson,
+				originalVerdict,
+				reviewedVerdict,
+				reviewReason,
+				now,
+				_userContext.IsAuthenticated ? _userContext.UserId : null,
+				string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email);
+
+			result.Verdict = reviewedVerdict;
+			result.PayloadJson = payloadNode.ToJsonString(PayloadSerializerOptions);
+			result.LastModified = now;
+			result.LastModifiedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email;
+
+			if (result.ScoringJob is not null)
+			{
+				result.ScoringJob.LastModified = now;
+				result.ScoringJob.LastModifiedBy = result.LastModifiedBy;
+			}
+
+			await _repository.SaveChangesAsync(ct);
+
+			if (result.ScoringJob is not null)
+			{
+				var updatedJob = await _repository.GetByIdWithResultsAsync(result.ScoringJob.Id, ct);
+				if (updatedJob is not null)
+				{
+					await _cache.SetAsync(MapToDetail(updatedJob), ct);
+				}
+
+				await _eventBus.PublishAsync(new ScoringResultReviewedEvent
+				{
+					JobId = result.ScoringJob.Id,
+					ResultId = result.Id,
+					RequestId = result.ScoringJob.RequestId,
+					EnvironmentKey = result.ScoringJob.EnvironmentKey,
+					SourceType = result.SourceType,
+					Source = result.Source,
+					OriginalVerdict = originalVerdict,
+					ReviewedVerdict = reviewedVerdict,
+					ReviewReason = reviewReason,
+					ReviewedAtUtc = now,
+					ReviewedByUserId = _userContext.IsAuthenticated ? _userContext.UserId : null,
+					ReviewedByEmail = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
+				}, ct);
+			}
+
+			return new ScoringResultReviewResponse
+			{
+				ResultId = result.Id,
+				JobId = result.ScoringJobId,
+				OriginalVerdict = originalVerdict,
+				ReviewedVerdict = reviewedVerdict,
+				ReviewReason = reviewReason,
+				ReviewedAtUtc = now,
+				ReviewedByUserId = _userContext.IsAuthenticated ? _userContext.UserId : null,
+				ReviewedByEmail = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
+			};
+		}
+
 		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, bool includeVisualizations = false, CancellationToken ct = default)
 		{
 			var job = await _repository.GetByIdWithResultsAsync(jobId, ct);
@@ -256,6 +382,36 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			payloadNode["visualization"] = JsonSerializer.SerializeToNode(visualization, PayloadSerializerOptions);
 
 			return payloadNode.ToJsonString(PayloadSerializerOptions);
+		}
+
+		private static JsonObject BuildPayloadWithHumanReview(
+			string payloadJson,
+			string originalVerdict,
+			string reviewedVerdict,
+			string? reviewReason,
+			DateTime reviewedAtUtc,
+			Guid? reviewedByUserId,
+			string? reviewedByEmail)
+		{
+			var payloadNode = JsonNode.Parse(string.IsNullOrWhiteSpace(payloadJson) ? "{}" : payloadJson) as JsonObject
+				?? new JsonObject();
+
+			var reviewEntry = new JsonObject
+			{
+				["original_verdict"] = originalVerdict,
+				["reviewed_verdict"] = reviewedVerdict,
+				["review_reason"] = reviewReason,
+				["reviewed_at_utc"] = reviewedAtUtc,
+				["reviewed_by_user_id"] = reviewedByUserId?.ToString(),
+				["reviewed_by_email"] = reviewedByEmail,
+			};
+
+			var reviewHistory = payloadNode["human_review_history"] as JsonArray ?? new JsonArray();
+			reviewHistory.Add(reviewEntry);
+			payloadNode["human_review_history"] = reviewHistory;
+			payloadNode["human_review"] = reviewEntry;
+
+			return payloadNode;
 		}
 
 		public async Task MarkFailedAsync(Guid jobId, string reason, CancellationToken ct = default)

@@ -51,3 +51,20 @@ Accept: application/json
 GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/visualizations/images/replace-with-token
 
 ###
+
+# List pending AI verdicts for supervisor review
+GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/reviews/pending?take=50
+Accept: application/json
+
+###
+
+# Review a pending result (replace resultId from pending list)
+PUT {{CleanOpsAi.Api_HostAddress}}/api/scoring/reviews/results/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+	"verdict": "PASS",
+	"reason": "Supervisor confirmed area is clean after manual check"
+}
+
+###

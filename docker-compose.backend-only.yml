@@ -10,6 +10,11 @@ services:
       - "5432:5432"
     volumes:
       - cleanopsai-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cleanopsai -d cleanopsai"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -24,15 +29,32 @@ services:
     ports:
       - "6379:6379"
 
+  minio:
+    image: minio/minio:latest
+    container_name: cleanopsai-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-password123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - cleanopsai-minio-data:/data
+
   cleanopsai-api:
     container_name: cleanopsai-api
     build:
       context: ./src
       dockerfile: Api/CleanOpsAi.Api/Dockerfile
     depends_on:
-      - postgres
-      - rabbitmq
-      - redis
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
     ports:
       - "5000:8080"
       - "5001:8081"
@@ -51,6 +73,7 @@ services:
       - ScoringService__BaseUrl=${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
       - ScoringService__EvaluateUrlVisualizeLinkPath=${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
       - ScoringService__VisualizationImagePath=${SCORING_SERVICE_VISUALIZATION_IMAGE_PATH:-/visualizations}
+      - ScoringRetrain__WeeklyJobEnabled=${SCORING_RETRAIN_WEEKLY_ENABLED_API:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -60,9 +83,15 @@ services:
       context: ./src
       dockerfile: Workers/CleanOpsAi.Scoring.Worker/Dockerfile
     depends_on:
-      - postgres
-      - rabbitmq
-      - redis
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    restart: unless-stopped
     environment:
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cleanopsai;Username=cleanopsai;Password=cleanopsai
       - MessageBroker__Host=rabbitmq
@@ -72,8 +101,48 @@ services:
       - ScoringService__BaseUrl=${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
       - ScoringService__EvaluateUrlVisualizeLinkPath=${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
       - ScoringService__VisualizationImagePath=${SCORING_SERVICE_VISUALIZATION_IMAGE_PATH:-/visualizations}
+      - ScoringRetrain__WeeklyJobEnabled=${SCORING_RETRAIN_WEEKLY_ENABLED_WORKER:-false}
+      - ScoringRetrain__WeeklyCronExpression=${SCORING_RETRAIN_CRON:-0 0 2 ? * SUN *}
+      - ScoringRetrain__TimeZoneId=${SCORING_RETRAIN_TIME_ZONE:-SE Asia Standard Time}
+      - ScoringRetrain__LookbackDays=${SCORING_RETRAIN_LOOKBACK_DAYS:-7}
+      - ScoringRetrain__MinReviewedSamples=${SCORING_RETRAIN_MIN_SAMPLES:-25}
+      - ScoringRetrain__MaxSamplesPerBatch=${SCORING_RETRAIN_MAX_SAMPLES:-500}
+      - ScoringRetrain__TrainerCommand=${SCORING_RETRAIN_TRAINER_COMMAND:-docker compose --profile trainer run --rm cleanops-ai-scoring-trainer}
+      - ScoringRetrain__TrainerWorkingDirectory=${SCORING_RETRAIN_TRAINER_WORKDIR:-/work/cleanops-ai-scoring}
+      - ScoringRetrain__TrainerTimeoutSeconds=${SCORING_RETRAIN_TRAINER_TIMEOUT_SEC:-7200}
+      - ScoringRetrain__ObjectStorageEnabled=${SCORING_RETRAIN_STORAGE_ENABLED:-true}
+      - ScoringRetrain__ObjectStorageServiceUrl=${SCORING_RETRAIN_STORAGE_URL:-http://minio:9000}
+      - ScoringRetrain__ObjectStorageAccessKey=${SCORING_RETRAIN_STORAGE_ACCESS_KEY:-${MINIO_ROOT_USER:-admin}}
+      - ScoringRetrain__ObjectStorageSecretKey=${SCORING_RETRAIN_STORAGE_SECRET_KEY:-${MINIO_ROOT_PASSWORD:-password123}}
+      - ScoringRetrain__ObjectStorageUseSsl=${SCORING_RETRAIN_STORAGE_USE_SSL:-false}
+      - ScoringRetrain__ObjectStorageForcePathStyle=${SCORING_RETRAIN_STORAGE_FORCE_PATH_STYLE:-true}
+      - ScoringRetrain__ObjectStorageBucket=${SCORING_RETRAIN_STORAGE_BUCKET:-ai-scoring-models}
+      - ScoringRetrain__CandidateYoloModelFile=${SCORING_RETRAIN_CANDIDATE_YOLO_FILE:-/shared/scoring-outputs/retrain/candidate/yolo_best.pt}
+      - ScoringRetrain__CandidateUnetModelFile=${SCORING_RETRAIN_CANDIDATE_UNET_FILE:-/shared/scoring-outputs/retrain/candidate/unet_best.pth}
+      - ScoringRetrain__CandidateMetricsFile=${SCORING_RETRAIN_CANDIDATE_METRICS_FILE:-/shared/scoring-outputs/retrain/candidate_metrics.json}
+      - ScoringRetrain__ActiveYoloObjectKey=${SCORING_RETRAIN_ACTIVE_YOLO_KEY:-active/yolo/model.pt}
+      - ScoringRetrain__ActiveUnetObjectKey=${SCORING_RETRAIN_ACTIVE_UNET_KEY:-active/unet/model.pth}
+      - ScoringRetrain__ActiveMetricsObjectKey=${SCORING_RETRAIN_ACTIVE_METRICS_KEY:-active/metrics/metrics.json}
+      - ScoringRetrain__CandidatePrefix=${SCORING_RETRAIN_CANDIDATE_PREFIX:-candidates}
+      - ScoringRetrain__ExternalCandidatePrefix=${SCORING_RETRAIN_EXTERNAL_CANDIDATE_PREFIX:-external/latest}
+      - ScoringRetrain__ManifestPrefix=${SCORING_RETRAIN_MANIFEST_PREFIX:-manifests}
+      - ScoringRetrain__ArchivePrefix=${SCORING_RETRAIN_ARCHIVE_PREFIX:-archive}
+      - ScoringRetrain__YoloMapMetricKey=${SCORING_RETRAIN_YOLO_MAP_KEY:-yolo.map}
+      - ScoringRetrain__UnetMiouMetricKey=${SCORING_RETRAIN_UNET_MIOU_KEY:-unet.miou}
+      - ScoringRetrain__MinimumYoloMapImprovement=${SCORING_RETRAIN_MIN_YOLO_MAP_IMPROVEMENT:-0}
+      - ScoringRetrain__MinimumUnetMiouImprovement=${SCORING_RETRAIN_MIN_UNET_MIOU_IMPROVEMENT:-0}
+      - ScoringRetrain__PromoteWhenNoBaseline=${SCORING_RETRAIN_PROMOTE_NO_BASELINE:-false}
+      - ScoringRetrain__PromotionCommand=${SCORING_RETRAIN_PROMOTION_COMMAND:-}
+      - ScoringRetrain__RestartServiceCommand=${SCORING_RETRAIN_RESTART_COMMAND:-docker compose restart cleanops-ai-scoring-api}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../cleanops-ai-scoring:/work/cleanops-ai-scoring
+      - cleanopsai-scoring-outputs:/shared/scoring-outputs
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 volumes:
   cleanopsai-postgres-data:
+  cleanopsai-minio-data:
+  cleanopsai-scoring-outputs:
+    external: true
