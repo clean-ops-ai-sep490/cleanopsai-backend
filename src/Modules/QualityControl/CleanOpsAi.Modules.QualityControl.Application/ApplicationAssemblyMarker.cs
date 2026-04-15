@@ -1,4 +1,6 @@
 ﻿namespace CleanOpsAi.Modules.QualityControl.Application
 {
-	public static class ApplicationAssemblyMarker { }
+	public static class ApplicationAssemblyMarker
+	{
+	}
 }

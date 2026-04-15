@@ -1,7 +1,7 @@
-﻿using CleanOpsAi.Modules.QualityControl.ArchTests.SeedWork;
-using NetArchTest.Rules;
+﻿using CleanOpsAi.Modules.WorkareaCheckin.ArchTests.SeedWork;
+using NetArchTest.Rules; 
 
-namespace CleanOpsAi.Modules.QualityControl.ArchTests.Module
+namespace CleanOpsAi.Modules.WorkareaCheckin.ArchTests.Module
 {
 	public class LayersTests : TestBase
 	{

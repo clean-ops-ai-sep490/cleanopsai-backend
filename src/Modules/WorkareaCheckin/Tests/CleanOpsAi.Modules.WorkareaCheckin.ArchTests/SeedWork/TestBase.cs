@@ -1,11 +1,10 @@
-﻿using CleanOpsAi.Modules.QualityControl.Application;
-using CleanOpsAi.Modules.QualityControl.Domain;
-using CleanOpsAi.Modules.QualityControl.Infrastructure;
+using CleanOpsAi.Modules.WorkareaCheckin.Application;
+using CleanOpsAi.Modules.WorkareaCheckin.Domain;
+using CleanOpsAi.Modules.WorkareaCheckin.Infrastructure;
 using System.Reflection;
 using NetArchTest.Rules;
 
-
-namespace CleanOpsAi.Modules.QualityControl.ArchTests.SeedWork
+namespace CleanOpsAi.Modules.WorkareaCheckin.ArchTests.SeedWork
 {
 	public abstract class TestBase
 	{

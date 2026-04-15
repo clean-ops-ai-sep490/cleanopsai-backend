@@ -1,4 +1,6 @@
 ﻿namespace CleanOpsAi.Modules.QualityControl.Domain
 {
-	public static class DomainAssemblyMarker { }
+	public static class DomainAssemblyMarker
+	{
+	}
 }

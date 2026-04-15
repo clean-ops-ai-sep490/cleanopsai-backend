@@ -27,18 +27,11 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Data.Configurations
 			builder.Property(x => x.Status)
 				.HasConversion<string>()
 				.HasMaxLength(20)
-				.IsRequired(); 
+				.IsRequired();  
 
-			 
-			builder.OwnsOne(x => x.Position, pos =>
-			{
-				pos.Property(p => p.X);
-				pos.Property(p => p.Y);
-				pos.Property(p => p.Z);
-				pos.Property(p => p.FloorLevel);
-				pos.Property(p => p.InstallationLocation).HasMaxLength(255);
-			});
-			 
+			builder.Property(x => x.InstallationLocation)
+				.HasMaxLength(255);
+
 			builder.OwnsOne(x => x.BleInfo, ble =>
 			{
 				ble.Property(b => b.ServiceUuid);

@@ -1,4 +1,6 @@
 ﻿namespace CleanOpsAi.Modules.QualityControl.Infrastructure
 {
-	public static class InfrastructureAssemblyMarker { }
+	public static class InfrastructureAssemblyMarker
+	{
+	}
 }

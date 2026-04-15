@@ -5,12 +5,7 @@ using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Locations;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Services;
 using CleanOpsAi.Modules.ClientManagement.Domain.Entities;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using NSubstitute; 
 
 namespace CleanOpsAi.Modules.ClientManagement.UnitTests.Services
 {
