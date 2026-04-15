@@ -41,7 +41,11 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Mappings
 				.ForMember(
 					dest => dest.Payload,
 					opt => opt.MapFrom(src => JsonHelper.ToJsonElement(src.Payload))
-				); ;
+				);
+
+			CreateMap<FcmTokenRegisterDto, FcmToken>();
+			CreateMap<FcmToken, FcmTokenDto>();
+
 		}
 	}
 }

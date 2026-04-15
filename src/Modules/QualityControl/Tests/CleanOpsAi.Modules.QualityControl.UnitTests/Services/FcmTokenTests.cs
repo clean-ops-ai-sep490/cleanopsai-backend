@@ -37,7 +37,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		[Fact]
 		public async Task CreateOrUpdateAsync_WhenTokenNotExists_CreatesNewToken()
 		{
-			var dto = new FcmTokenCreateDto
+			var dto = new FcmTokenRegisterDto
 			{
 				UniqueId = "device123",
 				Token = "fcm_token_123",
@@ -71,7 +71,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		[Fact]
 		public async Task CreateOrUpdateAsync_WhenTokenExists_UpdatesExistingToken()
 		{
-			var dto = new FcmTokenCreateDto
+			var dto = new FcmTokenRegisterDto
 			{
 				UniqueId = "device123",
 				Token = "new_fcm_token_123",
@@ -101,7 +101,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		[Fact]
 		public async Task CreateOrUpdateAsync_WhenDuplicateTokenExists_DeactivatesOldToken()
 		{
-			var dto = new FcmTokenCreateDto
+			var dto = new FcmTokenRegisterDto
 			{
 				UniqueId = "device123",
 				Token = "duplicate_token"

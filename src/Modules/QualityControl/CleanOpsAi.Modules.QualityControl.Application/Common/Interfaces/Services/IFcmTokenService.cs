@@ -5,8 +5,10 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Servic
 {
 	public interface IFcmTokenService
 	{
-		Task<FcmTokenDto> CreateOrUpdateAsync(FcmTokenCreateDto dto, CancellationToken cancellationToken = default);
+		Task<FcmTokenDto> RegisterAsync(FcmTokenRegisterDto dto, CancellationToken cancellationToken = default);
 
 		Task DeactivateTokenAsync(string uniqueId, CancellationToken cancellationToken = default);
+
+		Task RefreshTokenAsync(FcmTokenRefreshDto dto, CancellationToken cancellationToken = default);
 	}
 }
