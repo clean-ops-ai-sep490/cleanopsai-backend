@@ -19,12 +19,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private readonly ICertificationRepository _certificationRepository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ISkillRepository _skillRepository;
 
-        public CertificationService(ICertificationRepository certificationRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+        public CertificationService(ICertificationRepository certificationRepository, IUserContext userContext, IDateTimeProvider dateTimeProvider, ISkillRepository skillRepository)
         {
             _certificationRepository = certificationRepository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
+            _skillRepository = skillRepository;
         }
 
         // get by id
@@ -190,6 +192,33 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 IssuedDate = x.IssuedDate,
                 ExpiredAt = x.ExpiredAt
             }).ToList();
+        }
+
+        public async Task<WorkerSkillCertificationResponse> GetByIdsAsync(
+            List<Guid> skillIds,
+            List<Guid> certificationIds)
+        {
+            var skills = await _skillRepository.GetByIdsAsync(skillIds);
+            var certs = await _certificationRepository.GetByIdsAsync(certificationIds);
+
+            return new WorkerSkillCertificationResponse
+            {
+                Skills = skills.Select(x => new WorkerSkillResponse
+                {
+                    SkillId = x.Id,
+                    Name = x.Name,
+                    Category = x.Category,
+                    Description = x.Description
+                }).ToList(),
+
+                Certifications = certs.Select(x => new WorkerCertificationResponse
+                {
+                    CertificationId = x.Id,
+                    Name = x.Name,
+                    Category = x.Category,
+                    IssuingOrganization = x.IssuingOrganization
+                }).ToList()
+            };
         }
 
     }

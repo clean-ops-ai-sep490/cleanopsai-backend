@@ -27,5 +27,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<List<WorkerCertificationResponse>> GetCertificationsByWorkerIdAsync(Guid workerId);
 
         Task<List<CertificationResponse>> GetByCategoryAsync(string category);
+
+        Task<WorkerSkillCertificationResponse> GetByIdsAsync(List<Guid> skillIds, List<Guid> certificationIds);
     }
 }

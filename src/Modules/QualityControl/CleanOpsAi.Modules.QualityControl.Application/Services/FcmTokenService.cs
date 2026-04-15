@@ -52,6 +52,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			var fcmToken = _mapper.Map<FcmToken>(dto); 
 			fcmToken.Created = _dateTimeProvider.UtcNow;
 			fcmToken.CreatedBy = _userContext.UserId.ToString();
+			fcmToken.IsActive = true;
 
 			await _fcmTokenRepository.InsertAsync(fcmToken, cancellationToken);
 			await _fcmTokenRepository.SaveChangesAsync(cancellationToken);
