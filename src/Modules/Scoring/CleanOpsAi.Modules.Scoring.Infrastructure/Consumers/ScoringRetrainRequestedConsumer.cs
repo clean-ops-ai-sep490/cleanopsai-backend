@@ -1,14 +1,15 @@
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.Modules.Scoring.IntegrationEvents;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Options;
-using Amazon.Runtime;
-using Amazon.S3;
-using Amazon.S3.Model;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -20,15 +21,18 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		private readonly IEventBus _eventBus;
 		private readonly IOptions<ScoringRetrainOptions> _options;
 		private readonly ILogger<ScoringRetrainRequestedConsumer> _logger;
+		private readonly IHttpClientFactory _httpClientFactory;
 
 		public ScoringRetrainRequestedConsumer(
 			IEventBus eventBus,
 			IOptions<ScoringRetrainOptions> options,
-			ILogger<ScoringRetrainRequestedConsumer> logger)
+			ILogger<ScoringRetrainRequestedConsumer> logger,
+			IHttpClientFactory httpClientFactory)
 		{
 			_eventBus = eventBus;
 			_options = options;
 			_logger = logger;
+			_httpClientFactory = httpClientFactory;
 		}
 
 		public async Task Consume(ConsumeContext<ScoringRetrainRequestedEvent> context)
@@ -36,16 +40,60 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			var config = _options.Value;
 			var message = context.Message;
 			var useExternalCandidate = config.ObjectStorageEnabled
+				&& config.UseExternalCandidateForRetrain
 				&& !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix);
 
-			if (!useExternalCandidate && string.IsNullOrWhiteSpace(config.TrainerCommand))
+			if (!config.RemoteTrainerEnabled && !useExternalCandidate && string.IsNullOrWhiteSpace(config.TrainerCommand))
 			{
 				_logger.LogWarning("Trainer command is empty. Skip retrain batch {BatchId}.", message.BatchId);
 				return;
 			}
 
+			if (config.ReviewedBridgeEnabled
+				&& message.ReviewedSampleCount > 0
+				&& !string.IsNullOrWhiteSpace(config.ReviewedBridgeCommand))
+			{
+				var bridgeExecution = await RunCommandAsync(
+					config.ReviewedBridgeCommand,
+					config.TrainerWorkingDirectory,
+					Math.Max(30, config.TrainerTimeoutSeconds),
+					context.CancellationToken);
+
+				if (bridgeExecution.ExitCode != 0)
+				{
+					await _eventBus.PublishAsync(new ScoringRetrainExecutionResultEvent
+					{
+						BatchId = message.BatchId,
+						CompletedAtUtc = DateTime.UtcNow,
+						Succeeded = false,
+						ExitCode = bridgeExecution.ExitCode,
+						Message = $"Reviewed bridge command failed with exit code {bridgeExecution.ExitCode}.",
+					}, context.CancellationToken);
+
+					_logger.LogError(
+						"Scoring reviewed bridge command failed for batch {BatchId}. ExitCode={ExitCode}. StdErr={StdErr}",
+						message.BatchId,
+						bridgeExecution.ExitCode,
+						Truncate(bridgeExecution.StandardError, 2000));
+					return;
+				}
+
+				_logger.LogInformation(
+					"Scoring reviewed bridge command completed for batch {BatchId}. StdOut={StdOut}",
+					message.BatchId,
+					Truncate(bridgeExecution.StandardOutput, 1000));
+			}
+
 			CommandExecutionResult execution;
-			if (useExternalCandidate)
+			if (config.RemoteTrainerEnabled)
+			{
+				execution = await RunRemoteTrainerAsync(message, config, context.CancellationToken);
+				if (execution.ExitCode == 0 && !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix))
+				{
+					useExternalCandidate = true;
+				}
+			}
+			else if (useExternalCandidate)
 			{
 				execution = new CommandExecutionResult(
 					0,
@@ -85,7 +133,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			PromotionGateResult gateResult;
 			if (config.ObjectStorageEnabled)
 			{
-				gateResult = await EvaluateAndPromoteViaObjectStorageAsync(message, config, context.CancellationToken);
+				gateResult = await EvaluateAndPromoteViaObjectStorageAsync(message, config, useExternalCandidate, context.CancellationToken);
 			}
 			else
 			{
@@ -151,12 +199,17 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		private async Task<PromotionGateResult> EvaluateAndPromoteViaObjectStorageAsync(
 			ScoringRetrainRequestedEvent message,
 			ScoringRetrainOptions options,
+			bool useExternalCandidate,
 			CancellationToken ct)
 		{
-			using var s3 = CreateS3Client(options);
-			await EnsureBucketExistsAsync(s3, options.ObjectStorageBucket, ct);
+			var blobService = CreateBlobServiceClient(options);
+			var modelsContainer = blobService.GetBlobContainerClient(options.ObjectStorageModelsContainer);
+			var retrainContainer = blobService.GetBlobContainerClient(options.ObjectStorageRetrainContainer);
 
-			var hasExternalCandidate = !string.IsNullOrWhiteSpace(options.ExternalCandidatePrefix);
+			await EnsureContainerExistsAsync(modelsContainer, ct);
+			await EnsureContainerExistsAsync(retrainContainer, ct);
+
+			var hasExternalCandidate = useExternalCandidate && !string.IsNullOrWhiteSpace(options.ExternalCandidatePrefix);
 			var batchPrefix = hasExternalCandidate
 				? (options.ExternalCandidatePrefix ?? string.Empty)
 				: BuildObjectKey(options.CandidatePrefix, message.BatchId.ToString("N"));
@@ -168,8 +221,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			JsonNode? candidateMetrics;
 			if (hasExternalCandidate)
 			{
-				var hasYolo = await ObjectExistsAsync(s3, options.ObjectStorageBucket, candidateYoloKey, ct);
-				var hasUnet = await ObjectExistsAsync(s3, options.ObjectStorageBucket, candidateUnetKey, ct);
+				var hasYolo = await ObjectExistsAsync(retrainContainer, candidateYoloKey, ct);
+				var hasUnet = await ObjectExistsAsync(retrainContainer, candidateUnetKey, ct);
 				if (!hasYolo || !hasUnet)
 				{
 					return new PromotionGateResult(
@@ -181,7 +234,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 						$"External candidate artifacts not found at prefix '{batchPrefix}'.");
 				}
 
-				candidateMetrics = await DownloadJsonNodeAsync(s3, options.ObjectStorageBucket, candidateMetricsKey, ct);
+				candidateMetrics = await DownloadJsonNodeAsync(retrainContainer, candidateMetricsKey, ct);
 			}
 			else
 			{
@@ -201,9 +254,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				}
 
 				candidateMetrics = await ReadJsonFileAsNodeAsync(candidateMetricsPath, ct);
-				await UploadFileAsync(s3, options.ObjectStorageBucket, candidateYoloKey, candidateYoloPath, "application/octet-stream", ct);
-				await UploadFileAsync(s3, options.ObjectStorageBucket, candidateUnetKey, candidateUnetPath, "application/octet-stream", ct);
-				await UploadFileAsync(s3, options.ObjectStorageBucket, candidateMetricsKey, candidateMetricsPath, "application/json", ct);
+				await UploadFileAsync(retrainContainer, candidateYoloKey, candidateYoloPath, "application/octet-stream", ct);
+				await UploadFileAsync(retrainContainer, candidateUnetKey, candidateUnetPath, "application/octet-stream", ct);
+				await UploadFileAsync(retrainContainer, candidateMetricsKey, candidateMetricsPath, "application/json", ct);
 			}
 
 			if (candidateMetrics is null)
@@ -224,7 +277,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					$"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.");
 			}
 
-			var baselineMetricsNode = await DownloadJsonNodeAsync(s3, options.ObjectStorageBucket, options.ActiveMetricsObjectKey, ct);
+			var baselineMetricsNode = await DownloadJsonNodeAsync(modelsContainer, options.ActiveMetricsObjectKey, ct);
 			var baselineYoloMap = ReadMetricFromNode(baselineMetricsNode, options.YoloMapMetricKey);
 			var baselineUnetMiou = ReadMetricFromNode(baselineMetricsNode, options.UnetMiouMetricKey);
 
@@ -239,7 +292,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			{
 				["batch_id"] = message.BatchId.ToString(),
 				["created_at_utc"] = DateTime.UtcNow,
-				["bucket"] = options.ObjectStorageBucket,
+				["models_container"] = options.ObjectStorageModelsContainer,
+				["retrain_container"] = options.ObjectStorageRetrainContainer,
 				["candidate_yolo_key"] = candidateYoloKey,
 				["candidate_unet_key"] = candidateUnetKey,
 				["candidate_metrics_key"] = candidateMetricsKey,
@@ -252,8 +306,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			};
 
 			await UploadTextAsync(
-				s3,
-				options.ObjectStorageBucket,
+				retrainContainer,
 				candidateManifestKey,
 				candidateManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
 				"application/json",
@@ -265,20 +318,21 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			}
 
 			var archivePrefix = BuildObjectKey(options.ArchivePrefix, DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture));
-			await TryArchiveObjectAsync(s3, options.ObjectStorageBucket, options.ActiveYoloObjectKey, BuildObjectKey(archivePrefix, "yolo/model.pt"), ct);
-			await TryArchiveObjectAsync(s3, options.ObjectStorageBucket, options.ActiveUnetObjectKey, BuildObjectKey(archivePrefix, "unet/model.pth"), ct);
-			await TryArchiveObjectAsync(s3, options.ObjectStorageBucket, options.ActiveMetricsObjectKey, BuildObjectKey(archivePrefix, "metrics/metrics.json"), ct);
+			await TryArchiveObjectAsync(modelsContainer, options.ActiveYoloObjectKey, retrainContainer, BuildObjectKey(archivePrefix, "yolo/model.pt"), ct);
+			await TryArchiveObjectAsync(modelsContainer, options.ActiveUnetObjectKey, retrainContainer, BuildObjectKey(archivePrefix, "unet/model.pth"), ct);
+			await TryArchiveObjectAsync(modelsContainer, options.ActiveMetricsObjectKey, retrainContainer, BuildObjectKey(archivePrefix, "metrics/metrics.json"), ct);
 
-			await CopyObjectAsync(s3, options.ObjectStorageBucket, candidateYoloKey, options.ActiveYoloObjectKey, ct);
-			await CopyObjectAsync(s3, options.ObjectStorageBucket, candidateUnetKey, options.ActiveUnetObjectKey, ct);
-			await CopyObjectAsync(s3, options.ObjectStorageBucket, candidateMetricsKey, options.ActiveMetricsObjectKey, ct);
+			await CopyObjectAsync(retrainContainer, candidateYoloKey, modelsContainer, options.ActiveYoloObjectKey, ct);
+			await CopyObjectAsync(retrainContainer, candidateUnetKey, modelsContainer, options.ActiveUnetObjectKey, ct);
+			await CopyObjectAsync(retrainContainer, candidateMetricsKey, modelsContainer, options.ActiveMetricsObjectKey, ct);
 
 			var promotionManifestKey = BuildObjectKey(options.ManifestPrefix, $"promotion_{message.BatchId:N}.json");
 			var promotionManifest = new JsonObject
 			{
 				["batch_id"] = message.BatchId.ToString(),
 				["promoted_at_utc"] = DateTime.UtcNow,
-				["bucket"] = options.ObjectStorageBucket,
+				["models_container"] = options.ObjectStorageModelsContainer,
+				["retrain_container"] = options.ObjectStorageRetrainContainer,
 				["active_yolo_key"] = options.ActiveYoloObjectKey,
 				["active_unet_key"] = options.ActiveUnetObjectKey,
 				["active_metrics_key"] = options.ActiveMetricsObjectKey,
@@ -294,14 +348,165 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			};
 
 			await UploadTextAsync(
-				s3,
-				options.ObjectStorageBucket,
+				retrainContainer,
 				promotionManifestKey,
 				promotionManifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
 				"application/json",
 				ct);
 
 			return gateResult;
+		}
+
+		private async Task<CommandExecutionResult> RunRemoteTrainerAsync(
+			ScoringRetrainRequestedEvent message,
+			ScoringRetrainOptions options,
+			CancellationToken ct)
+		{
+			if (!options.ObjectStorageEnabled)
+			{
+				return new CommandExecutionResult(
+					1,
+					string.Empty,
+					"Remote trainer requires ScoringRetrain:ObjectStorageEnabled=true.");
+			}
+
+			if (string.IsNullOrWhiteSpace(options.RemoteTrainerBaseUrl))
+			{
+				return new CommandExecutionResult(
+					1,
+					string.Empty,
+					"Remote trainer base URL is empty.");
+			}
+
+			if (string.IsNullOrWhiteSpace(options.ExternalCandidatePrefix))
+			{
+				return new CommandExecutionResult(
+					1,
+					string.Empty,
+					"ExternalCandidatePrefix is empty while RemoteTrainerEnabled=true.");
+			}
+
+			var createPath = NormalizePath(options.RemoteTrainerCreatePath, "/retrain/jobs");
+			var createUri = new Uri(new Uri(options.RemoteTrainerBaseUrl), createPath);
+
+			var client = _httpClientFactory.CreateClient();
+			if (!string.IsNullOrWhiteSpace(options.RemoteTrainerApiKey))
+			{
+				client.DefaultRequestHeaders.Remove("X-Retrain-Api-Key");
+				client.DefaultRequestHeaders.Add("X-Retrain-Api-Key", options.RemoteTrainerApiKey);
+			}
+
+			var createRequest = new RemoteRetrainJobCreateRequest(
+				message.BatchId,
+				message.SourceWindowFromUtc,
+				message.ReviewedSampleCount,
+				message.Samples.Select(s => new RemoteRetrainSampleItem(
+					s.ResultId,
+					s.JobId,
+					s.RequestId,
+					s.EnvironmentKey,
+					s.SourceType,
+					s.Source,
+					s.ReviewedVerdict,
+					s.ReviewedAtUtc,
+					s.ReviewedByEmail)).ToList());
+
+			RemoteRetrainJobCreateResponse? createResponse;
+			try
+			{
+				using var httpResponse = await client.PostAsJsonAsync(createUri, createRequest, ct);
+				if (!httpResponse.IsSuccessStatusCode)
+				{
+					var body = await httpResponse.Content.ReadAsStringAsync(ct);
+					return new CommandExecutionResult(
+						1,
+						string.Empty,
+						$"Remote trainer submit failed ({(int)httpResponse.StatusCode}). {Truncate(body, 1000)}");
+				}
+
+				createResponse = await httpResponse.Content.ReadFromJsonAsync<RemoteRetrainJobCreateResponse>(cancellationToken: ct);
+			}
+			catch (Exception ex)
+			{
+				return new CommandExecutionResult(1, string.Empty, $"Remote trainer submit exception: {ex.Message}");
+			}
+
+			if (createResponse is null || string.IsNullOrWhiteSpace(createResponse.JobId))
+			{
+				return new CommandExecutionResult(1, string.Empty, "Remote trainer submit response missing job id.");
+			}
+
+			var statusTemplate = options.RemoteTrainerStatusPathTemplate;
+			if (string.IsNullOrWhiteSpace(statusTemplate))
+			{
+				statusTemplate = "/retrain/jobs/{jobId}";
+			}
+
+			string statusPath;
+			if (statusTemplate.Contains("{jobId}", StringComparison.OrdinalIgnoreCase))
+			{
+				statusPath = statusTemplate.Replace("{jobId}", Uri.EscapeDataString(createResponse.JobId), StringComparison.OrdinalIgnoreCase);
+			}
+			else
+			{
+				statusPath = NormalizePath(statusTemplate, "/retrain/jobs").TrimEnd('/') + "/" + Uri.EscapeDataString(createResponse.JobId);
+			}
+
+			var statusUri = new Uri(new Uri(options.RemoteTrainerBaseUrl), statusPath);
+			var pollInterval = Math.Max(1, options.RemoteTrainerPollIntervalSeconds);
+			var timeoutSeconds = Math.Max(30, options.RemoteTrainerTimeoutSeconds);
+
+			using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+			using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+			while (true)
+			{
+				RemoteRetrainJobStatusResponse? statusResponse;
+				try
+				{
+					using var httpResponse = await client.GetAsync(statusUri, linkedCts.Token);
+					if (!httpResponse.IsSuccessStatusCode)
+					{
+						var body = await httpResponse.Content.ReadAsStringAsync(linkedCts.Token);
+						return new CommandExecutionResult(
+							1,
+							string.Empty,
+							$"Remote trainer status failed ({(int)httpResponse.StatusCode}). {Truncate(body, 1000)}");
+					}
+
+					statusResponse = await httpResponse.Content.ReadFromJsonAsync<RemoteRetrainJobStatusResponse>(cancellationToken: linkedCts.Token);
+				}
+				catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+				{
+					return new CommandExecutionResult(
+						-1,
+						string.Empty,
+						$"Remote trainer polling timed out after {timeoutSeconds} seconds.");
+				}
+				catch (Exception ex)
+				{
+					return new CommandExecutionResult(1, string.Empty, $"Remote trainer polling exception: {ex.Message}");
+				}
+
+				var status = statusResponse?.Status?.Trim().ToLowerInvariant();
+				if (status is "completed" or "succeeded" or "success")
+				{
+					return new CommandExecutionResult(
+						0,
+						$"Remote trainer job {createResponse.JobId} completed.",
+						statusResponse?.Message ?? string.Empty);
+				}
+
+				if (status is "failed" or "error" or "cancelled" or "canceled")
+				{
+					return new CommandExecutionResult(
+						1,
+						string.Empty,
+						$"Remote trainer job {createResponse.JobId} failed. {statusResponse?.Message}");
+				}
+
+				await Task.Delay(TimeSpan.FromSeconds(pollInterval), linkedCts.Token);
+			}
 		}
 
 		private static async Task<CommandExecutionResult> RunCommandAsync(
@@ -531,98 +736,113 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			return null;
 		}
 
-		private static IAmazonS3 CreateS3Client(ScoringRetrainOptions options)
+		private static BlobServiceClient CreateBlobServiceClient(ScoringRetrainOptions options)
 		{
-			var config = new AmazonS3Config
+			if (string.IsNullOrWhiteSpace(options.ObjectStorageConnectionString))
 			{
-				ServiceURL = options.ObjectStorageServiceUrl,
-				ForcePathStyle = options.ObjectStorageForcePathStyle,
-				UseHttp = !options.ObjectStorageUseSsl,
-			};
-
-			var credentials = new BasicAWSCredentials(options.ObjectStorageAccessKey, options.ObjectStorageSecretKey);
-			return new AmazonS3Client(credentials, config);
-		}
-
-		private static async Task EnsureBucketExistsAsync(IAmazonS3 s3, string bucketName, CancellationToken ct)
-		{
-			if (await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(s3, bucketName))
-			{
-				return;
+				throw new InvalidOperationException("ScoringRetrain ObjectStorageConnectionString is empty.");
 			}
 
-			await s3.PutBucketAsync(new PutBucketRequest
-			{
-				BucketName = bucketName,
-			}, ct);
+			return new BlobServiceClient(options.ObjectStorageConnectionString);
+		}
+
+		private static async Task EnsureContainerExistsAsync(BlobContainerClient containerClient, CancellationToken ct)
+		{
+			await containerClient.CreateIfNotExistsAsync(cancellationToken: ct);
 		}
 
 		private static async Task UploadFileAsync(
-			IAmazonS3 s3,
-			string bucketName,
+			BlobContainerClient containerClient,
 			string objectKey,
 			string filePath,
 			string contentType,
 			CancellationToken ct)
 		{
-			await s3.PutObjectAsync(new PutObjectRequest
-			{
-				BucketName = bucketName,
-				Key = objectKey,
-				FilePath = filePath,
-				ContentType = contentType,
-			}, ct);
+			var blobClient = containerClient.GetBlobClient(objectKey);
+			await blobClient.DeleteIfExistsAsync(cancellationToken: ct);
+
+			await using var stream = File.OpenRead(filePath);
+			await blobClient.UploadAsync(
+				stream,
+				new BlobUploadOptions
+				{
+					HttpHeaders = new BlobHttpHeaders { ContentType = contentType }
+				},
+				ct);
 		}
 
 		private static async Task UploadTextAsync(
-			IAmazonS3 s3,
-			string bucketName,
+			BlobContainerClient containerClient,
 			string objectKey,
 			string content,
 			string contentType,
 			CancellationToken ct)
 		{
-			await s3.PutObjectAsync(new PutObjectRequest
-			{
-				BucketName = bucketName,
-				Key = objectKey,
-				ContentBody = content,
-				ContentType = contentType,
-			}, ct);
+			var blobClient = containerClient.GetBlobClient(objectKey);
+			await blobClient.DeleteIfExistsAsync(cancellationToken: ct);
+
+			await blobClient.UploadAsync(
+				BinaryData.FromString(content),
+				new BlobUploadOptions
+				{
+					HttpHeaders = new BlobHttpHeaders { ContentType = contentType }
+				},
+				ct);
 		}
 
 		private static async Task CopyObjectAsync(
-			IAmazonS3 s3,
-			string bucketName,
+			BlobContainerClient sourceContainer,
 			string sourceKey,
+			BlobContainerClient destinationContainer,
 			string destinationKey,
 			CancellationToken ct)
 		{
-			await s3.CopyObjectAsync(new CopyObjectRequest
+			var sourceBlob = sourceContainer.GetBlobClient(sourceKey);
+			var destinationBlob = destinationContainer.GetBlobClient(destinationKey);
+
+			await destinationBlob.DeleteIfExistsAsync(cancellationToken: ct);
+			await destinationBlob.StartCopyFromUriAsync(sourceBlob.Uri, cancellationToken: ct);
+			await WaitForCopyCompletionAsync(destinationBlob, ct);
+		}
+
+		private static async Task WaitForCopyCompletionAsync(BlobClient destinationBlob, CancellationToken ct)
+		{
+			for (var attempt = 0; attempt < 120; attempt++)
 			{
-				SourceBucket = bucketName,
-				SourceKey = sourceKey,
-				DestinationBucket = bucketName,
-				DestinationKey = destinationKey,
-			}, ct);
+				var properties = await destinationBlob.GetPropertiesAsync(cancellationToken: ct);
+				if (properties.Value.CopyStatus == CopyStatus.Pending)
+				{
+					await Task.Delay(500, ct);
+					continue;
+				}
+
+				if (properties.Value.CopyStatus == CopyStatus.Success)
+				{
+					return;
+				}
+
+				throw new InvalidOperationException($"Blob copy failed with status {properties.Value.CopyStatus}.");
+			}
+
+			throw new TimeoutException("Timed out waiting for blob copy completion.");
 		}
 
 		private static async Task TryArchiveObjectAsync(
-			IAmazonS3 s3,
-			string bucketName,
+			BlobContainerClient sourceContainer,
 			string sourceKey,
+			BlobContainerClient destinationContainer,
 			string destinationKey,
 			CancellationToken ct)
 		{
 			try
 			{
-				var exists = await ObjectExistsAsync(s3, bucketName, sourceKey, ct);
+				var exists = await ObjectExistsAsync(sourceContainer, sourceKey, ct);
 				if (!exists)
 				{
 					return;
 				}
 
-				await CopyObjectAsync(s3, bucketName, sourceKey, destinationKey, ct);
+				await CopyObjectAsync(sourceContainer, sourceKey, destinationContainer, destinationKey, ct);
 			}
 			catch
 			{
@@ -630,33 +850,40 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			}
 		}
 
-		private static async Task<bool> ObjectExistsAsync(IAmazonS3 s3, string bucketName, string objectKey, CancellationToken ct)
+		private static async Task<bool> ObjectExistsAsync(
+			BlobContainerClient containerClient,
+			string objectKey,
+			CancellationToken ct)
 		{
 			try
 			{
-				await s3.GetObjectMetadataAsync(bucketName, objectKey, ct);
+				await containerClient.GetBlobClient(objectKey).GetPropertiesAsync(cancellationToken: ct);
 				return true;
 			}
-			catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+			catch (RequestFailedException ex) when (ex.Status == 404)
 			{
 				return false;
 			}
 		}
 
 		private static async Task<JsonNode?> DownloadJsonNodeAsync(
-			IAmazonS3 s3,
-			string bucketName,
+			BlobContainerClient containerClient,
 			string objectKey,
 			CancellationToken ct)
 		{
-			if (!await ObjectExistsAsync(s3, bucketName, objectKey, ct))
+			if (!await ObjectExistsAsync(containerClient, objectKey, ct))
 			{
 				return null;
 			}
 
-			using var response = await s3.GetObjectAsync(bucketName, objectKey, ct);
-			await using var stream = response.ResponseStream;
-			return await JsonNode.ParseAsync(stream, cancellationToken: ct);
+			var response = await containerClient.GetBlobClient(objectKey).DownloadContentAsync(ct);
+			var json = response.Value.Content.ToString();
+			if (string.IsNullOrWhiteSpace(json))
+			{
+				return null;
+			}
+
+			return JsonNode.Parse(json);
 		}
 
 		private static string BuildObjectKey(string prefix, string suffix)
@@ -669,6 +896,12 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			}
 
 			return string.IsNullOrWhiteSpace(s) ? p : $"{p}/{s}";
+		}
+
+		private static string NormalizePath(string? path, string fallback)
+		{
+			var raw = string.IsNullOrWhiteSpace(path) ? fallback : path;
+			return raw.StartsWith('/') ? raw : "/" + raw;
 		}
 
 		private static string Truncate(string value, int maxLength)
@@ -690,5 +923,31 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			double? CandidateYoloMap,
 			double? CandidateUnetMiou,
 			string Reason);
+
+		private sealed record RemoteRetrainSampleItem(
+			Guid ResultId,
+			Guid JobId,
+			string RequestId,
+			string EnvironmentKey,
+			string SourceType,
+			string Source,
+			string ReviewedVerdict,
+			DateTime ReviewedAtUtc,
+			string? ReviewedByEmail);
+
+		private sealed record RemoteRetrainJobCreateRequest(
+			Guid BatchId,
+			DateTime SourceWindowFromUtc,
+			int ReviewedSampleCount,
+			List<RemoteRetrainSampleItem> Samples);
+
+		private sealed record RemoteRetrainJobCreateResponse(
+			string JobId,
+			string? Status);
+
+		private sealed record RemoteRetrainJobStatusResponse(
+			string JobId,
+			string Status,
+			string? Message);
 	}
 }

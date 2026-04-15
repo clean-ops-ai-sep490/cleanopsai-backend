@@ -73,29 +73,5 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Services
 			var payload = JsonSerializer.Deserialize<ScoringVisualizationLinkResponse>(body, JsonOptions);
 			return payload ?? throw new InvalidOperationException("Scoring visualization service returned empty payload.");
 		}
-
-		public async Task<(byte[] Content, string ContentType)> GetVisualizationImageAsync(string token, CancellationToken ct = default)
-		{
-			if (string.IsNullOrWhiteSpace(token))
-			{
-				throw new ArgumentException("Visualization token cannot be empty.", nameof(token));
-			}
-
-			var path = _options.VisualizationImagePath?.TrimEnd('/') ?? "/visualizations";
-			var escapedToken = Uri.EscapeDataString(token.Trim());
-
-			using var request = new HttpRequestMessage(HttpMethod.Get, $"{path}/{escapedToken}");
-			using var response = await _httpClient.SendAsync(request, ct);
-
-			if (!response.IsSuccessStatusCode)
-			{
-				var body = await response.Content.ReadAsStringAsync(ct);
-				throw new InvalidOperationException($"Scoring visualization image returned {(int)response.StatusCode}: {body}");
-			}
-
-			var content = await response.Content.ReadAsByteArrayAsync(ct);
-			var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
-			return (content, contentType);
-		}
 	}
 }

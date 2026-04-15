@@ -109,7 +109,6 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestId = job.RequestId,
 				EnvironmentKey = job.EnvironmentKey,
 				ImageUrls = imageUrls,
-				IncludeVisualizations = request.IncludeVisualizations,
 				SubmittedByUserId = job.SubmittedByUserId,
 			}, ct);
 
@@ -264,7 +263,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			};
 		}
 
-		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, bool includeVisualizations = false, CancellationToken ct = default)
+		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default)
 		{
 			var job = await _repository.GetByIdWithResultsAsync(jobId, ct);
 			if (job is null)
@@ -284,9 +283,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			await _cache.SetAsync(MapToDetail(job), ct);
 
 			var inference = await _inferenceClient.EvaluateBatchAsync(environmentKey, imageUrls, ct);
-			var visualizationBySource = includeVisualizations
-				? await BuildVisualizationMapAsync(environmentKey, inference.Results, ct)
-				: new Dictionary<string, ScoringVisualizationLinkResponse>(StringComparer.OrdinalIgnoreCase);
+			var visualizationBySource = await BuildVisualizationMapAsync(environmentKey, inference.Results, ct);
 
 			var mappedResults = new List<ScoringJobResult>(inference.Results.Count);
 			foreach (var result in inference.Results)
@@ -372,16 +369,51 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 		private static string BuildResultPayloadJson(ScoringInferenceResult result, ScoringVisualizationLinkResponse? visualization)
 		{
-			if (visualization is null)
-			{
-				return JsonSerializer.Serialize(result, PayloadSerializerOptions);
-			}
-
 			var payloadNode = JsonSerializer.SerializeToNode(result, PayloadSerializerOptions) as JsonObject
 				?? new JsonObject();
-			payloadNode["visualization"] = JsonSerializer.SerializeToNode(visualization, PayloadSerializerOptions);
+
+			var blobUrl = visualization?.Visualization?.Url;
+			if (!string.IsNullOrWhiteSpace(blobUrl))
+			{
+				payloadNode["visualization_blob_url"] = blobUrl;
+			}
 
 			return payloadNode.ToJsonString(PayloadSerializerOptions);
+		}
+
+		private static string? ExtractVisualizationBlobUrl(string payloadJson)
+		{
+			if (string.IsNullOrWhiteSpace(payloadJson))
+			{
+				return null;
+			}
+
+			try
+			{
+				var node = JsonNode.Parse(payloadJson) as JsonObject;
+				if (node is null)
+				{
+					return null;
+				}
+
+				var direct = node["visualization_blob_url"]?.GetValue<string>();
+				if (!string.IsNullOrWhiteSpace(direct))
+				{
+					return direct;
+				}
+
+				var legacy = node["visualization"]?["url"]?.GetValue<string>();
+				if (!string.IsNullOrWhiteSpace(legacy))
+				{
+					return legacy;
+				}
+			}
+			catch
+			{
+				return null;
+			}
+
+			return null;
 		}
 
 		private static JsonObject BuildPayloadWithHumanReview(
@@ -474,6 +506,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 						Source = x.Source,
 						Verdict = x.Verdict,
 						QualityScore = x.QualityScore,
+						VisualizationBlobUrl = ExtractVisualizationBlobUrl(x.PayloadJson),
 						PayloadJson = x.PayloadJson,
 					})
 					.ToList(),
