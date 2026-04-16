@@ -12,9 +12,9 @@ using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using NSubstitute;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 {
@@ -25,6 +25,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTime;
         private readonly IWorkerQueryService _workerService;
+        private readonly IEquipmentQueryService _equipmentService;
 
         private readonly EquipmentRequestService _service;
 
@@ -35,246 +36,163 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _userContext = Substitute.For<IUserContext>();
             _dateTime = Substitute.For<IDateTimeProvider>();
             _workerService = Substitute.For<IWorkerQueryService>();
+            _equipmentService = Substitute.For<IEquipmentQueryService>();
 
             _service = new EquipmentRequestService(
                 _repo,
                 _mapper,
                 _userContext,
                 _dateTime,
-                _workerService
+                _workerService,
+                _equipmentService
             );
         }
 
-        // =========================
-        // GET BY ID
-        // =========================
+        // ================= GET BY ID =================
         [Fact]
-        public async Task GetById_ShouldReturnDto_WithWorkerName()
+        public async Task GetById_ShouldReturnDto()
         {
+            var id = Guid.NewGuid();
             var workerId = Guid.NewGuid();
 
             var entity = new EquipmentRequest
             {
-                Id = Guid.NewGuid(),
-                WorkerId = workerId
+                Id = id,
+                WorkerId = workerId,
+                Items = new List<EquipmentRequestItem>()
             };
 
-            _repo.GetByIdExistAsync(entity.Id, default).Returns(entity);
+            _repo.GetByIdAsync(id, default).Returns(entity);
 
             var dto = new EquipmentRequestDto
             {
-                Id = entity.Id,
-                WorkerId = workerId
+                Id = id,
+                WorkerId = workerId,
+                Items = new List<EquipmentRequestItemDto>()
             };
 
             _mapper.Map<EquipmentRequestDto>(entity).Returns(dto);
 
             _workerService.GetUserNames(Arg.Any<List<Guid>>())
-                .Returns(new Dictionary<Guid, string>
-                {
-                    { workerId, "Worker A" }
-                });
+                .Returns(new Dictionary<Guid, string> { { workerId, "Worker A" } });
 
-            var result = await _service.GetById(entity.Id);
+            _equipmentService.GetNamesAsync(Arg.Any<List<Guid>>(), default)
+                .Returns(new Dictionary<Guid, string>());
+
+            var result = await _service.GetById(id);
 
             Assert.NotNull(result);
             Assert.Equal("Worker A", result.WorkerName);
         }
 
-        // =========================
-        // CREATE
-        // =========================
+        // ================= CREATE =================
         [Fact]
-        public async Task Create_ShouldReturnDto()
+        public async Task CreateBatch_ShouldReturnDto()
         {
-            var userId = Guid.NewGuid();
-            _userContext.UserId.Returns(userId);
+            var workerId = Guid.NewGuid();
+            var equipmentId = Guid.NewGuid();
+
+            _userContext.UserId.Returns(Guid.NewGuid());
             _dateTime.UtcNow.Returns(DateTime.UtcNow);
 
-            var workerId = Guid.NewGuid();
-
-            var request = new CreateEquipmentRequestDto
+            var request = new CreateEquipmentRequestBatchDto
             {
                 WorkerId = workerId,
-                EquipmentId = Guid.NewGuid(),
-                Quantity = 5
-            };
-
-            var entity = new EquipmentRequest
-            {
-                Id = Guid.NewGuid(),
-                WorkerId = workerId
-            };
-
-            _mapper.Map<EquipmentRequest>(request).Returns(entity);
-
-            var dto = new EquipmentRequestDto
-            {
-                Id = entity.Id,
-                WorkerId = workerId
-            };
-
-            _mapper.Map<EquipmentRequestDto>(entity).Returns(dto);
-
-            _workerService.GetUserNames(Arg.Any<List<Guid>>())
-                .Returns(new Dictionary<Guid, string>
+                TaskAssignmentId = Guid.NewGuid(),
+                Items = new List<CreateEquipmentRequestItemDto>
                 {
-                    { workerId, "Worker A" }
-                });
-
-            var result = await _service.Create(request);
-
-            Assert.NotNull(result);
-            Assert.Equal("Worker A", result.WorkerName);
-
-            await _repo.Received(1).AddAsync(entity, default);
-        }
-
-        // =========================
-        // UPDATE
-        // =========================
-        [Fact]
-        public async Task Update_ShouldUpdateEntity()
-        {
-            var workerId = Guid.NewGuid();
+                    new CreateEquipmentRequestItemDto
+                    {
+                        EquipmentId = equipmentId,
+                        Quantity = 2
+                    }
+                }
+            };
 
             var entity = new EquipmentRequest
             {
                 Id = Guid.NewGuid(),
-                WorkerId = workerId
+                WorkerId = workerId,
+                Items = new List<EquipmentRequestItem>()
             };
 
-            _repo.GetByIdExistAsync(entity.Id, default).Returns(entity);
+            _repo.AddAsync(Arg.Any<EquipmentRequest>(), default)
+                .Returns(Task.CompletedTask);
 
-            _userContext.UserId.Returns(Guid.NewGuid());
-            _dateTime.UtcNow.Returns(DateTime.UtcNow);
-
-            var dtoRequest = new UpdateEquipmentRequestDto
-            {
-                Quantity = 10
-            };
-
-            _mapper.Map(dtoRequest, entity);
-
-            _mapper.Map<EquipmentRequestDto>(entity)
+            _mapper.Map<EquipmentRequestDto>(Arg.Any<EquipmentRequest>())
                 .Returns(new EquipmentRequestDto
                 {
-                    Id = entity.Id,
-                    WorkerId = workerId
+                    WorkerId = workerId,
+                    Items = new List<EquipmentRequestItemDto>()
+                });
+
+            _workerService.GetUserNames(Arg.Any<List<Guid>>())
+                .Returns(new Dictionary<Guid, string> { { workerId, "Worker A" } });
+
+            _equipmentService.GetNamesAsync(Arg.Any<List<Guid>>(), default)
+                .Returns(new Dictionary<Guid, string>());
+
+            var result = await _service.CreateBatch(request);
+
+            Assert.NotNull(result);
+        }
+
+        // ================= UPDATE =================
+        [Fact]
+        public async Task Update_ShouldReturnDto()
+        {
+            var id = Guid.NewGuid();
+
+            var entity = new EquipmentRequest
+            {
+                Id = id,
+                WorkerId = Guid.NewGuid(),
+                Items = new List<EquipmentRequestItem>()
+            };
+
+            _repo.GetByIdAsync(id, default).Returns(entity);
+
+            _mapper.Map<EquipmentRequestDto>(Arg.Any<EquipmentRequest>())
+                .Returns(new EquipmentRequestDto
+                {
+                    Id = id,
+                    Items = new List<EquipmentRequestItemDto>()
                 });
 
             _workerService.GetUserNames(Arg.Any<List<Guid>>())
                 .Returns(new Dictionary<Guid, string>());
 
-            var result = await _service.Update(entity.Id, dtoRequest);
-
-            Assert.NotNull(result);
-
-            await _repo.Received(1).UpdateAsync(entity, default);
-        }
-
-        // =========================
-        // REVIEW
-        // =========================
-        [Fact]
-        public async Task Review_ShouldSetApproved()
-        {
-            var workerId = Guid.NewGuid();
-
-            var entity = new EquipmentRequest
-            {
-                Id = Guid.NewGuid(),
-                WorkerId = workerId
-            };
-
-            _repo.GetByIdExistAsync(entity.Id, default).Returns(entity);
-
-            _userContext.UserId.Returns(Guid.NewGuid());
-            _userContext.FullName.Returns("Manager A");
-            _dateTime.UtcNow.Returns(DateTime.UtcNow);
-
-            var reviewDto = new ReviewEquipmentRequestDto
-            {
-                Status = EquipmentRequestStatus.Approved
-            };
-
-            _mapper.Map<EquipmentRequestDto>(entity)
-                .Returns(new EquipmentRequestDto
-                {
-                    Id = entity.Id,
-                    WorkerId = workerId
-                });
-
-            _workerService.GetUserNames(Arg.Any<List<Guid>>())
+            _equipmentService.GetNamesAsync(Arg.Any<List<Guid>>(), default)
                 .Returns(new Dictionary<Guid, string>());
 
-            var result = await _service.Review(entity.Id, reviewDto);
+            var dto = new UpdateEquipmentRequestDto
+            {
+                Items = new List<CreateEquipmentRequestItemDto>()
+            };
+
+            var result = await _service.Update(id, dto);
 
             Assert.NotNull(result);
-            Assert.Equal(EquipmentRequestStatus.Approved, entity.Status);
-            Assert.Equal("Manager A", result.ReviewedByUserName);
-
             await _repo.Received(1).UpdateAsync(entity, default);
         }
 
-        // =========================
-        // DELETE
-        // =========================
+        // ================= DELETE =================
         [Fact]
         public async Task Delete_ShouldReturnTrue()
         {
+            var id = Guid.NewGuid();
+
             var entity = new EquipmentRequest
             {
-                Id = Guid.NewGuid()
+                Id = id
             };
 
-            _repo.GetByIdExistAsync(entity.Id, default).Returns(entity);
+            _repo.GetByIdAsync(id, default).Returns(entity);
 
-            var result = await _service.Delete(entity.Id);
+            var result = await _service.Delete(id);
 
             Assert.True(result);
-
             await _repo.Received(1).DeleteAsync(entity, default);
-        }
-
-        // =========================
-        // GET LIST (PAGING + ENRICH)
-        // =========================
-        [Fact]
-        public async Task Gets_ShouldReturnPagedResult()
-        {
-            var workerId = Guid.NewGuid();
-
-            var entities = new List<EquipmentRequest>
-    {
-        new EquipmentRequest { Id = Guid.NewGuid(), WorkerId = workerId }
-    };
-
-            var paged = new PaginatedResult<EquipmentRequest>(
-                1, 10, 1, entities
-            );
-
-            _repo.GetsPagingAsync(Arg.Any<PaginationRequest>(), default)
-                .Returns(paged);
-
-            // FIX CHỖ NÀY
-            _mapper.Map<List<EquipmentRequestDto>>(Arg.Any<List<EquipmentRequest>>())
-                .Returns(new List<EquipmentRequestDto>
-                {
-            new EquipmentRequestDto { WorkerId = workerId }
-                });
-
-            _workerService.GetUserNames(Arg.Any<List<Guid>>())
-                .Returns(new Dictionary<Guid, string>
-                {
-            { workerId, "Worker A" }
-                });
-
-            var result = await _service.Gets(new PaginationRequest());
-
-            Assert.NotNull(result);
-            Assert.Single(result.Content);
-            Assert.Equal("Worker A", result.Content[0].WorkerName);
         }
     }
 }

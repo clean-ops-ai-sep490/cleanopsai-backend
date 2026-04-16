@@ -61,7 +61,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<IWorkAreaQueryService, WorkAreaQueryService>(); 
 		builder.Services.AddScoped<IWorkerQueryService, WorkerQueryService>();
 		builder.Services.AddScoped<IWorkerCertificationSkillQueryService, WorkerCertificationSkillQueryService>();
-		builder.Services.AddScoped<ISopRequirementsQueryService, SopRequirementsQueryService>(); 
+		builder.Services.AddScoped<ISopRequirementsQueryService, SopRequirementsQueryService>();
+        builder.Services.AddScoped<IEquipmentQueryService, EquipmentQueryService>();
 
     }
 }

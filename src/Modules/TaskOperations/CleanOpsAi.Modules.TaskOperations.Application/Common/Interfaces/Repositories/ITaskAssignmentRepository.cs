@@ -54,5 +54,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 			DateTime end,
 			CancellationToken ct = default);
 
+        Task<List<TaskAssignment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default);
+
     }
 }

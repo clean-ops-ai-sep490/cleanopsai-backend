@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 {
-    public class UpdateEquipmentRequestDto
+    public class CreateEquipmentRequestItemDto
     {
-        public string? Reason { get; set; }
-        public List<CreateEquipmentRequestItemDto> Items { get; set; } = new();
+        public Guid EquipmentId { get; set; }
+        public int Quantity { get; set; }
     }
 }

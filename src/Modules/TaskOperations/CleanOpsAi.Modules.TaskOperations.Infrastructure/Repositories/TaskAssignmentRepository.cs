@@ -185,5 +185,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .Distinct()
                 .ToListAsync(ct);
         }
+
+        public async Task<List<TaskAssignment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default)
+        {
+            return await _context.TaskAssignments
+                .Where(x => ids.Contains(x.Id))
+                .ToListAsync(ct);
+        }
+
     }
 }

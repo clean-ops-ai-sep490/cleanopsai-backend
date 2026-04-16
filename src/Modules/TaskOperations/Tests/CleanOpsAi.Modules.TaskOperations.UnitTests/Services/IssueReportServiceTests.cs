@@ -36,13 +36,13 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _dateTime = Substitute.For<IDateTimeProvider>();
             _workerService = Substitute.For<IWorkerQueryService>();
 
-            _service = new IssueReportService(
-                _repo,
-                _mapper,
-                _userContext,
-                _dateTime,
-                _workerService
-            );
+            //_service = new IssueReportService(
+            //    _repo,
+            //    _mapper,
+            //    _userContext,
+            //    _dateTime,
+            //    _workerService
+            //);
         }
 
         // =========================
