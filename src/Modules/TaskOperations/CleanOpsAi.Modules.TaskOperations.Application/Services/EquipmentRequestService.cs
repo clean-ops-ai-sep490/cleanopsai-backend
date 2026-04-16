@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -24,6 +25,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
         private readonly IEquipmentQueryService _equipmentQueryService;
+        private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 
         public EquipmentRequestService(
             IEquipmentRequestRepository repo,
@@ -31,7 +33,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
-            IEquipmentQueryService equipmentQueryService)
+            IEquipmentQueryService equipmentQueryService,
+            ITaskAssignmentRepository taskAssignmentRepository)
         {
             _repo = repo;
             _mapper = mapper;
@@ -39,12 +42,32 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
             _equipmentQueryService = equipmentQueryService;
+            _taskAssignmentRepository = taskAssignmentRepository;
         }
 
         public async Task<EquipmentRequestDto> CreateBatch(
             CreateEquipmentRequestBatchDto dto,
             CancellationToken ct = default)
         {
+            var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                if (task.Status != TaskAssignmentStatus.Completed &&
+                    task.Status != TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.Block;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.SaveChangesAsync(ct);
+                }
+                else
+                {
+                    throw new BadRequestException("Cannot report issue for a completed or already blocked task.");
+                }
+            }
+
             dto.Items = dto.Items
                 .GroupBy(x => x.EquipmentId)
                 .Select(g => new CreateEquipmentRequestItemDto

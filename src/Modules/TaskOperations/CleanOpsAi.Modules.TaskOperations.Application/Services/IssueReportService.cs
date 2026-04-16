@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -113,6 +114,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         // ================= CREATE =================
         public async Task<IssueReportDto?> Create(CreateIssueReportDto dto, CancellationToken ct = default)
         {
+            var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                if (task.Status != TaskAssignmentStatus.Completed &&
+                    task.Status != TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.Block;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.SaveChangesAsync(ct);
+                }
+                else{
+                    throw new BadRequestException("Cannot report issue for a completed or already blocked task.");
+                }
+            }
             var entity = _mapper.Map<IssueReport>(dto);
 
             entity.Status = IssueStatus.Pending;
