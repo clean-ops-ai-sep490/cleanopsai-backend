@@ -221,5 +221,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
+        public static void Validate(DateTime issuedDate, DateTime expiredAt, IDateTimeProvider timeProvider)
+        {
+            if (expiredAt <= issuedDate)
+                throw new ArgumentException("ExpiredAt must be greater than IssuedDate");
+
+            if (expiredAt <= timeProvider.UtcNow)
+                throw new ArgumentException("Certification is already expired and cannot be created/updated");
+        }
+
     }
 }

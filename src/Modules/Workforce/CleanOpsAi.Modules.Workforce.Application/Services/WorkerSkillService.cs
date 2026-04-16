@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.Workforce.Application.Dtos;
+﻿using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkerSkills;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
@@ -95,6 +96,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             var skill = await _skillRepository.GetByIdAsync(request.SkillId);
             if (skill == null)
                 throw new Exception("Skill không tồn tại");
+
+            var existing = await _repository.GetByIdAsync(
+                request.WorkerId,
+                request.SkillId
+            );
+
+            if (existing != null)
+                throw new BadRequestException("Worker đã có skill này rồi");
 
             var entity = new WorkerSkill
             {
