@@ -11,7 +11,7 @@ namespace CleanOpsAi.Modules.QualityControl.Domain.Entities
 
 		public RecipientTypeEnum RecipientType { get; set; }
 
-		public Guid RecipientId { get; set; }
+		public Guid? RecipientId { get; set; }
 
 		public bool IsRead { get; set; }  
 

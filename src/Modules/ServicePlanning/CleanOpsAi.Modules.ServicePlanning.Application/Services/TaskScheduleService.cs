@@ -156,15 +156,12 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			if (hasConflict)
 				throw new BadRequestException("Schedule conflict detected");
 
-			var isSopChanged = dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId;
+			//var isSopChanged = dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId;
 
 			_mapper.Map(dto, taskSchedule);
 
-			if (isSopChanged)
-			{
-				var sopSteps = await _sopStepRepository.GetListBySopId(dto.SopId);
-				taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
-			}
+			var sopSteps = await _sopStepRepository.GetListBySopId(taskSchedule.SopId);
+			taskSchedule.Metadata = JsonSerializer.Serialize(sopSteps);
 
 			taskSchedule.Version++;
 			taskSchedule.LastModified = _dateTimeProvider.UtcNow;

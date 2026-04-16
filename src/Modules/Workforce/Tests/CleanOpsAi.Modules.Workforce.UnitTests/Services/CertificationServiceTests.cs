@@ -18,20 +18,23 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         private readonly ICertificationRepository _repoMock;
         private readonly IUserContext _userContextMock;
         private readonly IDateTimeProvider _dateTimeMock;
+		private readonly ISkillRepository _skillRepoMock;
 
-        private readonly CertificationService _service;
+		private readonly CertificationService _service;
 
         public CertificationServiceTests()
         {
             _repoMock = Substitute.For<ICertificationRepository>();
             _userContextMock = Substitute.For<IUserContext>();
             _dateTimeMock = Substitute.For<IDateTimeProvider>();
+            _skillRepoMock = Substitute.For<ISkillRepository>();
 
-            _service = new CertificationService(
+			_service = new CertificationService(
                 _repoMock,
                 _userContextMock,
-                _dateTimeMock
-            );
+                _dateTimeMock,
+				_skillRepoMock
+			);
         }
 
         // ================================
