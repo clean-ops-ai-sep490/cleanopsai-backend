@@ -12,15 +12,35 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 {
     public interface IEquipmentRequestService
     {
-        Task<EquipmentRequestDto?> GetById(Guid id, CancellationToken ct = default);
-        Task<PaginatedResult<EquipmentRequestDto>> Gets(PaginationRequest request, CancellationToken ct = default);
-        Task<PaginatedResult<EquipmentRequestDto>> GetsByWorkerId(Guid workerId, PaginationRequest request, CancellationToken ct = default);
-        Task<PaginatedResult<EquipmentRequestDto>> GetsByTaskAssignmentId(Guid taskAssignmentId, PaginationRequest request, CancellationToken ct = default);
-        Task<PaginatedResult<EquipmentRequestDto>> GetsByStatus(EquipmentRequestStatus status, PaginationRequest request, CancellationToken ct = default);
-        Task<PaginatedResult<EquipmentRequestDto>> GetsByEquipmentId(Guid equipmentId, PaginationRequest request, CancellationToken ct = default);
-        Task<EquipmentRequestDto?> Create(CreateEquipmentRequestDto dto, CancellationToken ct = default);
-        Task<EquipmentRequestDto?> Update(Guid id, UpdateEquipmentRequestDto dto, CancellationToken ct = default);
-        Task<EquipmentRequestDto?> Review(Guid id, ReviewEquipmentRequestDto dto, CancellationToken ct = default);
-        Task<bool> Delete(Guid id, CancellationToken ct = default);
+        // ✅ CREATE batch
+        Task<EquipmentRequestDto> CreateBatch(
+            CreateEquipmentRequestBatchDto dto,
+            CancellationToken ct = default);
+
+        // ✅ UPDATE (replace items + reason)
+        Task<EquipmentRequestDto?> Update(
+            Guid id,
+            UpdateEquipmentRequestDto dto,
+            CancellationToken ct = default);
+
+        // ✅ REVIEW (approve / reject)
+        Task<EquipmentRequestDto?> Review(
+            Guid id,
+            ReviewEquipmentRequestDto dto,
+            CancellationToken ct = default);
+
+        // ✅ GET LIST (paging)
+        Task<PaginatedResult<EquipmentRequestDto>> Gets(
+            PaginationRequest request,
+            CancellationToken ct = default);
+
+        // ✅ DELETE (soft delete)
+        Task<bool> Delete(
+            Guid id,
+            CancellationToken ct = default);
+
+        Task<EquipmentRequestDto?> GetById(
+            Guid id,
+            CancellationToken ct = default);
     }
 }
