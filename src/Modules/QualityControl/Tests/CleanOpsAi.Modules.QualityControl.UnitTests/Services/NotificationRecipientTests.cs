@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
-using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories;
-using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories; 
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Response;
 using CleanOpsAi.Modules.QualityControl.Application.Services;
 using CleanOpsAi.Modules.QualityControl.Domain.Entities;
@@ -16,17 +18,23 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		private readonly IMapper _mapper;
 		private readonly IUserContext _userContext;
 		private readonly NotificationRecipientService _service;
+		private readonly IIdGenerator _idGenerator;
+		private readonly IDateTimeProvider _dateTimeProvider;
 
 		public NotificationRecipientTests()
 		{
 			_repo = Substitute.For<INotificationRecipientRepository>();
 			_mapper = Substitute.For<IMapper>();
 			_userContext = Substitute.For<IUserContext>();
+			_idGenerator = Substitute.For<IIdGenerator>();
+			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
 
 			_service = new NotificationRecipientService(
 				_repo,
 				_mapper,
-				_userContext);
+				_userContext,
+				_idGenerator,
+				_dateTimeProvider);
 		}
 
 		[Fact]
@@ -38,7 +46,10 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			var expectedDto = new NotificationDetailDto { NotificationId = notificationId };
 
 			_userContext.UserId.Returns(userId);
-			_repo.GetDetailAsync(notificationId, userId, Arg.Any<CancellationToken>()).Returns(recipient);
+			_userContext.Role.Returns("Worker");
+
+			_repo.GetDetailAsync(notificationId, userId, RecipientTypeEnum.Worker, Arg.Any<CancellationToken>())
+				.Returns(recipient);
 			_mapper.Map<NotificationDetailDto>(recipient).Returns(expectedDto);
 
 			var result = await _service.GetDetailAsync(notificationId);
@@ -48,17 +59,24 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		}
 
 		[Fact]
-		public async Task GetDetailAsync_WhenNotificationNotFound_ReturnsNull()
+		public async Task GetDetailAsync_WhenNotificationNotFound_ThrowsNotFoundException()
 		{
 			var notificationId = Guid.NewGuid();
 			var userId = Guid.NewGuid();
 
 			_userContext.UserId.Returns(userId);
-			_repo.GetDetailAsync(notificationId, userId, Arg.Any<CancellationToken>()).Returns((NotificationRecipient?)null);
+			_userContext.Role.Returns("Worker");
 
-			var result = await _service.GetDetailAsync(notificationId);
+			_repo.GetDetailAsync(notificationId, userId, RecipientTypeEnum.Worker, Arg.Any<CancellationToken>())
+				.Returns((NotificationRecipient?)null);
 
-			Assert.Null(result);
+			await Assert.ThrowsAsync<NotFoundException>(() => _service.GetDetailAsync(notificationId));
+		}
+
+		[Fact]
+		public async Task GetDetailAsync_WhenNotificationIdIsEmpty_ThrowsBadRequestException()
+		{
+			await Assert.ThrowsAsync<BadRequestException>(() => _service.GetDetailAsync(Guid.Empty));
 		}
 
 		[Fact]
@@ -71,7 +89,10 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			var page = new PaginatedResult<NotificationRecipient>(1, 10, 2, recipients);
 
 			_userContext.UserId.Returns(userId);
-			_repo.GetPagedByRecipientAsync(userId, request, null, Arg.Any<CancellationToken>()).Returns((page, 1));
+			_userContext.Role.Returns("Worker");  // thêm
+
+			_repo.GetPagedByRecipientAsync(userId, RecipientTypeEnum.Worker, request, null, Arg.Any<CancellationToken>())
+				.Returns((page, 1));  // thêm recipientType
 			_mapper.Map<List<NotificationListItemDto>>(Arg.Any<List<NotificationRecipient>>()).Returns(mappedDtos);
 
 			var (resultPage, unreadCount) = await _service.GetPagedByRecipientAsync(request, null);
@@ -91,7 +112,10 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			var page = new PaginatedResult<NotificationRecipient>(1, 10, 1, recipients);
 
 			_userContext.UserId.Returns(userId);
-			_repo.GetPagedByRecipientAsync(userId, request, true, Arg.Any<CancellationToken>()).Returns((page, 0));
+			_userContext.Role.Returns("Worker");  
+
+			_repo.GetPagedByRecipientAsync(userId, RecipientTypeEnum.Worker, request, true, Arg.Any<CancellationToken>())
+				.Returns((page, 0));   
 			_mapper.Map<List<NotificationListItemDto>>(Arg.Any<List<NotificationRecipient>>()).Returns(mappedDtos);
 
 			var (resultPage, unreadCount) = await _service.GetPagedByRecipientAsync(request, true);
