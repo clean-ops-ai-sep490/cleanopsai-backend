@@ -26,7 +26,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly IDateTimeProvider _dateTime;
         private readonly IWorkerQueryService _workerService;
         private readonly IEquipmentQueryService _equipmentService;
-
+        private readonly ITaskAssignmentRepository _taskAssignmentRepository;
         private readonly EquipmentRequestService _service;
 
         public EquipmentRequestServiceTests()
@@ -37,6 +37,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _dateTime = Substitute.For<IDateTimeProvider>();
             _workerService = Substitute.For<IWorkerQueryService>();
             _equipmentService = Substitute.For<IEquipmentQueryService>();
+            _taskAssignmentRepository = Substitute.For<ITaskAssignmentRepository>();
 
             _service = new EquipmentRequestService(
                 _repo,
@@ -44,7 +45,8 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
                 _userContext,
                 _dateTime,
                 _workerService,
-                _equipmentService
+                _equipmentService,
+                _taskAssignmentRepository
             );
         }
 
