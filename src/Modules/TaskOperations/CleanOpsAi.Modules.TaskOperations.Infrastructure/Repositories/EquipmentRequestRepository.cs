@@ -51,5 +51,45 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             _context.EquipmentRequests.Update(entity);
             await _context.SaveChangesAsync(ct);
         }
+
+        public async Task<PaginatedResult<EquipmentRequest>> GetByStatusAsync(
+            EquipmentRequestStatus status,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
+                .Where(x => !x.IsDeleted && x.Status == status)
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequest>> GetByTaskAssignmentIdAsync(
+            Guid taskAssignmentId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
+                .Where(x => !x.IsDeleted && x.TaskAssignmentId == taskAssignmentId)
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequest>> GetByWorkerIdAsync(
+            Guid workerId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
+                .Where(x => !x.IsDeleted && x.WorkerId == workerId)
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
+        }
+
     }
 }
