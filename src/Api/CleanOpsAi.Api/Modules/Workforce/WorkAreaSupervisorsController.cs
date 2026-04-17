@@ -33,64 +33,63 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return Ok(result);
         }
 
-        [HttpGet("user/{userId}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Get WorkAreaSupervisor by user id",
-            Description = "Get supervisor using userId.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetByUserId(Guid userId)
-        {
-            var result = await _service.GetByUserIdAsync(userId);
+        //[HttpGet("user/{userId}")]
+        //[Consumes("application/json")]
+        //[SwaggerOperation(
+        //    Summary = "Get WorkAreaSupervisor by user id",
+        //    Description = "Get WorkAreaSupervisor using userId.",
+        //    Tags = new[] { "WorkAreaSupervisors" })]
+        //public async Task<IActionResult> GetByUserId(Guid userId)
+        //{
+        //    var result = await _service.GetByUserIdAsync(userId);
 
-            return Ok(result);
-        }
+        //    return Ok(result);
+        //}
 
-        [HttpGet("worker/{workerId:guid}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Get WorkAreaSupervisor by worker id",
-            Description = "Get supervisor using workerId.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetByWorkerId(Guid workerId)
-        {
-            var result = await _service.GetByWorkerIdAsync(workerId);
+        //[HttpGet("worker/{workerId:guid}")]
+        //[Consumes("application/json")]
+        //[SwaggerOperation(
+        //    Summary = "Get WorkAreaSupervisor by worker id",
+        //    Description = "Get supervisor using workerId.",
+        //    Tags = new[] { "WorkAreaSupervisors" })]
+        //public async Task<IActionResult> GetByWorkerIdPaging(
+        //    Guid workerId,
+        //    int pageNumber = 1,
+        //    int pageSize = 10)
+        //{
+        //    var result = await _service.GetByWorkerIdPaginationAsync(workerId, pageNumber, pageSize);
+        //    return Ok(result);
+        //}
 
-            if (result == null)
-                return NotFound();
+        //[HttpGet]
+        //[Consumes("application/json")]
+        //[SwaggerOperation(
+        //    Summary = "Get all WorkAreaSupervisors",
+        //    Description = "Get all WorkAreaSupervisors with pagination.",
+        //    Tags = new[] { "WorkAreaSupervisors" })]
+        //public async Task<IActionResult> GetAll(
+        //    [FromQuery] int pageNumber = 1,
+        //    [FromQuery] int pageSize = 10)
+        //{
+        //    var result = await _service.GetAllPaginationAsync(pageNumber, pageSize);
 
-            return Ok(result);
-        }
+        //    return Ok(result);
+        //}
 
-        [HttpGet]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Get all WorkAreaSupervisors",
-            Description = "Get all supervisors with pagination.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetAll(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var result = await _service.GetAllPaginationAsync(pageNumber, pageSize);
+        //[HttpGet("workarea/{workAreaId:guid}")]
+        //[Consumes("application/json")]
+        //[SwaggerOperation(
+        //    Summary = "Get supervisors by work area",
+        //    Description = "Get all supervisors in a work area.",
+        //    Tags = new[] { "WorkAreaSupervisors" })]
+        //public async Task<IActionResult> GetByWorkAreaId(Guid workAreaId)
+        //{
+        //    var result = await _service.GetByWorkAreaIdAsync(workAreaId);
 
-            return Ok(result);
-        }
+        //    return Ok(result);
+        //}
 
-        [HttpGet("workarea/{workAreaId:guid}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Get supervisors by work area",
-            Description = "Get all supervisors in a work area.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetByWorkAreaId(Guid workAreaId)
-        {
-            var result = await _service.GetByWorkAreaIdAsync(workAreaId);
 
-            return Ok(result);
-        }
-
-        
 
         [HttpPut("update-assignments")]
         [Consumes("application/json")]
@@ -129,12 +128,20 @@ namespace CleanOpsAi.Api.Modules.Workforce
         [HttpGet("workarea/{workAreaId:guid}/workers/gps")]
         [Consumes("application/json")]
         [SwaggerOperation(
-            Summary = "Get latest GPS of workers in work area",
-            Description = "Get latest GPS of all workers in a work area.",
+            Summary = "Get latest GPS of workers in work area Có GPS trong 10 phút gần nhất offlineThresholdMinutes là tính online",
+            Description = "Get latest GPS of all workers in a work area with paging.",
             Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetWorkersLatestGps(Guid workAreaId)
+        public async Task<IActionResult> GetWorkersLatestGps(
+            Guid workAreaId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] int offlineThresholdMinutes = 10)
         {
-            var result = await _service.GetWorkersLatestGpsByWorkAreaIdAsync(workAreaId);
+            var result = await _service.GetWorkersLiveStatusByWorkAreaPagingAsync(
+                workAreaId,
+                pageNumber,
+                pageSize,
+                offlineThresholdMinutes);
 
             return Ok(result);
         }
@@ -169,20 +176,20 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return NotFound();
         }
 
-        [HttpGet("by-workarea-worker")]
-        [SwaggerOperation(
-            Summary = "Get supervisors by work area",
-            Description = "Get all supervisors in a work area.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetByWorkAreaAndWorker(Guid workAreaId, Guid workerId)
-        {
-            var result = await _service.GetSupervisorByWorkAreaAndWorkerAsync(workAreaId, workerId);
+        //[HttpGet("by-workarea-worker")]
+        //[SwaggerOperation(
+        //    Summary = "Get supervisors by work area",
+        //    Description = "Get all supervisors in a work area.",
+        //    Tags = new[] { "WorkAreaSupervisors" })]
+        //public async Task<IActionResult> GetByWorkAreaAndWorker(Guid workAreaId, Guid workerId)
+        //{
+        //    var result = await _service.GetSupervisorByWorkAreaAndWorkerAsync(workAreaId, workerId);
 
-            if (result == null)
-                return NotFound("Không tìm thấy supervisor.");
+        //    if (result == null)
+        //        return NotFound("Không tìm thấy supervisor.");
 
-            return Ok(result);
-        }
+        //    return Ok(result);
+        //}
 
         [HttpGet("workareas/{supervisorId}")]
         [SwaggerOperation(
@@ -196,6 +203,40 @@ namespace CleanOpsAi.Api.Modules.Workforce
         {
             var result = await _service
                 .GetWorkAreasBySupervisorPaginationAsync(supervisorId, pageNumber, pageSize);
+
+            return Ok(result);
+        }
+
+        [HttpGet("supervisors/{supervisorId}/workers")]
+        [SwaggerOperation(
+            Summary = "Get worker by supervisor",
+            Description = "Get all worker of supervisor.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> GetWorkersPaging(
+            Guid supervisorId,
+            int pageNumber = 1,
+            int pageSize = 10)
+        {
+            var result = await _service.GetUniqueWorkersBySupervisorPagingAsync(
+                supervisorId, pageNumber, pageSize);
+
+            return Ok(result);
+        }
+
+        [HttpGet("workareas/{workAreaId}/workers")]
+        [SwaggerOperation(
+            Summary = "Get worker by workAreaId",
+            Description = "Get all worker of workAreaId.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> GetWorkersOfWorkareaUserContextPaging(
+            Guid workAreaId,
+            int pageNumber = 1,
+            int pageSize = 10)
+        {
+            var result = await _service.GetWorkersByWorkAreaPagingAsync(
+                workAreaId,
+                pageNumber,
+                pageSize);
 
             return Ok(result);
         }

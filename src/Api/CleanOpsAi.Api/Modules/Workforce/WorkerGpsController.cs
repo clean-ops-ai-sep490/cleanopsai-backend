@@ -98,8 +98,6 @@ namespace CleanOpsAi.Api.Modules.Workforce
         public async Task<IActionResult> Create([FromBody] WorkerGpsCreateRequest request)
         {
             var result = await _service.CreateAsync(request);
-            if (result == null)
-                return BadRequest();
             return Ok(result);
         }
     }

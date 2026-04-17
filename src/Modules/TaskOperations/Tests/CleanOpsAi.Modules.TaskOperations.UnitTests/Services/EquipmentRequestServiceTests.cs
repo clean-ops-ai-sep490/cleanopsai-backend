@@ -38,16 +38,17 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _workerService = Substitute.For<IWorkerQueryService>();
             _equipmentService = Substitute.For<IEquipmentQueryService>();
             _taskAssignmentRepository = Substitute.For<ITaskAssignmentRepository>();
+
             _service = new EquipmentRequestService(
-            _repo,
-            _mapper,
-            _userContext,
-            _dateTime,
-            _workerService,
-            _equipmentService,
-            _taskAssignmentRepository
-        );
-    }
+                _repo,
+                _mapper,
+                _userContext,
+                _dateTime,
+                _workerService,
+                _equipmentService,
+                _taskAssignmentRepository
+            );
+        }
 
         // ================= GET BY ID =================
         [Fact]
