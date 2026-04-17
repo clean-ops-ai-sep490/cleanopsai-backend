@@ -3,7 +3,6 @@ x-common-env: &common-env
   MessageBroker__Host: ${MESSAGE_BROKER_HOST:-rabbitmq}
   MessageBroker__Username: ${MESSAGE_BROKER_USERNAME:-guest}
   MessageBroker__Password: ${MESSAGE_BROKER_PASSWORD:-guest}
-  Redis__ConnectionString: ${REDIS_CONNECTION_STRING:-redis:6379}
   ScoringService__BaseUrl: ${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
   ScoringService__EvaluateUrlVisualizeLinkPath: ${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
 
@@ -77,12 +76,6 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-  redis:
-    image: redis:7-alpine
-    container_name: cleanopsai-redis
-    ports:
-      - "6379:6379"
-
   cleanopsai-api:
     container_name: cleanopsai-api
     build:
@@ -92,8 +85,6 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
-      redis:
         condition: service_started
     restart: unless-stopped
     ports:
@@ -120,8 +111,6 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
-      redis:
         condition: service_started
     restart: unless-stopped
     environment:

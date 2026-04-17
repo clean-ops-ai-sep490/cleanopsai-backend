@@ -29,6 +29,24 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 				.FirstOrDefaultAsync(x => x.Id == jobId, ct);
 		}
 
+		public async Task<IReadOnlyCollection<ScoringJob>> GetJobsAsync(ScoringJobStatus? status, int take, CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 200);
+			var query = _dbContext.ScoringJobs
+				.Include(x => x.Results)
+				.AsQueryable();
+
+			if (status.HasValue)
+			{
+				query = query.Where(x => x.Status == status.Value);
+			}
+
+			return await query
+				.OrderByDescending(x => x.Created)
+				.Take(safeTake)
+				.ToListAsync(ct);
+		}
+
 		public async Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(int take, CancellationToken ct = default)
 		{
 			var safeTake = Math.Clamp(take, 1, 500);
@@ -64,6 +82,31 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 				.FirstOrDefaultAsync(x => x.Id == resultId, ct);
 		}
 
+		public async Task<ScoringRetrainBatch?> GetRetrainBatchByIdWithRunsAsync(Guid batchId, CancellationToken ct = default)
+		{
+			return await _dbContext.ScoringRetrainBatches
+				.Include(x => x.Runs.OrderByDescending(r => r.StartedAtUtc))
+				.FirstOrDefaultAsync(x => x.Id == batchId, ct);
+		}
+
+		public async Task<IReadOnlyCollection<ScoringRetrainBatch>> GetRetrainBatchesAsync(ScoringRetrainBatchStatus? status, int take, CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 200);
+			var query = _dbContext.ScoringRetrainBatches
+				.Include(x => x.Runs)
+				.AsQueryable();
+
+			if (status.HasValue)
+			{
+				query = query.Where(x => x.Status == status.Value);
+			}
+
+			return await query
+				.OrderByDescending(x => x.RequestedAtUtc)
+				.Take(safeTake)
+				.ToListAsync(ct);
+		}
+
 		public async Task ReplaceResultsAsync(Guid jobId, IReadOnlyCollection<ScoringJobResult> results, CancellationToken ct = default)
 		{
 			var existing = await _dbContext.ScoringJobResults
@@ -84,6 +127,16 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 		public async Task InsertAsync(ScoringJob job, CancellationToken ct = default)
 		{
 			await _dbContext.ScoringJobs.AddAsync(job, ct);
+		}
+
+		public async Task InsertRetrainBatchAsync(ScoringRetrainBatch batch, CancellationToken ct = default)
+		{
+			await _dbContext.ScoringRetrainBatches.AddAsync(batch, ct);
+		}
+
+		public async Task InsertRetrainRunAsync(ScoringRetrainRun run, CancellationToken ct = default)
+		{
+			await _dbContext.ScoringRetrainRuns.AddAsync(run, ct);
 		}
 
 		public Task<int> SaveChangesAsync(CancellationToken ct = default)

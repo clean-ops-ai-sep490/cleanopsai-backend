@@ -24,7 +24,6 @@ public static class DependencyInjection
 				.UseSnakeCaseNamingConvention()
 				.EnableSensitiveDataLogging()
 				.EnableDetailedErrors();
-			options.EnableSensitiveDataLogging();
 			options.LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information);
 		});
 
@@ -56,19 +55,6 @@ public static class DependencyInjection
 			builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 		}
 
-		var redisConnection = builder.Configuration["Redis:ConnectionString"];
-		if (!string.IsNullOrWhiteSpace(redisConnection))
-		{
-			builder.Services.AddStackExchangeRedisCache(options =>
-			{
-				options.Configuration = redisConnection;
-			});
-		}
-		else
-		{
-			builder.Services.AddDistributedMemoryCache();
-		}
-
 		builder.Services.AddHttpClient<IScoringInferenceClient, ScoringInferenceClient>((sp, client) =>
 		{
 			var options = sp.GetRequiredService<IOptions<ScoringServiceOptions>>().Value;
@@ -80,7 +66,6 @@ public static class DependencyInjection
 		});
 
 		builder.Services.AddScoped<IScoringJobRepository, ScoringJobRepository>();
-		builder.Services.AddScoped<IScoringJobCache, ScoringJobCache>();
 		builder.Services.AddScoped<IScoringJobService, ScoringJobService>();
 	}
 }

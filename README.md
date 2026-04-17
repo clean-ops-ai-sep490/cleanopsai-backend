@@ -32,7 +32,6 @@ Service chinh:
 - Swagger backend: http://localhost:5000/swagger
 - RabbitMQ UI: http://localhost:15672 (guest/guest)
 - PostgreSQL: localhost:5432
-- Redis: localhost:6379
 
 Mac dinh backend se goi scoring service tai:
 
@@ -75,7 +74,6 @@ Compose su dung fallback defaults, nhung ban nen set env khi chay staging/prod:
 
 - BACKEND_DB_CONNECTION
 - MESSAGE_BROKER_HOST, MESSAGE_BROKER_USERNAME, MESSAGE_BROKER_PASSWORD
-- REDIS_CONNECTION_STRING
 - SCORING_SERVICE_BASE_URL
 - SCORING_RETRAIN_STORAGE_CONNECTION_STRING
 - JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE
@@ -100,7 +98,7 @@ Tuy chon timeout/poll:
 - Khong commit secret that su vao file compose, README, hoac code.
 - Su dung file .env local (khong commit) hoac secret store (Key Vault/CI secret) de inject bien moi truong.
 - Neu secret da lo trong lich su git, can rotate ngay va scrub history bang cong cu rewrite history.
-- Doi password mac dinh RabbitMQ/Postgres/Redis khi len environment chia se.
+- Doi password mac dinh RabbitMQ/Postgres khi len environment chia se.
 - Kiem tra lai log startup de dam bao khong in connection string day du.
 
 ## Troubleshooting nhanh
