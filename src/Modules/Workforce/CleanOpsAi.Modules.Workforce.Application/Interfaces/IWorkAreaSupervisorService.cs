@@ -18,5 +18,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> UnassignWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
         Task<WorkAreaSupervisorResponse?> GetSupervisorByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
         Task<(bool Found, Guid? SupervisorUserId)> GetCommonSupervisorAsync(Guid workAreaId, Guid workerId, Guid workerIdTarget, CancellationToken ct = default);
-	}
+        Task<PagedResponse<WorkAreaWithLocationResponse>> GetWorkAreasBySupervisorPaginationAsync(Guid supervisorId, int pageNumber, int pageSize);
+
+    }
 }
