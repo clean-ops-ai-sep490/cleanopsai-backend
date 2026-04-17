@@ -92,4 +92,49 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		[JsonExtensionData]
 		public Dictionary<string, JsonElement> AdditionalData { get; set; } = new();
 	}
+
+	public class ScoringVisualizationLinkResponse
+	{
+		[JsonPropertyName("source_type")]
+		public string? SourceType { get; set; }
+
+		[JsonPropertyName("source")]
+		public string? Source { get; set; }
+
+		[JsonPropertyName("env")]
+		public string? EnvironmentKey { get; set; }
+
+		[JsonPropertyName("visualization")]
+		public ScoringVisualizationMetadata? Visualization { get; set; }
+
+		[JsonPropertyName("scoring")]
+		public ScoringInferenceScore? Scoring { get; set; }
+
+		[JsonExtensionData]
+		public Dictionary<string, JsonElement> AdditionalData { get; set; } = new();
+	}
+
+	public class ScoringVisualizationMetadata
+	{
+		[JsonPropertyName("token")]
+		public string? Token { get; set; }
+
+		[JsonPropertyName("url")]
+		public string? Url { get; set; }
+
+		[JsonPropertyName("mime_type")]
+		public string? MimeType { get; set; }
+
+		[JsonPropertyName("byte_size")]
+		public int? ByteSize { get; set; }
+
+		[JsonPropertyName("ttl_seconds")]
+		public int? TtlSeconds { get; set; }
+
+		[JsonPropertyName("expires_at_utc")]
+		public string? ExpiresAtUtc { get; set; }
+
+		[JsonExtensionData]
+		public Dictionary<string, JsonElement> AdditionalData { get; set; } = new();
+	}
 }

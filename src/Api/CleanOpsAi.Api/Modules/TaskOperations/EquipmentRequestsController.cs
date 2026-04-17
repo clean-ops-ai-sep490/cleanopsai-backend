@@ -38,7 +38,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [HttpGet("{id:guid}")]
         [SwaggerOperation(
             Summary = "Get equipment request by ID",
-            Description = "Retrieves a single equipment request by its ID. Returns 404 if not found or soft-deleted.",
+            Description = "Retrieves a single equipment request by its ID.",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(EquipmentRequestDto), StatusCodes.Status200OK)]
@@ -50,97 +50,78 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             return Ok(result);
         }
 
-        [HttpGet("worker/{workerId:guid}")]
+        [HttpGet("status/{status}")]
         [SwaggerOperation(
-            Summary = "Get equipment requests by worker with pagination",
-            Description = "Retrieves a paginated list of equipment requests submitted by a specific worker.",
+            Summary = "Get equipment requests by status",
+            Description = "Retrieves equipment requests filtered by status with pagination.",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetsByWorkerId(
-            Guid workerId,
+        public async Task<IActionResult> GetByStatus(
+            EquipmentRequestStatus status,
             [FromQuery] PaginationRequest request,
             CancellationToken ct)
         {
-            var result = await _equipmentRequestService.GetsByWorkerId(workerId, request, ct);
+            var result = await _equipmentRequestService.GetByStatus(status, request, ct);
             return Ok(result);
         }
 
         [HttpGet("task-assignment/{taskAssignmentId:guid}")]
         [SwaggerOperation(
-            Summary = "Get equipment requests by task assignment with pagination",
-            Description = "Retrieves a paginated list of equipment requests associated with a specific task assignment.",
+            Summary = "Get equipment requests by TaskAssignmentId",
+            Description = "Retrieves equipment requests by task assignment with pagination.",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetsByTaskAssignmentId(
+        public async Task<IActionResult> GetByTaskAssignmentId(
             Guid taskAssignmentId,
             [FromQuery] PaginationRequest request,
             CancellationToken ct)
         {
-            var result = await _equipmentRequestService.GetsByTaskAssignmentId(taskAssignmentId, request, ct);
+            var result = await _equipmentRequestService.GetByTaskAssignmentId(taskAssignmentId, request, ct);
             return Ok(result);
         }
 
-        [HttpGet("equipment/{equipmentId:guid}")]
+        [HttpGet("worker/{workerId:guid}")]
         [SwaggerOperation(
-            Summary = "Get equipment requests by equipment with pagination",
-            Description = "Retrieves a paginated list of equipment requests for a specific piece of equipment.",
+            Summary = "Get equipment requests by WorkerId",
+            Description = "Retrieves equipment requests created by a worker with pagination.",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetsByEquipmentId(
-            Guid equipmentId,
+        public async Task<IActionResult> GetByWorkerId(
+            Guid workerId,
             [FromQuery] PaginationRequest request,
             CancellationToken ct)
         {
-            var result = await _equipmentRequestService.GetsByEquipmentId(equipmentId, request, ct);
-            return Ok(result);
-        }
-
-        [HttpGet("status/{status}")]
-        [SwaggerOperation(
-            Summary = "Get equipment requests by status with pagination",
-            Description = "Retrieves a paginated list of equipment requests filtered by status (e.g. Pending, Approved, Rejected).",
-            Tags = new[] { "EquipmentRequest" }
-        )]
-        [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetsByStatus(
-            EquipmentRequestStatus status,
-            [FromQuery] PaginationRequest request,
-            CancellationToken ct)
-        {
-            var result = await _equipmentRequestService.GetsByStatus(status, request, ct);
+            var result = await _equipmentRequestService.GetByWorkerId(workerId, request, ct);
             return Ok(result);
         }
 
         [HttpPost]
         [SwaggerOperation(
             Summary = "Create a new equipment request",
-            Description = "Creates a new equipment request for a worker on a specific task assignment. " +
-                          "Status is automatically set to Pending upon creation.",
+            Description = "Creates a new equipment request (batch items). Status = Pending.",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(EquipmentRequestDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(
-            [FromBody] CreateEquipmentRequestDto dto,
+            [FromBody] CreateEquipmentRequestBatchDto dto,
             CancellationToken ct)
         {
-            var result = await _equipmentRequestService.Create(dto, ct);
-            return CreatedAtAction(nameof(GetById), new { id = result!.Id }, result);
+            var result = await _equipmentRequestService.CreateBatch(dto, ct);
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
         [HttpPut("{id:guid}")]
         [SwaggerOperation(
             Summary = "Update an equipment request",
-            Description = "Updates the quantity and reason of an existing equipment request. " +
-                          "Automatically updates LastModified and LastModifiedBy fields.",
+            Description = "Updates reason + items",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(EquipmentRequestDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(
             Guid id,
             [FromBody] UpdateEquipmentRequestDto dto,
@@ -154,13 +135,11 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [HttpPatch("{id:guid}/review")]
         [SwaggerOperation(
             Summary = "Review an equipment request",
-            Description = "Approves or rejects an equipment request. Sets ReviewedByUserId, updates ApprovedAt if approved, " +
-                          "and triggers a notification email to the worker via RabbitMQ.",
+            Description = "Approve / Reject request",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(typeof(EquipmentRequestDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Review(
             Guid id,
             [FromBody] ReviewEquipmentRequestDto dto,
@@ -174,8 +153,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [HttpDelete("{id:guid}")]
         [SwaggerOperation(
             Summary = "Delete an equipment request",
-            Description = "Soft deletes an equipment request by its ID. The record is marked as deleted (IsDeleted = true) " +
-                          "and will no longer appear in queries.",
+            Description = "Soft delete",
             Tags = new[] { "EquipmentRequest" }
         )]
         [ProducesResponseType(StatusCodes.Status200OK)]

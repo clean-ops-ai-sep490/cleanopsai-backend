@@ -246,10 +246,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
-                    b.Property<Guid>("EquipmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("equipment_id");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -261,10 +257,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(1000)
@@ -297,6 +289,41 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasDatabaseName("ix_equipment_requests_worker_id");
 
                     b.ToTable("equipment_requests", "task_operations");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequestItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EquipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_id");
+
+                    b.Property<Guid>("EquipmentRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_request_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_request_items");
+
+                    b.HasIndex("EquipmentId")
+                        .HasDatabaseName("ix_equipment_request_items_equipment_id");
+
+                    b.HasIndex("EquipmentRequestId")
+                        .HasDatabaseName("ix_equipment_request_items_equipment_request_id");
+
+                    b.HasIndex("EquipmentRequestId", "EquipmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_equipment_request_items_equipment_request_id_equipment_id");
+
+                    b.ToTable("equipment_request_items", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
@@ -782,6 +809,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasConstraintName("fk_equipment_requests_task_assignments_task_assignment_id");
                 });
 
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequestItem", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", "EquipmentRequest")
+                        .WithMany("Items")
+                        .HasForeignKey("EquipmentRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_equipment_request_items_equipment_requests_equipment_reques");
+
+                    b.Navigation("EquipmentRequest");
+                });
+
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", "TaskAssignment")
@@ -849,6 +888,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Navigation("TargetTaskAssignment");
 
                     b.Navigation("TaskAssignment");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", b =>

@@ -42,6 +42,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         public async Task<List<Worker>> GetAllAsync()
         {
             var workers = await _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
                 .OrderByDescending(x => x.Id)
                 .ToListAsync();
@@ -54,6 +56,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             int pageSize)
         {
             var query = _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
                 .OrderByDescending(x => x.Id);
 
@@ -98,135 +102,221 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 
         public async Task<List<Worker>> FilterAsync(WorkerFilterRequest request)
         {
-            var query = _dbContext.Set<Worker>()
-                .Include(x => x.WorkerSkills).ThenInclude(ws => ws.Skill)
-                .Include(x => x.WorkerCertifications).ThenInclude(wc => wc.Certification)
-                .Where(x => !x.IsDeleted);
+            // =========================
+            // 1. BASE QUERY
+            // =========================
+            var workers = await _dbContext.Set<Worker>()
+                .Include(x => x.WorkerSkills)
+                    .ThenInclude(ws => ws.Skill)
+                .Include(x => x.WorkerCertifications)
+                    .ThenInclude(wc => wc.Certification)
+                .Where(x => !x.IsDeleted)
+                .ToListAsync();
 
             // =========================
-            // SKILL FILTER
+            // 2. PREPARE DATA
             // =========================
-            if (request.SkillCategories?.Any() == true)
-            {
-                query = query.Where(x =>
-                    x.WorkerSkills.Any(s =>
-                        request.SkillCategories.Contains(s.Skill.Category)));
-            }
+            var skillCategories = request.SkillCategories ?? new List<string>();
+            var certCategories = request.CertificateCategories ?? new List<string>();
+            var keyword = request.Address?.Trim().ToLowerInvariant();
 
-            // =========================
-            // CERT FILTER
-            // =========================
-            if (request.CertificateCategories?.Any() == true)
-            {
-                query = query.Where(x =>
-                    x.WorkerCertifications.Any(c =>
-                        request.CertificateCategories.Contains(c.Certification.Category)));
-            }
+            bool hasLocation = request.Latitude.HasValue && request.Longitude.HasValue;
+            double reqLat = request.Latitude ?? 0;
+            double reqLon = request.Longitude ?? 0;
 
             // =========================
-            // ADDRESS FILTER (TEXT ONLY - KHÔNG DROP DATA)
+            // 3. RANKING + SORT
             // =========================
-            var workers = await query.ToListAsync();
+            var result = workers
+                .Select(w => new
+                {
+                    Worker = w,
 
-            if (!string.IsNullOrWhiteSpace(request.Address))
-            {
-                var keyword = request.Address.Trim().ToLowerInvariant();
+                    // 🔥 SCORE (skill + cert)
+                    Score =
+                        // skill score
+                        (skillCategories.Count > 0
+                            ? w.WorkerSkills?.Count(s =>
+                                s.Skill != null &&
+                                s.Skill.Category != null &&
+                                skillCategories.Contains(s.Skill.Category))
+                            : 0)
+                        +
+                        // cert score
+                        (certCategories.Count > 0
+                            ? w.WorkerCertifications?.Count(c =>
+                                c.Certification != null &&
+                                c.Certification.Category != null &&
+                                certCategories.Contains(c.Certification.Category))
+                            : 0),
 
-                workers = workers
-                    .OrderByDescending(x =>
-                        (!string.IsNullOrEmpty(x.DisplayAddress) &&
-                         x.DisplayAddress.ToLowerInvariant().Contains(keyword)))
-                    .ToList();
-            }
+                    // 📍 ADDRESS MATCH
+                    AddressMatch =
+                        !string.IsNullOrEmpty(keyword) &&
+                        !string.IsNullOrEmpty(w.DisplayAddress) &&
+                        w.DisplayAddress.ToLowerInvariant().Contains(keyword),
 
-            // =========================
-            // DISTANCE SORT (KHÔNG FILTER NULL LAT/LNG)
-            // =========================
-            if (request.Latitude.HasValue && request.Longitude.HasValue)
-            {
-                double lat = request.Latitude.Value;
-                double lon = request.Longitude.Value;
+                    // 📏 DISTANCE
+                    Distance =
+                        (hasLocation && w.Latitude.HasValue && w.Longitude.HasValue)
+                            ? DistanceKm(w.Latitude.Value, w.Longitude.Value, reqLat, reqLon)
+                            : double.MaxValue
+                })
+                // =========================
+                // SORT PRIORITY
+                // =========================
+                .OrderByDescending(x => x.Score)          // ưu tiên skill + cert
+                .ThenByDescending(x => x.AddressMatch)    // ưu tiên address match
+                .ThenBy(x => x.Distance)                  // gần hơn lên trước
+                .Select(x => x.Worker)
+                .ToList();
 
-                workers = workers
-                    .OrderBy(x =>
-                    {
-                        if (!x.Latitude.HasValue || !x.Longitude.HasValue)
-                            return double.MaxValue; // đẩy xuống cuối
-
-                        return DistanceKm(x.Latitude.Value, x.Longitude.Value, lat, lon);
-                    })
-                    .ToList();
-            }
-
-            return workers;
+            return result;
         }
 
         public async Task<List<Worker>> FilterStrictAsync(WorkerFilterRequest request)
         {
+            var skillCategories = request.SkillCategories ?? new List<string>();
+            var certCategories = request.CertificateCategories ?? new List<string>();
+            var keyword = Normalize(request.Address);
+
+            bool hasLocation = request.Latitude.HasValue && request.Longitude.HasValue;
+            double reqLat = request.Latitude ?? 0;
+            double reqLon = request.Longitude ?? 0;
+            const double RadiusKm = 30;
+
+            // =========================
+            // 1. QUERY BASE (NO FULL LOAD)
+            // =========================
             var query = _dbContext.Set<Worker>()
-                .Include(x => x.WorkerSkills).ThenInclude(s => s.Skill)
-                .Include(x => x.WorkerCertifications).ThenInclude(c => c.Certification)
+                .AsNoTracking()
                 .Where(x => !x.IsDeleted);
 
-            // SKILL FILTER
-            if (request.SkillCategories?.Any() == true)
+            // =========================
+            // 2. LOCATION PRE-FILTER (SQL LEVEL)
+            // =========================
+            if (hasLocation)
             {
-                query = query.Where(x =>
-                    x.WorkerSkills.Any(s =>
-                        request.SkillCategories.Contains(s.Skill.Category)));
+                double latDelta = 0.27;
+                double lonDelta = 0.27 / Math.Cos(reqLat * Math.PI / 180.0);
+
+                query = query.Where(w =>
+                    w.Latitude.HasValue &&
+                    w.Longitude.HasValue &&
+                    w.Latitude >= reqLat - latDelta &&
+                    w.Latitude <= reqLat + latDelta &&
+                    w.Longitude >= reqLon - lonDelta &&
+                    w.Longitude <= reqLon + lonDelta
+                );
             }
-
-            // CERT FILTER
-            if (request.CertificateCategories?.Any() == true)
-            {
-                query = query.Where(x =>
-                    x.WorkerCertifications.Any(c =>
-                        request.CertificateCategories.Contains(c.Certification.Category)));
-            }
-
-            // LOCATION FILTER
-            if (request.Latitude.HasValue && request.Longitude.HasValue)
-            {
-                double lat = request.Latitude.Value;
-                double lon = request.Longitude.Value;
-                const double boundingBox = 0.3;
-
-                query = query.Where(x =>
-                    x.Latitude.HasValue &&
-                    x.Longitude.HasValue &&
-                    Math.Abs(x.Latitude.Value - lat) <= boundingBox &&
-                    Math.Abs(x.Longitude.Value - lon) <= boundingBox);
-            }
-
-            var workers = await query.ToListAsync();
 
             // =========================
-            // SEARCH FIX (QUAN TRỌNG)
+            // 3. INCLUDE (SAU FILTER THÔ)
             // =========================
-            if (!string.IsNullOrWhiteSpace(request.Address))
+            query = query
+                .Include(x => x.WorkerSkills)
+                    .ThenInclude(s => s.Skill)
+                .Include(x => x.WorkerCertifications)
+                    .ThenInclude(c => c.Certification);
+
+            var candidates = await query.ToListAsync();
+
+            // =========================
+            // 4. FILTER STRICT (RAM - FINAL CHECK)
+            // =========================
+            var filtered = candidates.Where(w =>
             {
-                var keyword = request.Address.Trim().ToLowerInvariant();
+                // ================= SKILL (AND)
+                if (skillCategories.Any())
+                {
+                    bool okSkill = w.WorkerSkills != null &&
+                        skillCategories.All(cat =>
+                            w.WorkerSkills.Any(s =>
+                                s.Skill != null &&
+                                MatchText(s.Skill.Name, cat) ||
+                                MatchText(s.Skill.Category, cat) ||
+                                MatchText(s.Skill.Description, cat)
+                            )
+                        );
 
-                workers = workers
-                    .Where(x =>
-                        !string.IsNullOrEmpty(x.DisplayAddress) &&
-                        x.DisplayAddress.ToLowerInvariant().Contains(keyword))
-                    .ToList();
-            }
+                    if (!okSkill) return false;
+                }
 
-            // SORT
-            if (request.Latitude.HasValue && request.Longitude.HasValue)
-            {
-                double lat = request.Latitude.Value;
-                double lon = request.Longitude.Value;
+                // ================= CERT (AND - FIX QUAN TRỌNG)
+                if (certCategories.Any())
+                {
+                    bool okCert = w.WorkerCertifications != null &&
+                        certCategories.All(cat =>
+                            w.WorkerCertifications.Any(c =>
+                                c.Certification != null &&
+                                (
+                                    MatchText(c.Certification.Name, cat) ||
+                                    MatchText(c.Certification.Category, cat) ||
+                                    MatchText(c.Certification.IssuingOrganization, cat)
+                                )
+                            )
+                        );
 
-                workers = workers
-                    .OrderBy(x => DistanceKm(x.Latitude ?? 0, x.Longitude ?? 0, lat, lon))
-                    .ToList();
-            }
+                    if (!okCert) return false;
+                }
 
-            return workers;
+                // ================= LOCATION (STRICT)
+                if (hasLocation)
+                {
+                    if (!w.Latitude.HasValue || !w.Longitude.HasValue)
+                        return false;
+
+                    var dist = DistanceKm(
+                        w.Latitude.Value,
+                        w.Longitude.Value,
+                        reqLat,
+                        reqLon
+                    );
+
+                    if (dist > RadiusKm)
+                        return false;
+                }
+
+                // ================= KEYWORD ADDRESS (OPTIONAL BUT STRICT IF EXISTS)
+                if (!string.IsNullOrEmpty(keyword))
+                {
+                    if (string.IsNullOrEmpty(w.DisplayAddress) ||
+                        !Normalize(w.DisplayAddress).Contains(keyword))
+                        return false;
+                }
+
+                return true;
+            });
+
+            // =========================
+            // 5. RANKING
+            // =========================
+            return filtered
+                .OrderByDescending(w =>
+                    (skillCategories.Count > 0 ? w.WorkerSkills.Count : 0) +
+                    (certCategories.Count > 0 ? w.WorkerCertifications.Count : 0)
+                )
+                .ThenBy(w =>
+                    hasLocation && w.Latitude.HasValue && w.Longitude.HasValue
+                        ? DistanceKm(w.Latitude.Value, w.Longitude.Value, reqLat, reqLon)
+                        : double.MaxValue
+                )
+                .ToList();
         }
+
+        private static string Normalize(string input)
+        {
+            return input?.Trim().ToLowerInvariant() ?? "";
+        }
+
+        private static bool MatchText(string source, string keyword)
+        {
+            var s = Normalize(source);
+            var k = Normalize(keyword);
+
+            return s.Contains(k) || k.Contains(s);
+        }
+
 
         public static double DistanceKm(double lat1, double lon1, double lat2, double lon2)
         {

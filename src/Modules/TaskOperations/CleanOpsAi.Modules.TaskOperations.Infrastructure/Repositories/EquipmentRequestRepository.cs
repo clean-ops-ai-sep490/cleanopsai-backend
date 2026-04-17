@@ -14,73 +14,82 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
         {
         }
 
-        public async Task<EquipmentRequest?> GetByIdExistAsync(Guid id, CancellationToken ct = default)
+        public async Task<EquipmentRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
             return await _context.EquipmentRequests
+                .Include(x => x.Items)
                 .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
         }
 
-        public async Task<PaginatedResult<EquipmentRequest>> GetsPagingAsync(PaginationRequest request, CancellationToken ct = default)
+        public async Task<PaginatedResult<EquipmentRequest>> GetsAsync(
+            PaginationRequest request,
+            CancellationToken ct = default)
         {
-            return await _context.EquipmentRequests
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
                 .Where(x => !x.IsDeleted)
-                .ToPaginatedResultAsync(request, ct);
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
         }
 
-        public async Task<PaginatedResult<EquipmentRequest>> GetsByWorkerIdPagingAsync(Guid workerId, PaginationRequest request, CancellationToken ct = default)
+        public async Task AddAsync(EquipmentRequest entity, CancellationToken ct = default)
         {
-            return await _context.EquipmentRequests
-                .Where(x => x.WorkerId == workerId && !x.IsDeleted)
-                .ToPaginatedResultAsync(request, ct);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequest>> GetsByTaskAssignmentIdPagingAsync(Guid taskAssignmentId, PaginationRequest request, CancellationToken ct = default)
-        {
-            return await _context.EquipmentRequests
-                .Where(x => x.TaskAssignmentId == taskAssignmentId && !x.IsDeleted)
-                .ToPaginatedResultAsync(request, ct);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequest>> GetsByStatusPagingAsync(EquipmentRequestStatus status, PaginationRequest request, CancellationToken ct = default)
-        {
-            return await _context.EquipmentRequests
-                .Where(x => x.Status == status && !x.IsDeleted)
-                .ToPaginatedResultAsync(request, ct);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequest>> GetsByEquipmentIdPagingAsync(Guid equipmentId, PaginationRequest request, CancellationToken ct = default)
-        {
-            return await _context.EquipmentRequests
-                .Where(x => x.EquipmentId == equipmentId && !x.IsDeleted)
-                .ToPaginatedResultAsync(request, ct);
-        }
-
-        public async Task<bool> ExistsAsync(Guid taskAssignmentId, Guid equipmentId, CancellationToken ct = default)
-        {
-            return await _context.EquipmentRequests
-                .AnyAsync(x =>
-                    x.TaskAssignmentId == taskAssignmentId &&
-                    x.EquipmentId == equipmentId &&
-                    !x.IsDeleted, ct);
-        }
-
-        public async Task AddAsync(EquipmentRequest request, CancellationToken ct = default)
-        {
-            await _context.EquipmentRequests.AddAsync(request, ct);
+            await _context.EquipmentRequests.AddAsync(entity, ct);
             await _context.SaveChangesAsync(ct);
         }
 
-        public async Task UpdateAsync(EquipmentRequest request, CancellationToken ct = default)
+        public async Task UpdateAsync(EquipmentRequest entity, CancellationToken ct = default)
         {
-            _context.EquipmentRequests.Update(request);
+            _context.EquipmentRequests.Update(entity);
             await _context.SaveChangesAsync(ct);
         }
 
-        public async Task DeleteAsync(EquipmentRequest request, CancellationToken ct = default)
+        public async Task DeleteAsync(EquipmentRequest entity, CancellationToken ct = default)
         {
-            request.IsDeleted = true;
-            _context.EquipmentRequests.Update(request);
+            entity.IsDeleted = true;
+            _context.EquipmentRequests.Update(entity);
             await _context.SaveChangesAsync(ct);
         }
+
+        public async Task<PaginatedResult<EquipmentRequest>> GetByStatusAsync(
+            EquipmentRequestStatus status,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
+                .Where(x => !x.IsDeleted && x.Status == status)
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequest>> GetByTaskAssignmentIdAsync(
+            Guid taskAssignmentId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
+                .Where(x => !x.IsDeleted && x.TaskAssignmentId == taskAssignmentId)
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequest>> GetByWorkerIdAsync(
+            Guid workerId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var query = _context.EquipmentRequests
+                .Include(x => x.Items)
+                .Where(x => !x.IsDeleted && x.WorkerId == workerId)
+                .OrderByDescending(x => x.Created);
+
+            return await query.ToPaginatedResultAsync(request, ct);
+        }
+
     }
 }

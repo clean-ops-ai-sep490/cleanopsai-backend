@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -18,171 +19,136 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
     public class EquipmentRequestService : IEquipmentRequestService
     {
-        private readonly IEquipmentRequestRepository _equipmentRequestRepository;
+        private readonly IEquipmentRequestRepository _repo;
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
+        private readonly IEquipmentQueryService _equipmentQueryService;
+        private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 
         public EquipmentRequestService(
-            IEquipmentRequestRepository equipmentRequestRepository,
+            IEquipmentRequestRepository repo,
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
-            IWorkerQueryService workerQueryService)
+            IWorkerQueryService workerQueryService,
+            IEquipmentQueryService equipmentQueryService,
+            ITaskAssignmentRepository taskAssignmentRepository)
         {
-            _equipmentRequestRepository = equipmentRequestRepository;
+            _repo = repo;
             _mapper = mapper;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
+            _equipmentQueryService = equipmentQueryService;
+            _taskAssignmentRepository = taskAssignmentRepository;
         }
 
-        public async Task<EquipmentRequestDto?> GetById(Guid id, CancellationToken ct = default)
+        public async Task<EquipmentRequestDto> CreateBatch(
+            CreateEquipmentRequestBatchDto dto,
+            CancellationToken ct = default)
         {
-            var entity = await _equipmentRequestRepository.GetByIdExistAsync(id, ct);
-            if (entity == null) return null;
-            var dto = _mapper.Map<EquipmentRequestDto>(entity);
+            var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
 
-            var dict = await _workerQueryService.GetUserNames(new List<Guid> { entity.WorkerId });
+            if (task != null)
+            {
+                if (task.Status != TaskAssignmentStatus.Completed &&
+                    task.Status != TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.Block;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
 
-            dto.WorkerName = dict.GetValueOrDefault(entity.WorkerId);
+                    await _taskAssignmentRepository.SaveChangesAsync(ct);
+                }
+                else
+                {
+                    throw new BadRequestException("Cannot report issue for a completed or already blocked task.");
+                }
+            }
 
-            return dto;
+            dto.Items = dto.Items
+                .GroupBy(x => x.EquipmentId)
+                .Select(g => new CreateEquipmentRequestItemDto
+                {
+                    EquipmentId = g.Key,
+                    Quantity = g.Sum(x => x.Quantity)
+                }).ToList();
+
+            var entity = new EquipmentRequest
+            {
+                TaskAssignmentId = dto.TaskAssignmentId,
+                WorkerId = dto.WorkerId,
+                Reason = dto.Reason,
+                Status = EquipmentRequestStatus.Pending,
+                Created = _dateTimeProvider.UtcNow,
+                CreatedBy = _userContext.UserId.ToString(),
+
+                Items = dto.Items.Select(x => new EquipmentRequestItem
+                {
+                    EquipmentId = x.EquipmentId,
+                    Quantity = x.Quantity
+                }).ToList()
+            };
+
+            await _repo.AddAsync(entity, ct);
+
+            var result = await MapResult(entity);
+            await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
+            return result;
         }
 
-        public async Task<PaginatedResult<EquipmentRequestDto>> Gets(PaginationRequest request, CancellationToken ct = default)
+        public async Task<EquipmentRequestDto?> Update(
+            Guid id,
+            UpdateEquipmentRequestDto dto,
+            CancellationToken ct = default)
         {
-            var result = await _equipmentRequestRepository.GetsPagingAsync(request, ct);
-
-            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
-
-            await EnrichWorkerNamesAsync(dtos);
-
-            return new PaginatedResult<EquipmentRequestDto>(
-                result.PageNumber,
-                result.PageSize,
-                result.TotalElements,
-                dtos);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequestDto>> GetsByWorkerId(Guid workerId, PaginationRequest request, CancellationToken ct = default)
-        {
-            var result = await _equipmentRequestRepository.GetsByWorkerIdPagingAsync(workerId, request, ct);
-
-            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
-
-            await EnrichWorkerNamesAsync(dtos);
-
-            return new PaginatedResult<EquipmentRequestDto>(
-                result.PageNumber,
-                result.PageSize,
-                result.TotalElements,
-                dtos);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequestDto>> GetsByTaskAssignmentId(Guid taskAssignmentId, PaginationRequest request, CancellationToken ct = default)
-        {
-            var result = await _equipmentRequestRepository.GetsByTaskAssignmentIdPagingAsync(taskAssignmentId, request, ct);
-
-            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
-
-            await EnrichWorkerNamesAsync(dtos);
-
-            return new PaginatedResult<EquipmentRequestDto>(
-                result.PageNumber,
-                result.PageSize,
-                result.TotalElements,
-                dtos);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequestDto>> GetsByStatus(EquipmentRequestStatus status, PaginationRequest request, CancellationToken ct = default)
-        {
-            var result = await _equipmentRequestRepository.GetsByStatusPagingAsync(status, request, ct);
-
-            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
-
-            await EnrichWorkerNamesAsync(dtos);
-
-            return new PaginatedResult<EquipmentRequestDto>(
-                result.PageNumber,
-                result.PageSize,
-                result.TotalElements,
-                dtos);
-        }
-
-        public async Task<PaginatedResult<EquipmentRequestDto>> GetsByEquipmentId(Guid equipmentId, PaginationRequest request, CancellationToken ct = default)
-        {
-            var result = await _equipmentRequestRepository.GetsByEquipmentIdPagingAsync(equipmentId, request, ct);
-
-            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
-
-            await EnrichWorkerNamesAsync(dtos);
-
-            return new PaginatedResult<EquipmentRequestDto>(
-                result.PageNumber,
-                result.PageSize,
-                result.TotalElements,
-                dtos);
-        }
-
-        public async Task<EquipmentRequestDto?> Create(CreateEquipmentRequestDto dto, CancellationToken ct = default)
-        {
-            var entity = _mapper.Map<EquipmentRequest>(dto);
-            entity.Status = EquipmentRequestStatus.Pending;
-            entity.Created = _dateTimeProvider.UtcNow;
-            entity.CreatedBy = _userContext.UserId.ToString();
-
-            await _equipmentRequestRepository.AddAsync(entity, ct);
-
-            // notifi to Target - thong bao cho reviewer/manager co request moi
-            // var message = new EquipmentRequestCreatedEvent
-            // {
-            //     RequestId    = entity.Id,
-            //     WorkerId     = entity.WorkerId,
-            //     EquipmentId  = entity.EquipmentId,
-            //     Quantity     = entity.Quantity,
-            //     Reason       = entity.Reason,
-            //     CreatedAt    = entity.Created
-            // };
-
-            var dtoResult = _mapper.Map<EquipmentRequestDto>(entity);
-            dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
-
-            return dtoResult;
-        }
-
-        public async Task<EquipmentRequestDto?> Update(Guid id, UpdateEquipmentRequestDto dto, CancellationToken ct = default)
-        {
-            var entity = await _equipmentRequestRepository.GetByIdExistAsync(id, ct);
+            var entity = await _repo.GetByIdAsync(id, ct);
             if (entity == null) return null;
 
-            _mapper.Map(dto, entity);
+            if (dto.Reason != null)
+                entity.Reason = string.IsNullOrWhiteSpace(dto.Reason)
+                    ? null
+                    : dto.Reason.Trim();
+
             entity.LastModified = _dateTimeProvider.UtcNow;
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
-            await _equipmentRequestRepository.UpdateAsync(entity, ct);
+            if (dto.Items != null)
+            {
+                entity.Items.Clear();
 
-            // notifi to Target - thong bao cho reviewer/manager co request moi
-            // var message = new EquipmentRequestCreatedEvent
-            // {
-            //     RequestId    = entity.Id,
-            //     WorkerId     = entity.WorkerId,
-            //     EquipmentId  = entity.EquipmentId,
-            //     Quantity     = entity.Quantity,
-            //     Reason       = entity.Reason,
-            //     CreatedAt    = entity.Created
-            // };
+                if (dto.Items.Any())
+                {
+                    var items = dto.Items
+                        .GroupBy(x => x.EquipmentId)
+                        .Select(g => new EquipmentRequestItem
+                        {
+                            EquipmentId = g.Key,
+                            Quantity = g.Sum(x => x.Quantity)
+                        });
 
-            var dtoResult = _mapper.Map<EquipmentRequestDto>(entity);
-            dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
+                    foreach (var item in items)
+                    {
+                        entity.Items.Add(item);
+                    }
+                }
+            }
 
-            return dtoResult;
+            await _repo.UpdateAsync(entity, ct);
+
+            var result = await MapResult(entity);
+            await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
+            return result;
         }
 
-        public async Task<EquipmentRequestDto?> Review(Guid id, ReviewEquipmentRequestDto dto, CancellationToken ct = default)
+        public async Task<EquipmentRequestDto?> Review(
+            Guid id,
+            ReviewEquipmentRequestDto dto,
+            CancellationToken ct = default)
         {
-            var entity = await _equipmentRequestRepository.GetByIdExistAsync(id, ct);
+            var entity = await _repo.GetByIdAsync(id, ct);
             if (entity == null) return null;
 
             entity.Status = dto.Status;
@@ -191,62 +157,147 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? _dateTimeProvider.UtcNow
                 : null;
 
-            var reviewByUserName = _userContext.FullName;
+            await _repo.UpdateAsync(entity, ct);
 
-            await _equipmentRequestRepository.UpdateAsync(entity, ct);
+            var result = await MapResult(entity);
+            result.ReviewedByUserName = _userContext.FullName;
 
-            // notifi to Target - gui mail thong bao ket qua review cho worker
-            // var message = new EquipmentRequestReviewedEvent
-            // {
-            //     RequestId        = entity.Id,
-            //     WorkerId         = entity.WorkerId,
-            //     EquipmentId      = entity.EquipmentId,
-            //     Status           = entity.Status,           // Approved | Rejected
-            //     ReviewedByUserId = entity.ReviewedByUserId,
-            //     ApprovedAt       = entity.ApprovedAt,
-            //     ReviewedAt       = entity.LastModified
-            // };
-            // string routingKey = entity.Status == EquipmentRequestStatus.Approved
-            //     ? "equipment-request.approved"
-            //     : "equipment-request.rejected";
+            await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
+            return result;
+        }
 
-            var dtoResult = _mapper.Map<EquipmentRequestDto>(entity);
-            dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
-            dtoResult.ReviewedByUserName = reviewByUserName;
+        public async Task<PaginatedResult<EquipmentRequestDto>> Gets(
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetsAsync(request, ct);
 
-            return dtoResult;
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
+        }
+
+        public async Task<EquipmentRequestDto?> GetById(
+            Guid id,
+            CancellationToken ct = default)
+        {
+            var entity = await _repo.GetByIdAsync(id, ct);
+            if (entity == null) return null;
+
+            var dto = _mapper.Map<EquipmentRequestDto>(entity);
+
+            await EnrichAsync(new List<EquipmentRequestDto> { dto }, ct);
+
+            return dto;
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByStatus(
+            EquipmentRequestStatus status,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var paged = await _repo.GetByStatusAsync(status, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(paged.Content);
+
+            if (dtos.Count > 0)
+            {
+                await EnrichAsync(dtos, ct);
+            }
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                paged.PageNumber,
+                paged.PageSize,
+                paged.TotalElements,
+                dtos);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByTaskAssignmentId(
+            Guid taskAssignmentId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetByTaskAssignmentIdAsync(taskAssignmentId, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByWorkerId(
+            Guid workerId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetByWorkerIdAsync(workerId, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
         }
 
         public async Task<bool> Delete(Guid id, CancellationToken ct = default)
         {
-            var entity = await _equipmentRequestRepository.GetByIdExistAsync(id, ct);
+            var entity = await _repo.GetByIdAsync(id, ct);
             if (entity == null) return false;
 
-            await _equipmentRequestRepository.DeleteAsync(entity, ct);
+            await _repo.DeleteAsync(entity, ct);
             return true;
         }
 
-        private async Task EnrichWorkerNamesAsync(List<EquipmentRequestDto> dtos)
+        private async Task EnrichAsync(List<EquipmentRequestDto> dtos, CancellationToken ct)
         {
-            var workerIds = dtos
-                .Select(x => x.WorkerId)
+            // WORKER
+            var workerIds = dtos.Select(x => x.WorkerId).Distinct().ToList();
+
+            var workerDict = workerIds.Any()
+                ? await _workerQueryService.GetUserNames(workerIds)
+                : new Dictionary<Guid, string>();
+
+            // EQUIPMENT
+            var equipmentIds = dtos
+                .SelectMany(x => x.Items)
+                .Select(x => x.EquipmentId)
                 .Distinct()
                 .ToList();
 
-            if (!workerIds.Any()) return;
+            var equipmentDict = equipmentIds.Any()
+                ? await _equipmentQueryService.GetNamesAsync(equipmentIds, ct)
+                : new Dictionary<Guid, string>();
 
-            var dict = await _workerQueryService.GetUserNames(workerIds);
-
+            // MAP
             foreach (var dto in dtos)
             {
-                dto.WorkerName = dict.GetValueOrDefault(dto.WorkerId);
+                dto.WorkerName = workerDict.GetValueOrDefault(dto.WorkerId);
+
+                foreach (var item in dto.Items)
+                {
+                    item.EquipmentName = equipmentDict.GetValueOrDefault(item.EquipmentId);
+                }
             }
         }
 
-        private async Task<string?> GetWorkerNameAsync(Guid workerId)
+        private async Task<EquipmentRequestDto> MapResult(EquipmentRequest entity)
         {
-            var dict = await _workerQueryService.GetUserNames(new List<Guid> { workerId });
-            return dict.GetValueOrDefault(workerId);
+            return _mapper.Map<EquipmentRequestDto>(entity);
         }
     }
 }

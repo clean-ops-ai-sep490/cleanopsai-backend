@@ -20,5 +20,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
         public DateTime? ResolvedAt { get; set; }
         public DateTime Created { get; set; }
         public DateTime? LastModified { get; set; }
+        public string? DisplayLocation { get; set; }
     }
 }

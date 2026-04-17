@@ -6,21 +6,29 @@ using CleanOpsAi.Modules.Workforce.Domain.Enums;
 using NSubstitute;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 {
     public class WorkerSkillServiceTests
     {
         private readonly IWorkerSkillRepository _repoMock;
+        private readonly IWorkerRepository _workerRepoMock;
+        private readonly ISkillRepository _skillRepoMock;
         private readonly WorkerSkillService _service;
 
         public WorkerSkillServiceTests()
         {
             _repoMock = Substitute.For<IWorkerSkillRepository>();
-            _service = new WorkerSkillService(_repoMock);
+            _workerRepoMock = Substitute.For<IWorkerRepository>();
+            _skillRepoMock = Substitute.For<ISkillRepository>();
+
+            _service = new WorkerSkillService(
+                _repoMock,
+                _workerRepoMock,
+                _skillRepoMock
+            );
         }
 
         // =========================
@@ -127,17 +135,25 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
                 SkillLevel = SkillLevelType.Beginner,
             };
 
-            _repoMock.CreateAsync(Arg.Any<WorkerSkill>())
-                .Returns(callInfo =>
+            _workerRepoMock.GetByIdAsync(request.WorkerId)
+                .Returns(new Worker
                 {
-                    var entity = callInfo.Arg<WorkerSkill>();
-
-                    // 🔥 inject navigation để tránh null
-                    entity.Worker = new Worker { FullName = "Test Worker" };
-                    entity.Skill = new Skill { Name = "Test Skill" };
-
-                    return Task.FromResult(1);
+                    Id = request.WorkerId,
+                    FullName = "Test Worker"
                 });
+
+            _skillRepoMock.GetByIdAsync(request.SkillId)
+                .Returns(new Skill
+                {
+                    Id = request.SkillId,
+                    Name = "Test Skill"
+                });
+
+            _repoMock.GetByIdAsync(request.WorkerId, request.SkillId)
+                .Returns((WorkerSkill)null);
+
+            _repoMock.CreateAsync(Arg.Any<WorkerSkill>())
+                .Returns(1);
 
             var result = await _service.CreateAsync(request);
 
@@ -171,18 +187,18 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 
             var request = new WorkerSkillUpdateRequest
             {
-                SkillLevel = SkillLevelType.Beginner
+                SkillLevel = SkillLevelType.Intermediate
             };
 
             _repoMock.GetByIdAsync(workerId, skillId).Returns(entity);
 
             _repoMock.UpdateAsync(entity)
-                .Returns(Task.FromResult(1)); // 🔥 FIX
+                .Returns(1);
 
             var result = await _service.UpdateAsync(workerId, skillId, request);
 
             Assert.NotNull(result);
-            Assert.Equal(SkillLevelType.Beginner, result.SkillLevel);
+            Assert.Equal(SkillLevelType.Intermediate, result.SkillLevel);
 
             await _repoMock.Received(1).UpdateAsync(entity);
         }
@@ -196,18 +212,16 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             var workerId = Guid.NewGuid();
             var skillId = Guid.NewGuid();
 
-            var entity = new WorkerSkill
-            {
-                WorkerId = workerId,
-                SkillId = skillId
-            };
+            _repoMock.GetByIdAsync(workerId, skillId)
+                .Returns(new WorkerSkill());
 
-            _repoMock.GetByIdAsync(workerId, skillId).Returns(entity);
-            _repoMock.DeleteAsync(workerId, skillId).Returns(1);
+            _repoMock.DeleteAsync(workerId, skillId)
+                .Returns(1);
 
             var result = await _service.DeleteAsync(workerId, skillId);
 
             Assert.Equal(1, result);
+
             await _repoMock.Received(1).DeleteAsync(workerId, skillId);
         }
 
@@ -220,7 +234,8 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             var workerId = Guid.NewGuid();
             var skillId = Guid.NewGuid();
 
-            _repoMock.GetByIdAsync(workerId, skillId).Returns((WorkerSkill)null);
+            _repoMock.GetByIdAsync(workerId, skillId)
+                .Returns((WorkerSkill)null);
 
             var result = await _service.DeleteAsync(workerId, skillId);
 

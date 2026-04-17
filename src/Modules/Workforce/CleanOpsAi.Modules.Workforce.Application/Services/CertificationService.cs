@@ -208,7 +208,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     SkillId = x.Id,
                     Name = x.Name,
                     Category = x.Category,
-                    Description = x.Description
+                    Description = x.Description,
                 }).ToList(),
 
                 Certifications = certs.Select(x => new WorkerCertificationResponse
@@ -219,6 +219,15 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     IssuingOrganization = x.IssuingOrganization
                 }).ToList()
             };
+        }
+
+        public static void Validate(DateTime issuedDate, DateTime expiredAt, IDateTimeProvider timeProvider)
+        {
+            if (expiredAt <= issuedDate)
+                throw new ArgumentException("ExpiredAt must be greater than IssuedDate");
+
+            if (expiredAt <= timeProvider.UtcNow)
+                throw new ArgumentException("Certification is already expired and cannot be created/updated");
         }
 
     }

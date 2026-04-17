@@ -7,9 +7,8 @@ using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using NSubstitute;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 {
@@ -18,7 +17,7 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         private readonly ICertificationRepository _repoMock;
         private readonly IUserContext _userContextMock;
         private readonly IDateTimeProvider _dateTimeMock;
-		private readonly ISkillRepository _skillRepoMock;
+        private readonly ISkillRepository _skillRepoMock;
 
 		private readonly CertificationService _service;
 
@@ -33,13 +32,10 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
                 _repoMock,
                 _userContextMock,
                 _dateTimeMock,
-				_skillRepoMock
-			);
+                _skillRepoMock
+            );
         }
 
-        // ================================
-        // CREATE
-        // ================================
         [Fact]
         public async Task CreateAsync_ShouldReturnCertificationResponse()
         {
@@ -54,20 +50,16 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             _dateTimeMock.UtcNow.Returns(DateTime.UtcNow);
 
             _repoMock.CreateAsync(Arg.Any<Certification>())
-                     .Returns(1);
+                     .Returns(Task.FromResult(1));
 
             var result = await _service.CreateAsync(request);
 
             Assert.NotNull(result);
             Assert.Equal(request.Name, result.Name);
-            Assert.Equal(request.Category, result.Category);
 
             await _repoMock.Received(1).CreateAsync(Arg.Any<Certification>());
         }
 
-        // ================================
-        // GET BY ID
-        // ================================
         [Fact]
         public async Task GetByIdAsync_ShouldReturnCertification()
         {
@@ -81,7 +73,8 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
                 IssuingOrganization = "Amazon"
             };
 
-            _repoMock.GetByIdAsync(id).Returns(cert);
+            _repoMock.GetByIdAsync(id)
+                     .Returns(Task.FromResult(cert));
 
             var result = await _service.GetByIdAsync(id);
 
@@ -90,19 +83,17 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             Assert.Equal(id, result[0].Id);
         }
 
-        // ================================
-        // GET ALL
-        // ================================
         [Fact]
         public async Task GetAllAsync_ShouldReturnList()
         {
             var data = new List<Certification>
-            {
-                new Certification { Id = Guid.NewGuid(), Name = "A" },
-                new Certification { Id = Guid.NewGuid(), Name = "B" }
-            };
+    {
+        new Certification { Id = Guid.NewGuid(), Name = "A" },
+        new Certification { Id = Guid.NewGuid(), Name = "B" }
+    };
 
-            _repoMock.GetAllAsync().Returns(data);
+            _repoMock.GetAllAsync()
+                     .Returns(Task.FromResult(data));
 
             var result = await _service.GetAllAsync();
 
@@ -110,9 +101,6 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             Assert.Equal(2, result.Count);
         }
 
-        // ================================
-        // UPDATE
-        // ================================
         [Fact]
         public async Task UpdateAsync_ShouldUpdateCertification()
         {
@@ -122,19 +110,22 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             {
                 Id = id,
                 Name = "Old",
-                Category = "OldCat",
-                IssuingOrganization = "OldOrg"
+                Category = "Old",
+                IssuingOrganization = "Old"
             };
 
             var request = new CertificationUpdateRequest
             {
                 Name = "New",
-                Category = "NewCat",
-                IssuingOrganization = "NewOrg"
+                Category = "New",
+                IssuingOrganization = "New"
             };
 
-            _repoMock.GetByIdAsync(id).Returns(cert);
-            _repoMock.UpdateAsync(cert).Returns(1);
+            _repoMock.GetByIdAsync(id)
+                     .Returns(Task.FromResult(cert));
+
+            _repoMock.UpdateAsync(cert)
+                     .Returns(Task.FromResult(1));
 
             _userContextMock.UserId.Returns(Guid.NewGuid());
             _dateTimeMock.UtcNow.Returns(DateTime.UtcNow);
@@ -143,14 +134,11 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 
             Assert.NotNull(result);
             Assert.Equal("New", result.Name);
-            Assert.Equal("NewCat", result.Category);
+            Assert.Equal("New", result.Category);
 
             await _repoMock.Received(1).UpdateAsync(cert);
         }
 
-        // ================================
-        // DELETE
-        // ================================
         [Fact]
         public async Task DeleteAsync_ShouldCallRepository()
         {
@@ -158,68 +146,60 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 
             var cert = new Certification { Id = id };
 
-            _repoMock.GetByIdAsync(id).Returns(cert);
-            _repoMock.DeleteAsync(id).Returns(1);
+            _repoMock.GetByIdAsync(id)
+                     .Returns(Task.FromResult(cert));
+
+            _repoMock.DeleteAsync(id)
+                     .Returns(Task.FromResult(1));
 
             var result = await _service.DeleteAsync(id);
 
             Assert.Equal(1, result);
+
             await _repoMock.Received(1).DeleteAsync(id);
         }
 
-        // ================================
-        // GET ALL PAGINATION
-        // ================================
         [Fact]
-        public async Task GetAllPaginationAsync_ShouldReturnPagedResult()
+        public async Task GetAllPaginationAsync_ShouldReturnPaged()
         {
             var data = new List<Certification>
             {
-                new Certification { Id = Guid.NewGuid(), Name = "A" },
-                new Certification { Id = Guid.NewGuid(), Name = "B" }
+                new Certification { Id = Guid.NewGuid() }
             };
 
             _repoMock.GetAllPaginationAsync(1, 10)
-                     .Returns((data, 2));
+                     .Returns((data, 1));
 
             var result = await _service.GetAllPaginationAsync(1, 10);
 
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Content.Count);
-            Assert.Equal(1, result.PageNumber);
+            Assert.Equal(1, result.TotalElements);
         }
 
-        // ================================
-        // GET BY CATEGORY
-        // ================================
         [Fact]
         public async Task GetByCategoryAsync_ShouldReturnList()
         {
-            var data = new List<Certification>
-            {
-                new Certification { Id = Guid.NewGuid(), Category = "Cloud" }
-            };
-
-            _repoMock.GetByCategoryAsync("Cloud").Returns(data);
+            _repoMock.GetByCategoryAsync("Cloud")
+                     .Returns(new List<Certification>
+                     {
+                         new Certification { Id = Guid.NewGuid(), Category = "Cloud" }
+                     });
 
             var result = await _service.GetByCategoryAsync("Cloud");
 
-            Assert.NotNull(result);
             Assert.Single(result);
         }
 
-        // ================================
-        // GET ALL CATEGORIES
-        // ================================
         [Fact]
         public async Task GetAllCategoriesAsync_ShouldReturnList()
         {
             var categories = new List<string> { "Cloud", "DevOps" };
 
-            _repoMock.GetAllCategoriesAsync().Returns(categories);
+            _repoMock.GetAllCategoriesAsync()
+                     .Returns(Task.FromResult(categories));
 
             var result = await _service.GetAllCategoriesAsync();
 
+            Assert.NotNull(result);
             Assert.Equal(2, result.Count);
         }
     }

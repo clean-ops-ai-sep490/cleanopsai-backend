@@ -10,6 +10,7 @@ using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using MassTransit;
 using Medo;
+using System.Diagnostics;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -319,67 +320,60 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
         public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string? query)
         {
-            // =========================
-            // 1. NULL / EMPTY → RETURN ALL
-            // =========================
+            var traceId = Guid.NewGuid().ToString("N");
+
+            Console.WriteLine($"\n===== NLP START {traceId} =====");
+
             if (string.IsNullOrWhiteSpace(query))
             {
                 var all = await _workerRepository.GetAllAsync();
                 return BuildNlpResponse(all, null);
             }
 
-            // =========================
-            // 2. NLP PARSE VIA GEMINI
-            // =========================
             WorkerFilterNlpResult parsed;
+
+            // =========================
+            // 1. GEMINI SAFE CALL (NO BLOCK)
+            // =========================
             try
             {
-                parsed = await _geminiService.ParseWorkerFilterAsync(query);
+                var task = _geminiService.ParseWorkerFilterAsync(query);
+
+                var completed = await Task.WhenAny(task, Task.Delay(1500));
+
+                if (completed == task)
+                    parsed = await task;
+                else
+                {
+                    Console.WriteLine("GEMINI TIMEOUT → LOCAL ONLY");
+                    parsed = new WorkerFilterNlpResult();
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[NLP] Gemini parse failed: {ex.Message}");
                 parsed = new WorkerFilterNlpResult();
             }
 
             // =========================
-            // 3. FALLBACK: Gemini không parse được gì → dùng query gốc làm address
+            // 2. SAFE FALLBACK (KHÔNG DÙNG QUERY LÀ ADDRESS)
             // =========================
-            bool parsedNothing =
-                string.IsNullOrWhiteSpace(parsed.Address) &&
-                (parsed.SkillCategories == null || !parsed.SkillCategories.Any()) &&
-                (parsed.CertificateCategories == null || !parsed.CertificateCategories.Any());
-
-            if (parsedNothing)
-                parsed.Address = query;
-
-            Console.WriteLine($"[NLP] Parsed → Address='{parsed.Address}' | Skills=[{string.Join(",", parsed.SkillCategories ?? new())}] | Certs=[{string.Join(",", parsed.CertificateCategories ?? new())}] | Start={parsed.StartAt} | End={parsed.EndAt}");
-
-            // =========================
-            // 4. VALIDATE DATE RANGE (không throw, chỉ bỏ qua)
-            // =========================
-            if (parsed.StartAt.HasValue && parsed.EndAt.HasValue)
+            if (IsEmpty(parsed))
             {
-                if (parsed.StartAt > parsed.EndAt)
-                {
-                    Console.WriteLine("[NLP] StartAt > EndAt → bỏ qua date filter.");
-                    parsed.StartAt = null;
-                    parsed.EndAt = null;
-                }
+                parsed = LocalParse(query); // 🔥 FIX QUAN TRỌNG
             }
-            else if (parsed.StartAt.HasValue != parsed.EndAt.HasValue)
+
+            // =========================
+            // 3. VALIDATE DATE
+            // =========================
+            if (parsed.StartAt > parsed.EndAt)
             {
-                Console.WriteLine("[NLP] Chỉ có 1 trong StartAt/EndAt → bỏ qua date filter.");
                 parsed.StartAt = null;
                 parsed.EndAt = null;
             }
 
-            // =========================
-            // 5. BUILD FILTER REQUEST
-            // =========================
             var request = new WorkerFilterRequest
             {
-                Address = parsed.Address,
+                Address = CleanAddress(parsed.Address),
                 SkillCategories = parsed.SkillCategories,
                 CertificateCategories = parsed.CertificateCategories,
                 StartAt = parsed.StartAt,
@@ -387,26 +381,28 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
 
             // =========================
-            // 6. GEOCODE ADDRESS → LAT/LNG
+            // 4. GEOCODE SAFE
             // =========================
             if (!string.IsNullOrWhiteSpace(request.Address))
             {
-                var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+                try
+                {
+                    var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
 
-                if (coords.HasValue)
-                {
-                    request.Latitude = coords.Value.lat;
-                    request.Longitude = coords.Value.lng;
-                    Console.WriteLine($"[GEOCODE] '{request.Address}' → lat={coords.Value.lat}, lng={coords.Value.lng}");
+                    if (coords.HasValue)
+                    {
+                        request.Latitude = coords.Value.lat;
+                        request.Longitude = coords.Value.lng;
+                    }
                 }
-                else
+                catch
                 {
-                    Console.WriteLine($"[GEOCODE] '{request.Address}' → NULL, không geocode được.");
+                    Console.WriteLine("GEOCODE FAIL → SKIP");
                 }
             }
 
             // =========================
-            // 7. LẤY BUSY WORKER IDS
+            // 5. BUSY WORKER SAFE
             // =========================
             HashSet<Guid> busyIds = new();
 
@@ -414,41 +410,97 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             {
                 try
                 {
-                    var busyResponse = await _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
+                    var busyTask = _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
                         new GetBusyWorkerIdsRequest
                         {
                             StartAt = request.StartAt.Value,
                             EndAt = request.EndAt.Value
                         });
 
-                    busyIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
-                    Console.WriteLine($"[BUSY] {busyIds.Count} workers đang bận.");
+                    var completed = await Task.WhenAny(busyTask, Task.Delay(1500));
+
+                    if (completed == busyTask)
+                    {
+                        var res = await busyTask;
+                        busyIds = res.Message.BusyWorkerIds.ToHashSet();
+                    }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Console.WriteLine($"[BUSY] Lấy busy workers thất bại: {ex.Message}");
+                    Console.WriteLine("BUSY WORKER FAIL → SKIP");
                 }
             }
 
             // =========================
-            // 8. QUERY DATABASE
+            // 6. DB FAST QUERY (IMPORTANT FIX)
             // =========================
             var workers = await _workerRepository.FilterStrictAsync(request);
 
             // =========================
-            // 9. LOẠI BUSY WORKERS
+            // 7. REMOVE BUSY
             // =========================
-            if (busyIds.Any())
+            if (busyIds.Count > 0)
                 workers = workers.Where(x => !busyIds.Contains(x.Id)).ToList();
 
-            Console.WriteLine($"[NLP] Kết quả: {workers.Count} workers sau filter.");
+            Console.WriteLine($"FINAL COUNT = {workers.Count}");
 
-            // =========================
-            // 10. RESPONSE
-            // =========================
-            string? warning = workers.Any() ? null : "Không tìm thấy worker phù hợp.";
-            return BuildNlpResponse(workers, warning);
+            return BuildNlpResponse(workers, workers.Any() ? null : "Không tìm thấy worker phù hợp.");
         }
+
+        private bool IsEmpty(WorkerFilterNlpResult r)
+        {
+            return r == null ||
+                   (string.IsNullOrWhiteSpace(r.Address)
+                    && (r.SkillCategories == null || !r.SkillCategories.Any())
+                    && (r.CertificateCategories == null || !r.CertificateCategories.Any()));
+        }
+
+        private WorkerFilterNlpResult LocalParse(string query)
+        {
+            var result = new WorkerFilterNlpResult
+            {
+                Address = null,
+                SkillCategories = new List<string>(),
+                CertificateCategories = new List<string>()
+            };
+
+            if (string.IsNullOrWhiteSpace(query))
+                return result;
+
+            var lower = query.ToLower();
+
+            // skill
+            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
+            if (skill.Success)
+                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
+
+            // cert
+            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
+            if (cert.Success)
+                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
+
+            // address
+            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
+            if (addr.Success)
+                result.Address = addr.Groups[2].Value.Trim();
+
+            return result;
+        }
+
+        private string CleanAddress(string? address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return null;
+
+            address = address.ToLower().Trim();
+
+            if (address.Contains("skill") ||
+                address.Contains("certificate"))
+                return null;
+
+            return address;
+        }
+
 
         // -------------------------------------------------------
         // HELPER — map + wrap response
