@@ -17,11 +17,11 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Data.Configurations
 			   .HasDefaultValue(false)
 			   .IsRequired();
 
-			builder.Property(x => x.RecipientId).IsRequired();
+			builder.Property(x => x.RecipientId).IsRequired(false);
 
 			builder.HasIndex(x => new { x.NotificationId, x.RecipientId })
 				.IsUnique()
-				.HasFilter("is_deleted = false");
+				.HasFilter("is_deleted = false AND recipient_id IS NOT NULL");
 
 			builder.HasOne(x=> x.AppNotification)
 				.WithMany(x=> x.NotificationRecipients)

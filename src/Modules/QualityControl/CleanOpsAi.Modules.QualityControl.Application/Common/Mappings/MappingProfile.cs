@@ -46,6 +46,8 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Mappings
 			CreateMap<FcmTokenRegisterDto, FcmToken>();
 			CreateMap<FcmToken, FcmTokenDto>();
 
+			CreateMap<NotificationRecipient, NotificationRecipientDto>();
+			 
 		}
 	}
 }
