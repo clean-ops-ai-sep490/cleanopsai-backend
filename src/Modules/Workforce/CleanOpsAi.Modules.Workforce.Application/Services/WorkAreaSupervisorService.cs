@@ -1,9 +1,11 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
+using MassTransit;
 using Medo; 
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
@@ -13,12 +15,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private readonly IWorkAreaSupervisorRepository _repository;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IRequestClient<GetWorkAreasByIdsRequest> _client;
 
-        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider)
+        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider, IRequestClient<GetWorkAreasByIdsRequest> client)
         {
             _repository = repository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
+            _client = client;
         }
 
         public async Task<WorkAreaSupervisorResponse?> GetByIdAsync(Guid id)
@@ -299,5 +303,69 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
 			return (false, null);
 		}
-	} 
+
+        public async Task<PagedResponse<WorkAreaWithLocationResponse>>GetWorkAreasBySupervisorPaginationAsync(Guid supervisorId, int pageNumber, int pageSize)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            // B1: lấy assignment
+            var assignments = await _repository.GetByUserIdAsync(supervisorId);
+
+            var workAreaIds = assignments
+                .Where(x => x.WorkAreaId.HasValue)
+                .Select(x => x.WorkAreaId.Value)
+                .Distinct()
+                .ToList();
+
+            if (!workAreaIds.Any())
+            {
+                return new PagedResponse<WorkAreaWithLocationResponse>
+                {
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalElements = 0,
+                    TotalPages = 0,
+                    Content = new List<WorkAreaWithLocationResponse>()
+                };
+            }
+
+            // B2: gọi RabbitMQ
+            var response = await _client.GetResponse<GetWorkAreasByIdsResponse>(
+                new GetWorkAreasByIdsRequest
+                {
+                    WorkAreaIds = workAreaIds
+                });
+
+            var data = response.Message.Items;
+
+            // B3: map
+            var mapped = data.Select(x => new WorkAreaWithLocationResponse
+            {
+                WorkAreaId = x.WorkAreaId,
+                WorkAreaName = x.WorkAreaName,
+                ZoneName = x.ZoneName,
+                LocationName = x.LocationName,
+                DisplayLocation = x.DisplayLocation
+            }).ToList();
+
+            //  B4: PAGINATION (QUAN TRỌNG)
+            var totalCount = mapped.Count;
+
+            var pagedItems = mapped
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PagedResponse<WorkAreaWithLocationResponse>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalElements = totalCount,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                Content = pagedItems
+            };
+        }
+
+    } 
 }

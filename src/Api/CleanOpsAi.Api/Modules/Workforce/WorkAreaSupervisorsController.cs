@@ -183,5 +183,22 @@ namespace CleanOpsAi.Api.Modules.Workforce
 
             return Ok(result);
         }
+
+        [HttpGet("workareas/{supervisorId}")]
+        [SwaggerOperation(
+            Summary = "Get work areas by supervisor",
+            Description = "Get all work area of supervisor.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> GetPaging(
+            Guid supervisorId,
+            int pageNumber = 1,
+            int pageSize = 10)
+        {
+            var result = await _service
+                .GetWorkAreasBySupervisorPaginationAsync(supervisorId, pageNumber, pageSize);
+
+            return Ok(result);
+        }
+
     }
 }

@@ -73,7 +73,8 @@ public static class DependencyInjection
 			typeof(GetSupervisorByWorkAreaConsumer).Assembly,
             typeof(GetWorkersByWorkAreaConsumer).Assembly,
             typeof(GetBusyWorkerIdsConsumer).Assembly,
-            typeof(GetEquipmentsByIdsConsumer).Assembly
+            typeof(GetEquipmentsByIdsConsumer).Assembly,
+            typeof(WorkAreaConsumer).Assembly
         );
 
 		builder.Services.AddCors(options =>
