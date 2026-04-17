@@ -22,5 +22,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
         Task UpdateAsync(EquipmentRequest entity, CancellationToken ct = default);
 
         Task DeleteAsync(EquipmentRequest entity, CancellationToken ct = default);
+
+        Task<PaginatedResult<EquipmentRequest>> GetByStatusAsync(EquipmentRequestStatus status, PaginationRequest request, CancellationToken ct = default);
+
+        Task<PaginatedResult<EquipmentRequest>> GetByTaskAssignmentIdAsync(Guid taskAssignmentId, PaginationRequest request, CancellationToken ct = default);
+
+        Task<PaginatedResult<EquipmentRequest>> GetByWorkerIdAsync(Guid workerId, PaginationRequest request, CancellationToken ct = default);
     }
 }

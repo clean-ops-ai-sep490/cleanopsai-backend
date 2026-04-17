@@ -50,6 +50,54 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             return Ok(result);
         }
 
+        [HttpGet("status/{status}")]
+        [SwaggerOperation(
+            Summary = "Get equipment requests by status",
+            Description = "Retrieves equipment requests filtered by status with pagination.",
+            Tags = new[] { "EquipmentRequest" }
+        )]
+        [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetByStatus(
+            EquipmentRequestStatus status,
+            [FromQuery] PaginationRequest request,
+            CancellationToken ct)
+        {
+            var result = await _equipmentRequestService.GetByStatus(status, request, ct);
+            return Ok(result);
+        }
+
+        [HttpGet("task-assignment/{taskAssignmentId:guid}")]
+        [SwaggerOperation(
+            Summary = "Get equipment requests by TaskAssignmentId",
+            Description = "Retrieves equipment requests by task assignment with pagination.",
+            Tags = new[] { "EquipmentRequest" }
+        )]
+        [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetByTaskAssignmentId(
+            Guid taskAssignmentId,
+            [FromQuery] PaginationRequest request,
+            CancellationToken ct)
+        {
+            var result = await _equipmentRequestService.GetByTaskAssignmentId(taskAssignmentId, request, ct);
+            return Ok(result);
+        }
+
+        [HttpGet("worker/{workerId:guid}")]
+        [SwaggerOperation(
+            Summary = "Get equipment requests by WorkerId",
+            Description = "Retrieves equipment requests created by a worker with pagination.",
+            Tags = new[] { "EquipmentRequest" }
+        )]
+        [ProducesResponseType(typeof(PaginatedResult<EquipmentRequestDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetByWorkerId(
+            Guid workerId,
+            [FromQuery] PaginationRequest request,
+            CancellationToken ct)
+        {
+            var result = await _equipmentRequestService.GetByWorkerId(workerId, request, ct);
+            return Ok(result);
+        }
+
         [HttpPost]
         [SwaggerOperation(
             Summary = "Create a new equipment request",

@@ -197,6 +197,63 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             return dto;
         }
 
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByStatus(
+            EquipmentRequestStatus status,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var paged = await _repo.GetByStatusAsync(status, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(paged.Content);
+
+            if (dtos.Count > 0)
+            {
+                await EnrichAsync(dtos, ct);
+            }
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                paged.PageNumber,
+                paged.PageSize,
+                paged.TotalElements,
+                dtos);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByTaskAssignmentId(
+            Guid taskAssignmentId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetByTaskAssignmentIdAsync(taskAssignmentId, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByWorkerId(
+            Guid workerId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetByWorkerIdAsync(workerId, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
+        }
+
         public async Task<bool> Delete(Guid id, CancellationToken ct = default)
         {
             var entity = await _repo.GetByIdAsync(id, ct);
