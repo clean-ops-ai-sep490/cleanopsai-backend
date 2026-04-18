@@ -1,4 +1,5 @@
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
@@ -29,6 +30,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 		private readonly IScoringInferenceClient _inferenceClient;
 		private readonly IEventBus _eventBus;
 		private readonly IUserContext _userContext;
+		private readonly ISupervisorManagedWorkerQueryService _supervisorManagedWorkerQueryService;
+		private readonly IWorkerLookupQueryService _workerLookupQueryService;
 		private readonly ILogger<ScoringJobService> _logger;
 
 		public ScoringJobService(
@@ -36,12 +39,16 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			IScoringInferenceClient inferenceClient,
 			IEventBus eventBus,
 			IUserContext userContext,
+			ISupervisorManagedWorkerQueryService supervisorManagedWorkerQueryService,
+			IWorkerLookupQueryService workerLookupQueryService,
 			ILogger<ScoringJobService> logger)
 		{
 			_repository = repository;
 			_inferenceClient = inferenceClient;
 			_eventBus = eventBus;
 			_userContext = userContext;
+			_supervisorManagedWorkerQueryService = supervisorManagedWorkerQueryService;
+			_workerLookupQueryService = workerLookupQueryService;
 			_logger = logger;
 		}
 
@@ -148,7 +155,14 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 		public async Task<IReadOnlyCollection<PendingScoringReviewItemResponse>> GetPendingResultsAsync(int take = 100, CancellationToken ct = default)
 		{
-			var pendingResults = await _repository.GetPendingResultsAsync(take, ct);
+			var managedWorkerUserIds = await GetScopedManagedWorkerUserIdsAsync(ct);
+			if (IsSupervisor() && (managedWorkerUserIds?.Count ?? 0) == 0)
+			{
+				return Array.Empty<PendingScoringReviewItemResponse>();
+			}
+
+			var pendingResults = await _repository.GetPendingResultsAsync(take, managedWorkerUserIds, ct);
+			var workerLookup = await BuildWorkerLookupAsync(pendingResults, ct);
 
 			return pendingResults
 				.Select(x => new PendingScoringReviewItemResponse
@@ -156,6 +170,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					ResultId = x.Id,
 					JobId = x.ScoringJobId,
 					RequestId = x.ScoringJob.RequestId,
+					SubmittedByUserId = x.ScoringJob.SubmittedByUserId,
+					WorkerId = TryGetWorkerId(workerLookup, x.ScoringJob.SubmittedByUserId),
+					WorkerName = TryGetWorkerName(workerLookup, x.ScoringJob.SubmittedByUserId),
 					EnvironmentKey = x.ScoringJob.EnvironmentKey,
 					SourceType = x.SourceType,
 					Source = x.Source,
@@ -209,6 +226,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			{
 				return null;
 			}
+
+			await EnsureCanReviewResultAsync(result, ct);
 
 			var originalVerdict = string.IsNullOrWhiteSpace(result.Verdict)
 				? "UNKNOWN"
@@ -276,6 +295,90 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				ReviewedByUserId = _userContext.IsAuthenticated ? _userContext.UserId : null,
 				ReviewedByEmail = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
 			};
+		}
+
+		private async Task<IReadOnlyCollection<Guid>?> GetScopedManagedWorkerUserIdsAsync(CancellationToken ct)
+		{
+			if (!IsSupervisor())
+			{
+				return null;
+			}
+
+			if (_userContext.UserId == Guid.Empty)
+			{
+				return Array.Empty<Guid>();
+			}
+
+			return await _supervisorManagedWorkerQueryService.GetManagedWorkerUserIdsAsync(_userContext.UserId, ct);
+		}
+
+		private async Task EnsureCanReviewResultAsync(ScoringJobResult result, CancellationToken ct)
+		{
+			if (!IsSupervisor())
+			{
+				return;
+			}
+
+			var managedWorkerUserIds = await GetScopedManagedWorkerUserIdsAsync(ct) ?? Array.Empty<Guid>();
+			var submittedByUserId = result.ScoringJob?.SubmittedByUserId;
+
+			if (!submittedByUserId.HasValue || !managedWorkerUserIds.Contains(submittedByUserId.Value))
+			{
+				throw new ForbiddenException("You are not allowed to review scoring results outside your managed workers.");
+			}
+		}
+
+		private async Task<IReadOnlyDictionary<Guid, WorkerLookupItem>> BuildWorkerLookupAsync(
+			IReadOnlyCollection<ScoringJobResult> pendingResults,
+			CancellationToken ct)
+		{
+			var submittedByUserIds = pendingResults
+				.Select(x => x.ScoringJob.SubmittedByUserId)
+				.Where(x => x.HasValue)
+				.Select(x => x!.Value)
+				.Distinct()
+				.ToList();
+
+			if (submittedByUserIds.Count == 0)
+			{
+				return new Dictionary<Guid, WorkerLookupItem>();
+			}
+
+			var workers = await _workerLookupQueryService.GetWorkersByUserIdsAsync(submittedByUserIds, ct);
+			return workers.ToDictionary(x => x.UserId);
+		}
+
+		private static Guid? TryGetWorkerId(
+			IReadOnlyDictionary<Guid, WorkerLookupItem> workerLookup,
+			Guid? submittedByUserId)
+		{
+			if (!submittedByUserId.HasValue)
+			{
+				return null;
+			}
+
+			return workerLookup.TryGetValue(submittedByUserId.Value, out var worker)
+				? worker.WorkerId
+				: null;
+		}
+
+		private static string? TryGetWorkerName(
+			IReadOnlyDictionary<Guid, WorkerLookupItem> workerLookup,
+			Guid? submittedByUserId)
+		{
+			if (!submittedByUserId.HasValue)
+			{
+				return null;
+			}
+
+			return workerLookup.TryGetValue(submittedByUserId.Value, out var worker)
+				? worker.FullName
+				: null;
+		}
+
+		private bool IsSupervisor()
+		{
+			return string.Equals(_userContext.Role, "Supervisor", StringComparison.OrdinalIgnoreCase);
 		}
 
 		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default)

@@ -47,14 +47,26 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 				.ToListAsync(ct);
 		}
 
-		public async Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(int take, CancellationToken ct = default)
+		public async Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(
+			int take,
+			IReadOnlyCollection<Guid>? submittedByUserIds = null,
+			CancellationToken ct = default)
 		{
 			var safeTake = Math.Clamp(take, 1, 500);
 
-			return await _dbContext.ScoringJobResults
+			var query = _dbContext.ScoringJobResults
 				.Include(x => x.ScoringJob)
 				.Where(x => x.ScoringJob.Status == ScoringJobStatus.Succeeded
-					&& x.Verdict == "PENDING")
+					&& x.Verdict == "PENDING");
+
+			if (submittedByUserIds is not null)
+			{
+				query = query.Where(x =>
+					x.ScoringJob.SubmittedByUserId.HasValue &&
+					submittedByUserIds.Contains(x.ScoringJob.SubmittedByUserId.Value));
+			}
+
+			return await query
 				.OrderByDescending(x => x.Created)
 				.Take(safeTake)
 				.ToListAsync(ct);

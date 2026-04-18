@@ -456,6 +456,17 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
+        public async Task<List<Guid>> GetManagedWorkerUserIdsBySupervisorAsync(Guid supervisorId, CancellationToken ct = default)
+        {
+            var items = await _repository.GetWorkersBySupervisorIdAsync(supervisorId);
+
+            return items
+                .Where(x => x.Worker is not null && x.Worker.IsDeleted == false)
+                .Select(x => x.Worker.UserId)
+                .Distinct()
+                .ToList();
+        }
+
         public async Task<PagedResponse<WorkAreaSupervisorResponse>> GetWorkersByWorkAreaPagingAsync(
             Guid workAreaId,
             int pageNumber,

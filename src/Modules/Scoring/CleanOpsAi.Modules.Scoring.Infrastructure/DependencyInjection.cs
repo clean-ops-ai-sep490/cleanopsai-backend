@@ -66,6 +66,8 @@ public static class DependencyInjection
 		});
 
 		builder.Services.AddScoped<IScoringJobRepository, ScoringJobRepository>();
+		builder.Services.AddScoped<ISupervisorManagedWorkerQueryService, SupervisorManagedWorkerQueryService>();
+		builder.Services.AddScoped<IWorkerLookupQueryService, WorkerLookupQueryService>();
 		builder.Services.AddScoped<IScoringJobService, ScoringJobService>();
 	}
 }
