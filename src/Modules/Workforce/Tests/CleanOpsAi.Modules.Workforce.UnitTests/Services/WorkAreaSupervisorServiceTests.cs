@@ -270,5 +270,62 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             Assert.False(result.Found);
             Assert.Null(result.SupervisorUserId);
         }
+
+        [Fact]
+        public async Task GetManagedWorkerUserIdsBySupervisorAsync_ShouldReturnDistinctWorkerUserIds()
+        {
+            var supervisorId = Guid.NewGuid();
+            var workerUserId = Guid.NewGuid();
+
+            _repoMock.GetWorkersBySupervisorIdAsync(supervisorId).Returns(new List<WorkAreaSupervisor>
+            {
+                new WorkAreaSupervisor
+                {
+                    WorkerId = Guid.NewGuid(),
+                    Worker = new Worker { UserId = workerUserId, FullName = "Worker A" }
+                },
+                new WorkAreaSupervisor
+                {
+                    WorkerId = Guid.NewGuid(),
+                    Worker = new Worker { UserId = workerUserId, FullName = "Worker A" }
+                }
+            });
+
+            var result = await _service.GetManagedWorkerUserIdsBySupervisorAsync(supervisorId);
+
+            Assert.Single(result);
+            Assert.Equal(workerUserId, result[0]);
+        }
+
+        [Fact]
+        public async Task GetManagedWorkerUserIdsBySupervisorAsync_ShouldSkipDeletedOrMissingWorkers()
+        {
+            var supervisorId = Guid.NewGuid();
+            var activeWorkerUserId = Guid.NewGuid();
+
+            _repoMock.GetWorkersBySupervisorIdAsync(supervisorId).Returns(new List<WorkAreaSupervisor>
+            {
+                new WorkAreaSupervisor
+                {
+                    WorkerId = Guid.NewGuid(),
+                    Worker = new Worker { UserId = activeWorkerUserId, FullName = "Worker A", IsDeleted = false }
+                },
+                new WorkAreaSupervisor
+                {
+                    WorkerId = Guid.NewGuid(),
+                    Worker = new Worker { UserId = Guid.NewGuid(), FullName = "Worker B", IsDeleted = true }
+                },
+                new WorkAreaSupervisor
+                {
+                    WorkerId = Guid.NewGuid(),
+                    Worker = null!
+                }
+            });
+
+            var result = await _service.GetManagedWorkerUserIdsBySupervisorAsync(supervisorId);
+
+            Assert.Single(result);
+            Assert.Equal(activeWorkerUserId, result[0]);
+        }
     }
 }
