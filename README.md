@@ -33,6 +33,8 @@ Service chinh:
 - Backend API: http://localhost:5000
 - Swagger backend: http://localhost:5000/swagger
 - RabbitMQ UI: http://localhost:15672 (guest/guest)
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
 
 Mac dinh backend se goi scoring service tai:
 

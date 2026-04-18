@@ -1,5 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Configs;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
@@ -120,7 +122,34 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			};
 		}
 
-		private string GenerateAccessToken(ApplicationUser user, IList<string> roles)
+        // Get all supervisors with pagination
+        public async Task<PaginatedResult<ApplicationUser>> GetSupervisorsPagingAsync(
+			string? keyword,
+			PaginationRequest request,
+			CancellationToken ct = default)
+        {
+            var query = _dbContext.Users
+                .Where(x => x.Role == UserRole.Supervisor)
+                // chỉ lấy user chưa bị lock
+                .Where(x =>
+                    x.LockoutEnd == null ||
+                    x.LockoutEnd <= DateTimeOffset.UtcNow);
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = $"%{keyword.Trim()}%";
+
+                query = query.Where(x =>
+                    EF.Functions.Like(x.FullName, keyword) ||
+                    EF.Functions.Like(x.Email!, keyword));
+            }
+
+            return await query
+                .OrderByDescending(x => x.CreatedAt)
+                .ToPaginatedResultAsync(request, ct);
+        }
+
+        private string GenerateAccessToken(ApplicationUser user, IList<string> roles)
 		{
 			var key = new SymmetricSecurityKey(
 				Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]!));
@@ -171,6 +200,114 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 
 			return token;
 		}
+
+        public async Task<PaginatedResult<ApplicationUser>> GetUsersPagingAsync(
+			string? keyword,
+			UserRole? role,
+			PaginationRequest request,
+			CancellationToken ct = default)
+        {
+            var query = _dbContext.Users.AsQueryable();
+
+            // Filter role
+            if (role.HasValue)
+            {
+                query = query.Where(x => x.Role == role.Value);
+            }
+
+            // Search
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = $"%{keyword.Trim()}%";
+
+                query = query.Where(x =>
+                    EF.Functions.Like(x.FullName, keyword) ||
+                    EF.Functions.Like(x.Email!, keyword));
+            }
+
+            return await query
+                .OrderByDescending(x => x.CreatedAt)
+                .ToPaginatedResultAsync(request, ct);
+        }
+
+        public async Task<ApplicationUser> GetUserByIdAsync(Guid userId)
+        {
+            var user = await _dbContext.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == userId &&
+                    (x.LockoutEnd == null || x.LockoutEnd <= DateTimeOffset.UtcNow));
+
+            if (user == null)
+                throw new KeyNotFoundException("User not found");
+
+            return user;
+        }
+
+        public async Task UpdateUserAsync(
+			Guid userId,
+			string fullName,
+			UserRole role)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new KeyNotFoundException("User not found");
+
+            user.FullName = fullName;
+            user.Role = role;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Update failed");
+
+            // Update role (Identity)
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Any())
+            {
+                await _userManager.RemoveFromRolesAsync(user, roles);
+            }
+
+            await _userManager.AddToRoleAsync(user, role.ToString());
+        }
+
+        public async Task DeleteUserAsync(Guid userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new KeyNotFoundException("User not found");
+
+            // Lock vĩnh viễn = soft delete
+            user.LockoutEnd = DateTimeOffset.MaxValue;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Delete (lock) failed");
+        }
+
+        public async Task LockUserAsync(Guid userId, int days)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new KeyNotFoundException("User not found");
+
+            user.LockoutEnd = DateTimeOffset.UtcNow.AddDays(days);
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Lock failed");
+        }
+
+        public async Task UnlockUserAsync(Guid userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString())
+                ?? throw new KeyNotFoundException("User not found");
+
+            user.LockoutEnd = null;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Unlock failed");
+        }
 
     }
 }

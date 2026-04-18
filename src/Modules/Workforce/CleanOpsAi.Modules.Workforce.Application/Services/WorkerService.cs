@@ -4,11 +4,13 @@ using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.Nlps;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using MassTransit;
 using Medo;
+using System.Diagnostics;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -316,36 +318,213 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         }
 
         // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
-        public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string query)
+        public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string? query)
         {
+            var traceId = Guid.NewGuid().ToString("N");
+
+            Console.WriteLine($"\n===== NLP START {traceId} =====");
+
             if (string.IsNullOrWhiteSpace(query))
-                throw new BadRequestException("Query không được để trống.");
+            {
+                var all = await _workerRepository.GetAllAsync();
+                return BuildNlpResponse(all, null);
+            }
 
-            var parsed = await _geminiService.ParseWorkerFilterAsync(query);
+            WorkerFilterNlpResult parsed;
 
-            string? warning = null;
-            if (parsed.StartAt.HasValue != parsed.EndAt.HasValue)
+            // =========================
+            // 1. GEMINI SAFE CALL (NO BLOCK)
+            // =========================
+            try
+            {
+                var task = _geminiService.ParseWorkerFilterAsync(query);
+
+                var completed = await Task.WhenAny(task, Task.Delay(1500));
+
+                if (completed == task)
+                    parsed = await task;
+                else
+                {
+                    Console.WriteLine("GEMINI TIMEOUT → LOCAL ONLY");
+                    parsed = new WorkerFilterNlpResult();
+                }
+            }
+            catch
+            {
+                parsed = new WorkerFilterNlpResult();
+            }
+
+            // =========================
+            // 2. SAFE FALLBACK (KHÔNG DÙNG QUERY LÀ ADDRESS)
+            // =========================
+            if (IsEmpty(parsed))
+            {
+                parsed = LocalParse(query); // 🔥 FIX QUAN TRỌNG
+            }
+
+            // =========================
+            // 3. VALIDATE DATE
+            // =========================
+            if (parsed.StartAt > parsed.EndAt)
             {
                 parsed.StartAt = null;
                 parsed.EndAt = null;
-                warning = "Không thể filter theo lịch bận vì thiếu thời gian bắt đầu hoặc kết thúc, kết quả trả về không lọc theo thời gian.";
             }
 
             var request = new WorkerFilterRequest
             {
-                Address = parsed.Address,
+                Address = CleanAddress(parsed.Address),
                 SkillCategories = parsed.SkillCategories,
                 CertificateCategories = parsed.CertificateCategories,
                 StartAt = parsed.StartAt,
                 EndAt = parsed.EndAt
             };
 
+            // =========================
+            // 4. GEOCODE SAFE
+            // =========================
+            if (!string.IsNullOrWhiteSpace(request.Address))
+            {
+                try
+                {
+                    var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+
+                    if (coords.HasValue)
+                    {
+                        request.Latitude = coords.Value.lat;
+                        request.Longitude = coords.Value.lng;
+                    }
+                }
+                catch
+                {
+                    Console.WriteLine("GEOCODE FAIL → SKIP");
+                }
+            }
+
+            // =========================
+            // 5. BUSY WORKER SAFE
+            // =========================
+            HashSet<Guid> busyIds = new();
+
+            if (request.StartAt.HasValue && request.EndAt.HasValue)
+            {
+                try
+                {
+                    var busyTask = _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
+                        new GetBusyWorkerIdsRequest
+                        {
+                            StartAt = request.StartAt.Value,
+                            EndAt = request.EndAt.Value
+                        });
+
+                    var completed = await Task.WhenAny(busyTask, Task.Delay(1500));
+
+                    if (completed == busyTask)
+                    {
+                        var res = await busyTask;
+                        busyIds = res.Message.BusyWorkerIds.ToHashSet();
+                    }
+                }
+                catch
+                {
+                    Console.WriteLine("BUSY WORKER FAIL → SKIP");
+                }
+            }
+
+            // =========================
+            // 6. DB FAST QUERY (IMPORTANT FIX)
+            // =========================
+            var workers = await _workerRepository.FilterStrictAsync(request);
+
+            // =========================
+            // 7. REMOVE BUSY
+            // =========================
+            if (busyIds.Count > 0)
+                workers = workers.Where(x => !busyIds.Contains(x.Id)).ToList();
+
+            Console.WriteLine($"FINAL COUNT = {workers.Count}");
+
+            return BuildNlpResponse(workers, workers.Any() ? null : "Không tìm thấy worker phù hợp.");
+        }
+
+        private bool IsEmpty(WorkerFilterNlpResult r)
+        {
+            return r == null ||
+                   (string.IsNullOrWhiteSpace(r.Address)
+                    && (r.SkillCategories == null || !r.SkillCategories.Any())
+                    && (r.CertificateCategories == null || !r.CertificateCategories.Any()));
+        }
+
+        private WorkerFilterNlpResult LocalParse(string query)
+        {
+            var result = new WorkerFilterNlpResult
+            {
+                Address = null,
+                SkillCategories = new List<string>(),
+                CertificateCategories = new List<string>()
+            };
+
+            if (string.IsNullOrWhiteSpace(query))
+                return result;
+
+            var lower = query.ToLower();
+
+            // skill
+            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
+            if (skill.Success)
+                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
+
+            // cert
+            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
+            if (cert.Success)
+                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
+
+            // address
+            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
+            if (addr.Success)
+                result.Address = addr.Groups[2].Value.Trim();
+
+            return result;
+        }
+
+        private string CleanAddress(string? address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return null;
+
+            address = address.ToLower().Trim();
+
+            if (address.Contains("skill") ||
+                address.Contains("certificate"))
+                return null;
+
+            return address;
+        }
+
+
+        // -------------------------------------------------------
+        // HELPER — map + wrap response
+        // -------------------------------------------------------
+        private WorkerNlpFilterResponse BuildNlpResponse(List<Worker> workers, string? warning)
+        {
             return new WorkerNlpFilterResponse
             {
                 Warning = warning,
-                Workers = await FilterAsync(request)
+                Workers = workers.Select(x => new WorkerResponse
+                {
+                    Id = x.Id,
+                    UserId = x.UserId,
+                    FullName = x.FullName,
+                    DisplayAddress = x.DisplayAddress,
+                    Latitude = x.Latitude,
+                    Longitude = x.Longitude,
+                    AvatarUrl = x.AvatarUrl,
+                    TotalSkills = x.WorkerSkills?.Count ?? 0,
+                    TotalCertifications = x.WorkerCertifications?.Count ?? 0
+                }).ToList()
             };
         }
+
 
         // Lấy thông tin cơ bản (id, full name) của danh sách worker theo ids, dùng cho hiển thị trong dropdown khi chọn worker cho task assignment
         public async Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids)

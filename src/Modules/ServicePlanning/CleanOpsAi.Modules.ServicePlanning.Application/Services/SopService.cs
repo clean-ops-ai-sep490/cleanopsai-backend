@@ -287,15 +287,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(sop);
 		}
 
-		public async Task<PaginatedResult<SopDto>> Gets(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default)
+		public async Task<PaginatedResult<SopListDto>> Gets(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default)
 		{
 			var result = await _sopRepository.GetsPaging(query, request, ct);
 
-			return new PaginatedResult<SopDto>(
+			return new PaginatedResult<SopListDto>(
 				result.PageNumber,
 				result.PageSize,
 				result.TotalElements,
-				_mapper.Map<List<SopDto>>(result.Content));
+				_mapper.Map<List<SopListDto>>(result.Content));
 		}
 
 		public async Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default)

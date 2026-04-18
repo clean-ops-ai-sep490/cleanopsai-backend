@@ -1,7 +1,9 @@
 ﻿using CleanOpsAi.Api.Modules.UserAccess.Dtos;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.UserAccess.Application.Contracts;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
+using CleanOpsAi.Modules.UserAccess.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -133,5 +135,102 @@ namespace CleanOpsAi.Api.Modules.UserAccess
             await _authService.ResetPassword(request.Email, request.Token, request.NewPassword);
             return Ok("Reset password thành công");
         }
+
+        [HttpGet("supervisors")]
+        //[Authorize(Roles = "Admin,Manager")]
+        [SwaggerOperation(
+			Summary = "Get supervisors paging",
+			Description = "Get list of supervisors with pagination and optional keyword search (email or name)",
+			Tags = new[] { "Auth" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Success")]
+        public async Task<IActionResult> GetSupervisors(
+			[FromQuery] string? keyword,
+			[FromQuery] int pageNumber = 1,
+			[FromQuery] int pageSize = 10,
+			CancellationToken ct = default)
+        {
+            var request = new PaginationRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+
+            var result = await _authService.GetSupervisors(keyword, request, ct);
+
+            return Ok(result);
+        }
+
+        [HttpGet("users")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+			Summary = "Get users paging",
+			Description = "Get list of users with pagination, optional keyword and role filter",
+			Tags = new[] { "User Management" })]
+        public async Task<IActionResult> GetUsers(
+			[FromQuery] string? keyword,
+			[FromQuery] UserRole? role,
+			[FromQuery] int pageNumber = 1,
+			[FromQuery] int pageSize = 10,
+			CancellationToken ct = default)
+        {
+            var request = new PaginationRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+
+            var result = await _authService.GetUsers(keyword, role, request, ct);
+
+            return Ok(result);
+        }
+
+        [HttpGet("users/{userId}")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+			Summary = "Get user by id",
+			Description = "Get detail of a user",
+			Tags = new[] { "User Management" })]
+        public async Task<IActionResult> GetUserById(Guid userId)
+        {
+            var result = await _authService.GetUserById(userId);
+            return Ok(result);
+        }
+
+        [HttpPut("users/{userId}")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+			Summary = "Update user",
+			Description = "Update full name and role of user",
+			Tags = new[] { "User Management" })]
+        public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
+        {
+            var result = await _authService.UpdateUser(userId, request.FullName, request.Role);
+            return Ok(result);
+        }
+
+        [HttpDelete("users/{userId}")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+			Summary = "Delete user",
+			Description = "Soft delete user (lock permanently)",
+			Tags = new[] { "User Management" })]
+        public async Task<IActionResult> DeleteUser(Guid userId)
+        {
+            var result = await _authService.DeleteUser(userId);
+            return Ok(result);
+        }
+
+        [HttpPost("users/{userId}/unlock")]
+        //[Authorize(Roles = "Admin")]
+        [SwaggerOperation(
+			Summary = "Unlock user",
+			Description = "Unlock user account",
+			Tags = new[] { "User Management" })]
+        public async Task<IActionResult> UnlockUser(Guid userId)
+        {
+            var result = await _authService.UnlockUser(userId);
+            return Ok(result);
+        }
+
     }
 }

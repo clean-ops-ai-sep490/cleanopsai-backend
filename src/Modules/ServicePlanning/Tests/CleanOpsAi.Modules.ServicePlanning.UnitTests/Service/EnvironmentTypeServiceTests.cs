@@ -138,21 +138,54 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 		public async Task Update_WhenEnvironmentTypeExists_MapsAndSaves_ReturnsDto()
 		{
 			var id = Guid.NewGuid();
-			var entity = new EnvironmentType { Id = id, Name = "Original", Description = "Original desc" };
-			var dto = new EnvironmentTypeUpdateDto { Name = "Updated", Description = "Updated desc" };
-			var expectedDto = new EnvironmentTypeDto { Id = id, Name = dto.Name, Description = dto.Description };
 
-			_environmentTypeRepository.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(entity);
-			_environmentTypeRepository.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
-			_mapper.Map<EnvironmentTypeDto>(entity).Returns(expectedDto);
+			var entity = new EnvironmentType
+			{
+				Id = id,
+				Name = "Original",
+				Description = "Original desc"
+			};
+
+			var dto = new EnvironmentTypeUpdateDto
+			{
+				Name = "Updated",
+				Description = "Updated desc"
+			};
+
+			var expectedDto = new EnvironmentTypeDto
+			{
+				Id = id,
+				Name = dto.Name,
+				Description = dto.Description
+			};
+			 
+			var now = DateTime.UtcNow;
+			_dateTimeProvider.UtcNow.Returns(now);
+
+			_environmentTypeRepository
+				.GetByIdAsync(id, Arg.Any<CancellationToken>())
+				.Returns(entity);
+
+			_environmentTypeRepository
+				.SaveChangesAsync(Arg.Any<CancellationToken>())
+				.Returns(1);
+
+			_mapper
+				.Map<EnvironmentTypeDto>(entity)
+				.Returns(expectedDto);
 
 			var result = await _service.Update(id, dto);
 
+			// assert result
 			Assert.Equal(expectedDto.Id, result.Id);
 			Assert.Equal(expectedDto.Name, result.Name);
 			Assert.Equal(expectedDto.Description, result.Description);
-			Assert.NotEqual(default, entity.LastModified);
-			await _environmentTypeRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+
+			// 🔥 assert chuẩn hơn
+			Assert.Equal(now, entity.LastModified);
+
+			await _environmentTypeRepository.Received(1)
+				.SaveChangesAsync(Arg.Any<CancellationToken>());
 		}
 
 		[Fact]

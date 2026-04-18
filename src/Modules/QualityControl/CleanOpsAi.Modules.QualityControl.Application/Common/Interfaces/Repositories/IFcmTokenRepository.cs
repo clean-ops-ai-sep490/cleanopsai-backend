@@ -19,5 +19,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Reposi
 		Task<List<FcmToken>> GetActiveTokensForPushAsync(
 			List<NotificationRecipientEvent> recipients,
 			CancellationToken cancellationToken = default);
+
+		Task<FcmToken?> GetByUniqueIdAsync(string uniqueId, CancellationToken cancellationToken = default);
 	}
 }

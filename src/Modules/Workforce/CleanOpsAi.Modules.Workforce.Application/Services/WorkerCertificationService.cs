@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.Modules.Workforce.Application.Dtos;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.WorkerCertifications;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
@@ -85,6 +86,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         // create
         public async Task<WorkerCertificationResponse?> CreateAsync(WorkerCertificationCreateRequest request)
         {
+            if (request.ExpiredAt <= request.IssuedDate)
+                throw new BadRequestException("ExpiredAt must be greater than IssuedDate");
+
+            var existing = await _repository.GetByIdAsync(request.WorkerId, request.CertificationId);
+
+            if (existing != null)
+                throw new BadRequestException("This worker already has this certification");
+
             var entity = new WorkerCertification
             {
                 WorkerId = request.WorkerId,
@@ -107,6 +116,9 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         // update
         public async Task<WorkerCertificationResponse?> UpdateAsync(Guid workerId, Guid certificationId, WorkerCertificationUpdateRequest request)
         {
+            if (request.ExpiredAt <= request.IssuedDate)
+                throw new BadRequestException("ExpiredAt must be greater than IssuedDate");
+
             var entity = await _repository.GetByIdAsync(workerId, certificationId);
 
             if (entity == null)
@@ -137,6 +149,15 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 return 0;
 
             return await _repository.DeleteAsync(workerId, certificationId);
+        }
+
+        public static void Validate(DateTime issuedDate, DateTime expiredAt, DateTime now)
+        {
+            if (expiredAt <= issuedDate)
+                throw new BadRequestException("ExpiredAt must be greater than IssuedDate");
+
+            if (expiredAt <= now)
+                throw new BadRequestException("Certification is already expired and cannot be assigned");
         }
     }
 }

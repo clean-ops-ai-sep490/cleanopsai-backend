@@ -1,0 +1,275 @@
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Response;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.Nlps;
+using CleanOpsAi.Modules.Workforce.Application.Dtos.Workers;
+using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
+using CleanOpsAi.Modules.Workforce.Domain.Entities;
+using MassTransit;
+using NSubstitute;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
+{
+    public class WorkerServiceTests
+    {
+        private readonly IWorkerRepository _repoMock;
+        private readonly IFileStorageService _fileMock;
+        private readonly IUserContext _userContextMock;
+        private readonly IDateTimeProvider _dateTimeMock;
+        private readonly IGoongMapService _goongMock;
+        private readonly IRequestClient<GetBusyWorkerIdsRequest> _busMock;
+        private readonly IGeminiService _geminiMock;
+
+        private readonly WorkerService _service;
+
+        public WorkerServiceTests()
+        {
+            _repoMock = Substitute.For<IWorkerRepository>();
+            _fileMock = Substitute.For<IFileStorageService>();
+            _userContextMock = Substitute.For<IUserContext>();
+            _dateTimeMock = Substitute.For<IDateTimeProvider>();
+            _goongMock = Substitute.For<IGoongMapService>();
+            _busMock = Substitute.For<IRequestClient<GetBusyWorkerIdsRequest>>();
+            _geminiMock = Substitute.For<IGeminiService>();
+
+            _service = new WorkerService(
+                _repoMock,
+                _fileMock,
+                _userContextMock,
+                _dateTimeMock,
+                _goongMock,
+                _busMock,
+                _geminiMock
+            );
+        }
+
+        // ================================
+        // CREATE
+        // ================================
+        [Fact]
+        public async Task CreateAsync_ShouldReturnWorker()
+        {
+            var request = new WorkerCreateRequest
+            {
+                UserId = Guid.NewGuid(),
+                FullName = "Test"
+            };
+
+            _userContextMock.UserId.Returns(Guid.NewGuid());
+            _dateTimeMock.UtcNow.Returns(DateTime.UtcNow);
+
+            _repoMock.CreateAsync(Arg.Any<Worker>()).Returns(1);
+
+            var result = await _service.CreateAsync(request);
+
+            Assert.NotNull(result);
+            Assert.Equal(request.FullName, result.FullName);
+        }
+
+        // ================================
+        // UPDATE - NOT FOUND
+        // ================================
+        [Fact]
+        public async Task UpdateAsync_ShouldThrow_WhenNotFound()
+        {
+            var id = Guid.NewGuid();
+
+            _repoMock.GetByIdAsync(id).Returns((Worker?)null);
+
+            await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                _service.UpdateAsync(id, new WorkerUpdateRequest()));
+        }
+
+        // ================================
+        // UPDATE - GEO + AVATAR
+        // ================================
+        [Fact]
+        public async Task UpdateAsync_ShouldUpdateGeoAndAvatar()
+        {
+            var id = Guid.NewGuid();
+
+            var worker = new Worker
+            {
+                Id = id,
+                WorkerSkills = new List<WorkerSkill>(),
+                WorkerCertifications = new List<WorkerCertification>()
+            };
+
+            var request = new WorkerUpdateRequest
+            {
+                DisplayAddress = "HCM",
+                AvatarStream = new MemoryStream(),
+                AvatarFileName = "a.png"
+            };
+
+            _repoMock.GetByIdAsync(id).Returns(worker);
+
+            _goongMock.GetCoordinatesAsync("HCM")
+                .Returns((10.0, 20.0));
+
+            _fileMock.UploadFileAsync(
+                Arg.Any<Stream>(),
+                Arg.Any<string>(),
+                Arg.Any<string>())
+                .Returns("url");
+
+            _userContextMock.UserId.Returns(Guid.NewGuid());
+            _dateTimeMock.UtcNow.Returns(DateTime.UtcNow);
+
+            var result = await _service.UpdateAsync(id, request);
+
+            Assert.Equal(10.0, result!.Latitude);
+            Assert.Equal(20.0, result.Longitude);
+            Assert.Equal("url", result.AvatarUrl);
+        }
+
+        // ================================
+        // DELETE
+        // ================================
+        [Fact]
+        public async Task DeleteAsync_ShouldDelete()
+        {
+            var id = Guid.NewGuid();
+
+            _repoMock.GetByIdAsync(id).Returns(new Worker { Id = id });
+            _repoMock.DeleteAsync(id).Returns(1);
+
+            var result = await _service.DeleteAsync(id);
+
+            Assert.Equal(1, result);
+        }
+
+        // ================================
+        // FILTER - INVALID TIME
+        // ================================
+        [Fact]
+        public async Task FilterAsync_ShouldThrow_WhenInvalidTime()
+        {
+            var request = new WorkerFilterRequest
+            {
+                StartAt = DateTime.UtcNow,
+                EndAt = DateTime.UtcNow.AddDays(-1)
+            };
+
+            await Assert.ThrowsAsync<BadRequestException>(() =>
+                _service.FilterAsync(request));
+        }
+
+        // ================================
+        // FILTER - REMOVE BUSY
+        // ================================
+        [Fact]
+        public async Task FilterAsync_ShouldExcludeBusyWorkers()
+        {
+            var workerId = Guid.NewGuid();
+
+            var workers = new List<Worker>
+            {
+                new Worker
+                {
+                    Id = workerId,
+                    WorkerSkills = new List<WorkerSkill>(),
+                    WorkerCertifications = new List<WorkerCertification>()
+                }
+            };
+
+            var request = new WorkerFilterRequest
+            {
+                StartAt = DateTime.UtcNow,
+                EndAt = DateTime.UtcNow.AddDays(1)
+            };
+
+            // mock bus
+            var response = Substitute.For<Response<GetBusyWorkerIdsResponse>>();
+            response.Message.Returns(new GetBusyWorkerIdsResponse
+            {
+                BusyWorkerIds = new List<Guid> { workerId }
+            });
+
+            _busMock.GetResponse<GetBusyWorkerIdsResponse>(Arg.Any<GetBusyWorkerIdsRequest>())
+                .Returns(Task.FromResult(response));
+
+            _repoMock.FilterAsync(request).Returns(workers);
+
+            var result = await _service.FilterAsync(request);
+
+            Assert.Empty(result); // bị loại vì busy
+        }
+
+        // ================================
+        // NLP FILTER
+        // ================================
+        [Fact]
+        public async Task NlpFilterAsync_ShouldCallGemini()
+        {
+            _geminiMock.ParseWorkerFilterAsync("test")
+                .Returns(new WorkerFilterNlpResult
+                {
+                    Address = "HCM",
+                    SkillCategories = new List<string>(),
+                    CertificateCategories = new List<string>(),
+                    StartAt = null,
+                    EndAt = null
+                });
+
+            _goongMock.GetCoordinatesAsync("HCM")
+                .Returns((10.8231, 106.6297));
+
+            _repoMock.FilterStrictAsync(Arg.Any<WorkerFilterRequest>())
+                .Returns(new List<Worker>());
+
+            var result = await _service.NlpFilterAsync("test");
+
+            Assert.NotNull(result);
+        }
+
+        // ================================
+        // GET BY IDS
+        // ================================
+        [Fact]
+        public async Task GetWorkersByIds_ShouldReturnList()
+        {
+            var data = new List<Worker>
+            {
+                new Worker { Id = Guid.NewGuid(), FullName = "A" }
+            };
+
+            _repoMock.GetWorkersByIds(Arg.Any<List<Guid>>())
+                     .Returns(data);
+
+            var result = await _service.GetWorkersByIds(new List<Guid> { Guid.NewGuid() });
+
+            Assert.Single(result);
+            Assert.Equal("A", result[0].FullName);
+        }
+
+        // ================================
+        // QUALIFIED
+        // ================================
+        [Fact]
+        public async Task IsWorkerQualifiedAsync_ShouldReturnTrue()
+        {
+            _repoMock.IsWorkerQualifiedAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<List<Guid>>(),
+                Arg.Any<List<Guid>>(),
+                Arg.Any<CancellationToken>())
+                .Returns(true);
+
+            var result = await _service.IsWorkerQualifiedAsync(
+                Guid.NewGuid(),
+                new List<Guid>(),
+                new List<Guid>());
+
+            Assert.True(result);
+        }
+    }
+}

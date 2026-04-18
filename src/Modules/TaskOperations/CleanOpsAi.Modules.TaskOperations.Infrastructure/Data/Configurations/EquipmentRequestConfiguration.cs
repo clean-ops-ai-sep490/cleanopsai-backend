@@ -10,9 +10,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 		{
 			builder.HasKey(x => x.Id);
 
-			builder.Property(x => x.Quantity)
-				.IsRequired();
-
 			builder.Property(x => x.Reason)
 				.HasMaxLength(1000);
 

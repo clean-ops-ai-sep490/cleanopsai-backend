@@ -28,7 +28,7 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 			Description = "Retrieves a paginated list of Standard Operating Procedures (SOPs). Each SOP defines a structured workflow consisting of ordered steps, associated environment type, and service configuration.",
 			Tags = new[] { "SOP" }
 		)]
-		[ProducesResponseType(typeof(PaginatedResult<SopDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(typeof(PaginatedResult<SopListDto>), StatusCodes.Status200OK)]
 		public async Task<IActionResult> Gets(
 		[FromQuery] GetsSopQueryFilter query,
 		[FromQuery] PaginationRequest request,

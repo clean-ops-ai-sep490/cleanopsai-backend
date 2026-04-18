@@ -46,7 +46,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 
 		public async Task<PaginatedResult<Sop>> GetsPaging(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default)
 		{
-			var sops = _context.Sops.AsQueryable();
+			var sops = _context.Sops.Include(x => x.EnvironmentType).Include(x=>x.SopSteps).AsQueryable();
 
 			if (!string.IsNullOrWhiteSpace(query.Name))
 			{

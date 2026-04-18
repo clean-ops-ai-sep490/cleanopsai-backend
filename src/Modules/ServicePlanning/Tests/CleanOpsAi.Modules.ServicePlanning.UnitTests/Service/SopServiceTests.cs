@@ -148,7 +148,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			var query = new GetsSopQueryFilter(); 
 
 			var sops = new List<Sop> { new Sop(), new Sop() };
-			var sopDtos = new List<SopDto> { new SopDto(), new SopDto() };
+			var sopDtos = new List<SopListDto> { new SopListDto(), new SopListDto() };
 
 			var pagedResult = new PaginatedResult<Sop>(1, 10, 2, sops);
 
@@ -157,7 +157,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 				.Returns(pagedResult);
 
 			_mapper
-				.Map<List<SopDto>>(Arg.Any<List<Sop>>())
+				.Map<List<SopListDto>>(Arg.Any<List<Sop>>())
 				.Returns(sopDtos);
 
 			var result = await _service.Gets(query, request); 
