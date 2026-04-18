@@ -500,20 +500,23 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			var payloadNode = JsonNode.Parse(string.IsNullOrWhiteSpace(payloadJson) ? "{}" : payloadJson) as JsonObject
 				?? new JsonObject();
 
-			var reviewEntry = new JsonObject
+			JsonObject CreateReviewEntry()
 			{
-				["original_verdict"] = originalVerdict,
-				["reviewed_verdict"] = reviewedVerdict,
-				["review_reason"] = reviewReason,
-				["reviewed_at_utc"] = reviewedAtUtc,
-				["reviewed_by_user_id"] = reviewedByUserId?.ToString(),
-				["reviewed_by_email"] = reviewedByEmail,
-			};
+				return new JsonObject
+				{
+					["original_verdict"] = originalVerdict,
+					["reviewed_verdict"] = reviewedVerdict,
+					["review_reason"] = reviewReason,
+					["reviewed_at_utc"] = reviewedAtUtc,
+					["reviewed_by_user_id"] = reviewedByUserId?.ToString(),
+					["reviewed_by_email"] = reviewedByEmail,
+				};
+			}
 
 			var reviewHistory = payloadNode["human_review_history"] as JsonArray ?? new JsonArray();
-			reviewHistory.Add(reviewEntry);
+			reviewHistory.Add(CreateReviewEntry());
 			payloadNode["human_review_history"] = reviewHistory;
-			payloadNode["human_review"] = reviewEntry;
+			payloadNode["human_review"] = CreateReviewEntry();
 
 			return payloadNode;
 		}
