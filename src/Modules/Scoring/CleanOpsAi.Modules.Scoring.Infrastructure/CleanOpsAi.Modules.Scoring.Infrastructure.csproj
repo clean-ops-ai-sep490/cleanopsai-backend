@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+    <PackageReference Include="Quartz" Version="3.16.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.16.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Infrastructure\CleanOpsAi.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\CleanOpsAi.Modules.Scoring.Application\CleanOpsAi.Modules.Scoring.Application.csproj" />
+  </ItemGroup>
+
+</Project>

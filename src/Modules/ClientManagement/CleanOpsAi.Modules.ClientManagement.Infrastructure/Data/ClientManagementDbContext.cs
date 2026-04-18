@@ -16,6 +16,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Data
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
+			modelBuilder.HasDefaultSchema("client_management");
+
 			base.OnModelCreating(modelBuilder);
 
 			modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

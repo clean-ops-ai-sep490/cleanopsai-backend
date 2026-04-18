@@ -17,6 +17,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("task_operations")
                 .HasAnnotation("ProductVersion", "8.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -62,26 +63,32 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("reason");
 
+                    b.Property<DateTime?>("RequestDateFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("request_date_from");
+
+                    b.Property<DateTime?>("RequestDateTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("request_date_to");
+
                     b.Property<int>("RequestType")
                         .HasColumnType("integer")
                         .HasColumnName("request_type");
 
-                    b.Property<string>("RequestedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("requested_by_user_id");
+                    b.Property<Guid>("RequestedByWorkerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_worker_id");
 
-                    b.Property<string>("ReviewedByUserId")
+                    b.Property<Guid?>("ReviewedByUserId")
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid>("TaskAssignmentId")
+                    b.Property<Guid?>("TaskAssignmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_assignment_id");
 
@@ -91,7 +98,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_adhoc_requests_task_assignment_id");
 
-                    b.ToTable("adhoc_requests", (string)null);
+                    b.ToTable("adhoc_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.ComplianceCheck", b =>
@@ -144,7 +151,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskStepExecutionId")
                         .HasDatabaseName("ix_compliance_checks_task_step_execution_id");
 
-                    b.ToTable("compliance_checks", (string)null);
+                    b.ToTable("compliance_checks", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EmergencyLeaveRequest", b =>
@@ -183,16 +190,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
-                    b.Property<string>("ReviewedById")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("reviewed_by_id");
+                    b.Property<DateTime>("LeaveDateFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("leave_date_from");
+
+                    b.Property<DateTime>("LeaveDateTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("leave_date_to");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid>("TaskAssignmentId")
+                    b.Property<Guid?>("TaskAssignmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_assignment_id");
 
@@ -210,7 +224,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_emergency_leave_requests_task_assignment_id");
 
-                    b.ToTable("emergency_leave_requests", (string)null);
+                    b.ToTable("emergency_leave_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", b =>
@@ -220,6 +234,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
@@ -227,10 +245,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
                         .HasColumnName("created_by");
-
-                    b.Property<Guid>("EquipmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("equipment_id");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -244,18 +258,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity");
-
                     b.Property<string>("Reason")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("reason");
 
-                    b.Property<string>("ReviewedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
@@ -279,7 +288,42 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("WorkerId")
                         .HasDatabaseName("ix_equipment_requests_worker_id");
 
-                    b.ToTable("equipment_requests", (string)null);
+                    b.ToTable("equipment_requests", "task_operations");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequestItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EquipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_id");
+
+                    b.Property<Guid>("EquipmentRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_request_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_request_items");
+
+                    b.HasIndex("EquipmentId")
+                        .HasDatabaseName("ix_equipment_request_items_equipment_id");
+
+                    b.HasIndex("EquipmentRequestId")
+                        .HasDatabaseName("ix_equipment_request_items_equipment_request_id");
+
+                    b.HasIndex("EquipmentRequestId", "EquipmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_equipment_request_items_equipment_request_id_equipment_id");
+
+                    b.ToTable("equipment_request_items", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
@@ -323,9 +367,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
 
-                    b.Property<string>("ResolvedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("resolved_by_user_id");
 
                     b.Property<int>("Status")
@@ -345,7 +388,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_issue_reports_task_assignment_id");
 
-                    b.ToTable("issue_reports", (string)null);
+                    b.ToTable("issue_reports", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", b =>
@@ -358,6 +401,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<Guid>("AssigneeId")
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_id");
+
+                    b.Property<string>("AssigneeName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("assignee_name");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
@@ -389,13 +438,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnName("last_modified_by");
 
                     b.Property<string>("NameAdhocTask")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("name_adhoc_task");
 
                     b.Property<Guid>("OriginalAssigneeId")
                         .HasColumnType("uuid")
                         .HasColumnName("original_assignee_id");
+
+                    b.Property<string>("OriginalAssigneeName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_assignee_name");
+
+                    b.Property<DateTime>("ScheduledEndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_end_at");
 
                     b.Property<DateTime>("ScheduledStartAt")
                         .HasColumnType("timestamp with time zone")
@@ -409,6 +468,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("task_schedule_id");
 
+                    b.Property<Guid>("WorkAreaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_area_id");
+
                     b.HasKey("Id")
                         .HasName("pk_task_assignments");
 
@@ -421,7 +484,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskScheduleId")
                         .HasDatabaseName("ix_task_assignments_task_schedule_id");
 
-                    b.ToTable("task_assignments", (string)null);
+                    b.HasIndex("TaskScheduleId", "ScheduledStartAt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_task_assignments_task_schedule_id_scheduled_start_at")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("task_assignments", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskHistory", b =>
@@ -482,7 +550,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_task_history_task_assignment_id");
 
-                    b.ToTable("task_history", (string)null);
+                    b.ToTable("task_history", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskStepExecution", b =>
@@ -495,6 +563,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<DateTime>("CompletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
+
+                    b.Property<string>("ConfigSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("config_snapshot");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
@@ -533,6 +606,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
+                    b.Property<int>("StepOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("step_order");
+
                     b.Property<Guid>("TaskAssignmentId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_assignment_id");
@@ -543,7 +620,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_task_step_executions_task_assignment_id");
 
-                    b.ToTable("task_step_executions", (string)null);
+                    b.ToTable("task_step_executions", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskStepExecutionImage", b =>
@@ -593,7 +670,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasIndex("TaskStepExecutionId")
                         .HasDatabaseName("ix_task_step_execution_images_task_step_execution_id");
 
-                    b.ToTable("task_step_execution_images", (string)null);
+                    b.ToTable("task_step_execution_images", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskSwapRequest", b =>
@@ -611,6 +688,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<DateTime>("ExpiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expired_at");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -627,18 +708,46 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("requester_id");
 
-                    b.Property<string>("ReviewedBy")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
-                        .HasColumnName("reviewed_by");
+                    b.Property<string>("RequesterName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("requester_name");
+
+                    b.Property<string>("RequesterNote")
+                        .HasColumnType("text")
+                        .HasColumnName("requester_note");
+
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text")
+                        .HasColumnName("review_note");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
+
+                    b.Property<string>("ReviewerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reviewer_name");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("TargetWorkerId")
+                    b.Property<Guid>("TargetTaskAssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_task_assignment_id");
+
+                    b.Property<Guid>("TargetWorkerId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_worker_id");
+
+                    b.Property<string>("TargetWorkerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("target_worker_name");
 
                     b.Property<Guid>("TaskAssignmentId")
                         .HasColumnType("uuid")
@@ -647,10 +756,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_task_swap_requests");
 
+                    b.HasIndex("TargetTaskAssignmentId")
+                        .HasDatabaseName("ix_task_swap_requests_target_task_assignment_id");
+
                     b.HasIndex("TaskAssignmentId")
                         .HasDatabaseName("ix_task_swap_requests_task_assignment_id");
 
-                    b.ToTable("task_swap_requests", (string)null);
+                    b.ToTable("task_swap_requests", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.AdHocRequest", b =>
@@ -659,7 +771,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .WithMany("AdHocRequests")
                         .HasForeignKey("TaskAssignmentId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("fk_adhoc_requests_task_assignments_task_assignment_id");
 
                     b.Navigation("TaskAssignment");
@@ -683,7 +794,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .WithMany("EmergencyLeaveRequests")
                         .HasForeignKey("TaskAssignmentId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("fk_emergency_leave_requests_task_assignments_task_assignment_id");
 
                     b.Navigation("TaskAssignment");
@@ -697,6 +807,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_equipment_requests_task_assignments_task_assignment_id");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequestItem", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", "EquipmentRequest")
+                        .WithMany("Items")
+                        .HasForeignKey("EquipmentRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_equipment_request_items_equipment_requests_equipment_reques");
+
+                    b.Navigation("EquipmentRequest");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
@@ -749,6 +871,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskSwapRequest", b =>
                 {
+                    b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", "TargetTaskAssignment")
+                        .WithMany("TargetTaskSwapRequests")
+                        .HasForeignKey("TargetTaskAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_swap_requests_task_assignments_target_task_assignment_");
+
                     b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", "TaskAssignment")
                         .WithMany("TaskSwapRequests")
                         .HasForeignKey("TaskAssignmentId")
@@ -756,7 +885,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_task_swap_requests_task_assignments_task_assignment_id");
 
+                    b.Navigation("TargetTaskAssignment");
+
                     b.Navigation("TaskAssignment");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", b =>
@@ -768,6 +904,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Navigation("EquipmentRequests");
 
                     b.Navigation("IssueReports");
+
+                    b.Navigation("TargetTaskSwapRequests");
 
                     b.Navigation("TaskStepExecutions");
 

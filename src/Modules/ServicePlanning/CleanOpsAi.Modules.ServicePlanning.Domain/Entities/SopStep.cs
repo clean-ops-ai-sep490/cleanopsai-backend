@@ -12,7 +12,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public int StepOrder { get; set; }
 
-		public string ConfigDetail { get; set; } = null!;
+		public string ConfigDetail { get; set; } = null!; //jsonb
 
 		public virtual Sop Sop { get; set; } = null!;
 

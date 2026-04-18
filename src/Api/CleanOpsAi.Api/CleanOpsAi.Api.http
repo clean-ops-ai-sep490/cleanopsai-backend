@@ -4,3 +4,43 @@ GET {{CleanOpsAi.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+# Submit scoring job (async)
+POST {{CleanOpsAi.Api_HostAddress}}/api/scoring/jobs
+Content-Type: application/json
+
+{
+	"requestId": "demo-map-001",
+	"environmentKey": "LOBBY_CORRIDOR",
+	"imageUrls": [
+		"https://images.unsplash.com/photo-1489515217757-5fd1be406fef",
+		"https://images.unsplash.com/photo-1498049794561-7780e7231661"
+	]
+}
+
+###
+
+# Poll scoring job status (replace GUID from submit response)
+GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/jobs/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+# Visualization image link is returned directly in GET job response per result via `visualizationBlobUrl`.
+
+# List pending AI verdicts for supervisor review
+GET {{CleanOpsAi.Api_HostAddress}}/api/scoring/reviews/pending?take=50
+Accept: application/json
+
+###
+
+# Review a pending result (replace resultId from pending list)
+PUT {{CleanOpsAi.Api_HostAddress}}/api/scoring/reviews/results/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+	"verdict": "PASS",
+	"reason": "Supervisor confirmed area is clean after manual check"
+}
+
+###

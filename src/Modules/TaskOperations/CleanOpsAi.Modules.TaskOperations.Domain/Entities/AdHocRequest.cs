@@ -7,9 +7,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 	[Table("adhoc_requests")]
 	public class AdHocRequest : BaseAuditableEntity
 	{ 
-		public Guid TaskAssignmentId { get; set; }
+		public Guid? TaskAssignmentId { get; set; }
 
-		public string RequestedByUserId { get; set; } = null!;
+        public DateTime? RequestDateFrom { get; set; }
+
+        public DateTime? RequestDateTo { get; set; }
+
+        public Guid RequestedByWorkerId { get; set; }   
 
 		public AdHocRequestType RequestType { get; set; }
 
@@ -19,10 +23,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public AdHocRequestStatus Status { get; set; }
 
-		public string? ReviewedByUserId { get; set; }  
+		public Guid? ReviewedByUserId { get; set; }  
 
 		public DateTime? ApprovedAt { get; set; }
 
-		public virtual TaskAssignment TaskAssignment { get; set; } = null!;
+		public virtual TaskAssignment? TaskAssignment { get; set; }
 	}
 }

@@ -15,12 +15,15 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Data.Configurations
 				.IsRequired();
 
 			builder.Property(wg => wg.Latitude)
-				.IsRequired();
+				.IsRequired(false);
 
 			builder.Property(wg => wg.Longitude)
-				.IsRequired();
+				.IsRequired(false);
 
-			builder.HasOne(wg => wg.Worker)
+            builder.Property(wg => wg.IsConfirmed)
+				.IsRequired(false);
+
+            builder.HasOne(wg => wg.Worker)
 				.WithMany(w => w.WorkerGps)
 				.HasForeignKey(wg => wg.WorkerId)
 				.OnDelete(DeleteBehavior.Cascade);

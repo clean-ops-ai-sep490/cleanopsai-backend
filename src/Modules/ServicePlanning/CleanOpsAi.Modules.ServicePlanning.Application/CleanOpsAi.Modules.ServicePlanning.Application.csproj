@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+	<PackageReference Include="AutoMapper" Version="16.1.1" />
+	<PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CleanOpsAi.Modules.ServicePlanning.Domain\CleanOpsAi.Modules.ServicePlanning.Domain.csproj" />
     <ProjectReference Include="..\CleanOpsAi.Modules.ServicePlanning.IntegrationEvents\CleanOpsAi.Modules.ServicePlanning.IntegrationEvents.csproj" />
   </ItemGroup>

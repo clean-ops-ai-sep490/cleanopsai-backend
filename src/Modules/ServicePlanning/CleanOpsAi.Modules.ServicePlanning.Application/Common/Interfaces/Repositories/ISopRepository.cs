@@ -1,0 +1,24 @@
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
+using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+
+namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories
+{
+	public interface ISopRepository : IBaseRepo<Sop, Guid>
+	{
+		Task<Sop?> GetByIdWithStepsAsync(
+			Guid id,
+			bool includeDeleted = false,
+			CancellationToken cancellationToken = default);
+
+		Task<PaginatedResult<Sop>> GetsPaging(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default);
+
+		Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default);
+
+		Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
+			Guid sopId,
+			CancellationToken ct = default);
+		 
+		Task<Sop?> GetSopWithStepDetail(Guid id, CancellationToken ct = default);
+	}
+}

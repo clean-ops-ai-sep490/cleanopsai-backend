@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -18,14 +18,25 @@
 	<PackageReference Include="dotenv.net" Version="4.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 	<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
+	
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Infrastructure\CleanOpsAi.BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\ClientManagement\CleanOpsAi.Modules.ClientManagement.Infrastructure\CleanOpsAi.Modules.ClientManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\QualityControl\CleanOpsAi.Modules.QualityControl.Infrastructure\CleanOpsAi.Modules.QualityControl.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Scoring\CleanOpsAi.Modules.Scoring.Infrastructure\CleanOpsAi.Modules.Scoring.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\ServicePlanning\CleanOpsAi.Modules.ServicePlanning.Infrastructure\CleanOpsAi.Modules.ServicePlanning.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\TaskOperations\CleanOpsAi.Modules.TaskOperations.Infrastructure\CleanOpsAi.Modules.TaskOperations.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\UserAccess\CleanOpsAi.Modules.UserAccess.Infrastructure\CleanOpsAi.Modules.UserAccess.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\WorkareaCheckin\CleanOpsAi.Modules.WorkareaCheckin.Infrastructure\CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Workforce\CleanOpsAi.Modules.Workforce.Infrastructure\CleanOpsAi.Modules.Workforce.Infrastructure.csproj" />
   </ItemGroup>
+
+	<ItemGroup>
+		<Content Include="Templates\**\*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 
 </Project>

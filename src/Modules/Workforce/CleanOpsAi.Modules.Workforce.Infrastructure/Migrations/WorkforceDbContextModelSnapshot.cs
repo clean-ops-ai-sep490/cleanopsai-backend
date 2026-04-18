@@ -17,6 +17,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("workforce")
                 .HasAnnotation("ProductVersion", "8.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -28,6 +29,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
@@ -62,7 +68,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_certifications");
 
-                    b.ToTable("certifications", (string)null);
+                    b.ToTable("certifications", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Equipment", b =>
@@ -109,7 +115,60 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_equipments");
 
-                    b.ToTable("equipments", (string)null);
+                    b.ToTable("equipments", "workforce");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.PpeItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActionKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action_key");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ppe_item");
+
+                    b.ToTable("ppe_item", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Skill", b =>
@@ -118,6 +177,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
@@ -152,7 +216,67 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_skill");
 
-                    b.ToTable("skill", (string)null);
+                    b.ToTable("skill", "workforce");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkAreaSupervisor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid?>("WorkAreaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_area_id");
+
+                    b.Property<Guid?>("WorkerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("worker_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workarea_supervisors");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_workarea_supervisors_user_id");
+
+                    b.HasIndex("WorkAreaId")
+                        .HasDatabaseName("ix_workarea_supervisors_work_area_id");
+
+                    b.HasIndex("WorkerId")
+                        .HasDatabaseName("ix_workarea_supervisors_worker_id");
+
+                    b.HasIndex("WorkAreaId", "WorkerId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workarea_supervisors_work_area_id_worker_id_user_id")
+                        .HasFilter("\"work_area_id\" IS NOT NULL AND \"worker_id\" IS NOT NULL");
+
+                    b.ToTable("workarea_supervisors", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.Worker", b =>
@@ -179,6 +303,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("display_address");
 
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -199,15 +328,14 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("longitude");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_workers");
 
-                    b.ToTable("workers", (string)null);
+                    b.ToTable("workers", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerCertification", b =>
@@ -234,7 +362,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasIndex("CertificationId")
                         .HasDatabaseName("ix_worker_certifications_certification_id");
 
-                    b.ToTable("worker_certifications", (string)null);
+                    b.ToTable("worker_certifications", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerGps", b =>
@@ -252,6 +380,10 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<bool?>("IsConfirmed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_confirmed");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -264,11 +396,11 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
-                    b.Property<double>("Latitude")
+                    b.Property<double?>("Latitude")
                         .HasColumnType("double precision")
                         .HasColumnName("latitude");
 
-                    b.Property<double>("Longitude")
+                    b.Property<double?>("Longitude")
                         .HasColumnType("double precision")
                         .HasColumnName("longitude");
 
@@ -282,7 +414,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasIndex("WorkerId")
                         .HasDatabaseName("ix_worker_gps_worker_id");
 
-                    b.ToTable("worker_gps", (string)null);
+                    b.ToTable("worker_gps", "workforce");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerSkill", b =>
@@ -305,7 +437,18 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Migrations
                     b.HasIndex("SkillId")
                         .HasDatabaseName("ix_worker_skills_skill_id");
 
-                    b.ToTable("worker_skills", (string)null);
+                    b.ToTable("worker_skills", "workforce");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkAreaSupervisor", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.Workforce.Domain.Entities.Worker", "Worker")
+                        .WithMany()
+                        .HasForeignKey("WorkerId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workarea_supervisors_workers_worker_id");
+
+                    b.Navigation("Worker");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.Workforce.Domain.Entities.WorkerCertification", b =>

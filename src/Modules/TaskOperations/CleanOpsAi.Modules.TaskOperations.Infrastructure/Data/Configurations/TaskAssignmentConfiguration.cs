@@ -1,11 +1,6 @@
 ﻿using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Metadata.Builders; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 {
@@ -18,14 +13,27 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.Property(x => x.Status)
 				.IsRequired();
 
+			builder.HasIndex(x => new { x.TaskScheduleId, x.ScheduledStartAt })
+				.IsUnique()
+				.HasFilter("is_deleted = false");
+
 			builder.Property(x => x.ScheduledStartAt)
 				.IsRequired();
 
 			builder.Property(x => x.IsAdhocTask)
 				.IsRequired();
 
+			builder.Property(x => x.WorkAreaId);
+			builder.Property(x => x.ScheduledEndAt);
+
+
+			builder.Property(x => x.OriginalAssigneeName)
+				.HasMaxLength(255);
+			builder.Property(x => x.AssigneeName)
+				.HasMaxLength(255);
+
 			builder.Property(x => x.NameAdhocTask)
-				.HasMaxLength(500);
+				.HasMaxLength(255);
 
 			builder.Property(x => x.DisplayLocation)
 				.HasMaxLength(500);
@@ -38,7 +46,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 
 			builder.HasMany(x => x.TaskSwapRequests)
 				.WithOne(x => x.TaskAssignment)
-				.HasForeignKey(x => x.TaskAssignmentId);
+				.HasForeignKey(x => x.TaskAssignmentId)
+				.OnDelete(DeleteBehavior.Restrict);
+
+			builder.HasMany(x => x.TargetTaskSwapRequests)
+				.WithOne(x => x.TargetTaskAssignment)
+				.HasForeignKey(x => x.TargetTaskAssignmentId)
+				.OnDelete(DeleteBehavior.Restrict);
 
 			builder.HasMany(x => x.IssueReports)
 				.WithOne(x => x.TaskAssignment)
@@ -59,6 +73,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.HasIndex(x => x.AssigneeId);
 			builder.HasIndex(x => x.TaskScheduleId);
 			builder.HasIndex(x => x.Status);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

@@ -10,14 +10,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public Guid WorkerId { get; set; }
 
-		public Guid EquipmentId { get; set; }
-
-		public string? ReviewedByUserId { get; set; }
-
-		public int Quantity { get; set; }
+		public Guid? ReviewedByUserId { get; set; }
 
 		public string? Reason { get; set; }
 
+		public DateTime? ApprovedAt { get; set; }
+
 		public EquipmentRequestStatus Status { get; set; }
-	}
+
+        public ICollection<EquipmentRequestItem> Items { get; set; } = new List<EquipmentRequestItem>();
+    }
 }

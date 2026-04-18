@@ -28,7 +28,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 				.OnDelete(DeleteBehavior.Restrict);
 
 			builder.HasIndex(x => new { x.SopId, x.StepOrder })
-				.IsUnique();
+				.IsUnique().HasFilter("is_deleted = false");
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

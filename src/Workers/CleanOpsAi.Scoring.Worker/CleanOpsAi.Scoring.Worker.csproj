@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Infrastructure\CleanOpsAi.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Scoring\CleanOpsAi.Modules.Scoring.Infrastructure\CleanOpsAi.Modules.Scoring.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

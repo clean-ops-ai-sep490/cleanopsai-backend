@@ -1,4 +1,5 @@
 ﻿using CleanOpsAi.BuildingBlocks.Domain;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
@@ -10,20 +11,38 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public Guid SlaTaskId { get; set; }
 
-		public Guid SlaShiftId { get; set; }	
+		public Guid SlaShiftId { get; set; }
+
+		public Guid WorkAreaId { get; set; }
 
 		public Guid? WorkAreaDetailId { get; set; }
 
 		public string Name { get; set; } = null!;
-
+			
 		public string Description { get; set; } = null!;
 
+		public Guid? AssigneeId { get; set; }
+
+		public string? AssigneeName { get; set; } 
+		public string? DisplayLocation { get; set; }
+
+		public int Version { get; set; }
+
 		public string Metadata { get; set; } = null!;
+
+		public int DurationMinutes { get; set; }
 
 		public RecurrenceType RecurrenceType { get; set; }
 
 		//json
 		public string RecurrenceConfig { get; set; } = null!;
+
+		public DateOnly ContractStartDate { get; set; }
+		public DateOnly? ContractEndDate { get; set; }
+
+		public bool IsActive { get; set; } = true;
+
+		public virtual Sop Sop { get; set; } = null!;
 	}
 }
 

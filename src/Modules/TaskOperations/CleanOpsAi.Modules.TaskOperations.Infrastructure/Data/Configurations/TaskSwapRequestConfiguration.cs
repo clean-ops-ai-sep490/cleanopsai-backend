@@ -13,13 +13,24 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.Property(x => x.Status)
 				.IsRequired();
 
-			builder.Property(x => x.ReviewedBy)
-				.HasMaxLength(450);
+			builder.Property(x => x.RequesterName).HasMaxLength(200);
+			builder.Property(x => x.TargetWorkerName).HasMaxLength(200);
+			builder.Property(x => x.ReviewerName).HasMaxLength(200);
+
+
+			builder.Property(x => x.ReviewedByUserId); 
 
 			builder.HasOne(x => x.TaskAssignment)
 				.WithMany(x => x.TaskSwapRequests)
 				.HasForeignKey(x => x.TaskAssignmentId)
 				.OnDelete(DeleteBehavior.Cascade);
+
+			builder.HasOne(x => x.TargetTaskAssignment)
+				.WithMany(x => x.TargetTaskSwapRequests)
+				.HasForeignKey(x => x.TargetTaskAssignmentId)
+				.OnDelete(DeleteBehavior.Cascade);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}
 }

@@ -17,8 +17,23 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.Property(x => x.Description) 
 				.HasMaxLength(1000);
 
+			builder.Property(x => x.AssigneeId);
+
+			builder.Property(x => x.AssigneeName);
+			builder.Property(x => x.DisplayLocation);
+
+
+			builder.Property(x => x.WorkAreaId);
+			builder.Property(x => x.WorkAreaDetailId);
+
+
+			builder.Property(t => t.Version);
+
 			builder.Property(x => x.Metadata)
 				.HasColumnType("jsonb");
+
+			builder.Property(t => t.DurationMinutes);
+
 
 			builder.Property(x => x.RecurrenceConfig)
 				.IsRequired()
@@ -29,10 +44,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 
 			builder.HasIndex(x => x.SopId);
 
-			builder.HasOne<Sop>()
-				.WithMany()
+			builder.HasOne(x => x.Sop)
+				.WithMany(x => x.TaskSchedules)
 				.HasForeignKey(x => x.SopId)
 				.OnDelete(DeleteBehavior.Restrict);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
+
 		}
 	}
 }

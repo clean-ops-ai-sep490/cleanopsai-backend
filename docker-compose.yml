@@ -1,13 +1,99 @@
-version: '3.8'
+x-common-env: &common-env
+  ConnectionStrings__DefaultConnection: ${BACKEND_DB_CONNECTION:?BACKEND_DB_CONNECTION must be set}
+  MessageBroker__Host: ${MESSAGE_BROKER_HOST:-rabbitmq}
+  MessageBroker__Username: ${MESSAGE_BROKER_USERNAME:-guest}
+  MessageBroker__Password: ${MESSAGE_BROKER_PASSWORD:-guest}
+  ScoringService__BaseUrl: ${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
+  ScoringService__EvaluateUrlVisualizeLinkPath: ${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
+
+x-retrain-env: &retrain-env
+  ScoringRetrain__WeeklyJobEnabled: ${SCORING_RETRAIN_WEEKLY_ENABLED_WORKER:-false}
+  ScoringRetrain__WeeklyCronExpression: ${SCORING_RETRAIN_CRON:-0 0 2 ? * SUN *}
+  ScoringRetrain__TimeZoneId: ${SCORING_RETRAIN_TIME_ZONE:-SE Asia Standard Time}
+  ScoringRetrain__LookbackDays: ${SCORING_RETRAIN_LOOKBACK_DAYS:-7}
+  ScoringRetrain__MinReviewedSamples: ${SCORING_RETRAIN_MIN_SAMPLES:-25}
+  ScoringRetrain__MaxSamplesPerBatch: ${SCORING_RETRAIN_MAX_SAMPLES:-500}
+  ScoringRetrain__TrainerCommand: ${SCORING_RETRAIN_TRAINER_COMMAND:-}
+  ScoringRetrain__TrainerWorkingDirectory: ${SCORING_RETRAIN_TRAINER_WORKDIR:-}
+  ScoringRetrain__TrainerTimeoutSeconds: ${SCORING_RETRAIN_TRAINER_TIMEOUT_SEC:-7200}
+  ScoringRetrain__RemoteTrainerEnabled: ${SCORING_RETRAIN_REMOTE_ENABLED:-false}
+  ScoringRetrain__RemoteTrainerBaseUrl: ${SCORING_RETRAIN_REMOTE_BASE_URL:-http://host.docker.internal:8000}
+  ScoringRetrain__RemoteTrainerApiKey: ${SCORING_RETRAIN_REMOTE_API_KEY:-}
+  ScoringRetrain__RemoteTrainerTimeoutSeconds: ${SCORING_RETRAIN_REMOTE_TIMEOUT_SEC:-7200}
+  ScoringRetrain__RemoteTrainerPollIntervalSeconds: ${SCORING_RETRAIN_REMOTE_POLL_INTERVAL_SEC:-5}
+  ScoringRetrain__RemoteTrainerCreatePath: ${SCORING_RETRAIN_REMOTE_CREATE_PATH:-/retrain/jobs}
+  ScoringRetrain__RemoteTrainerStatusPathTemplate: ${SCORING_RETRAIN_REMOTE_STATUS_PATH_TEMPLATE:-/retrain/jobs/{jobId}}
+  ScoringRetrain__ObjectStorageEnabled: ${SCORING_RETRAIN_STORAGE_ENABLED:-true}
+  ScoringRetrain__ObjectStorageConnectionString: ${SCORING_RETRAIN_STORAGE_CONNECTION_STRING:-}
+  ScoringRetrain__ObjectStorageModelsContainer: ${SCORING_RETRAIN_MODELS_CONTAINER:-models}
+  ScoringRetrain__ObjectStorageRetrainContainer: ${SCORING_RETRAIN_RETRAIN_CONTAINER:-retrain}
+  ScoringRetrain__ReviewedSnapshotsEnabled: ${SCORING_RETRAIN_REVIEWED_SNAPSHOTS_ENABLED:-true}
+  ScoringRetrain__ReviewedSamplesContainer: ${SCORING_RETRAIN_REVIEWED_SAMPLES_CONTAINER:-retrain-samples}
+  ScoringRetrain__ReviewedSamplesPrefix: ${SCORING_RETRAIN_REVIEWED_SAMPLES_PREFIX:-scoring/retrain-samples}
+  ScoringRetrain__ReviewedBridgeEnabled: ${SCORING_RETRAIN_BRIDGE_ENABLED:-false}
+  ScoringRetrain__ReviewedBridgeCommand: ${SCORING_RETRAIN_BRIDGE_COMMAND:-}
+  ScoringRetrain__UseExternalCandidateForRetrain: ${SCORING_RETRAIN_USE_EXTERNAL_CANDIDATE:-false}
+  ScoringRetrain__CandidateYoloModelFile: ${SCORING_RETRAIN_CANDIDATE_YOLO_FILE:-outputs/retrain/candidate/yolo_best.pt}
+  ScoringRetrain__CandidateUnetModelFile: ${SCORING_RETRAIN_CANDIDATE_UNET_FILE:-outputs/retrain/candidate/unet_best.pth}
+  ScoringRetrain__CandidateMetricsFile: ${SCORING_RETRAIN_CANDIDATE_METRICS_FILE:-outputs/retrain/candidate_metrics.json}
+  ScoringRetrain__ActiveYoloObjectKey: ${SCORING_RETRAIN_ACTIVE_YOLO_KEY:-scoring/active/yolo/model.pt}
+  ScoringRetrain__ActiveUnetObjectKey: ${SCORING_RETRAIN_ACTIVE_UNET_KEY:-scoring/active/unet/model.pth}
+  ScoringRetrain__ActiveMetricsObjectKey: ${SCORING_RETRAIN_ACTIVE_METRICS_KEY:-scoring/active/metrics/metrics.json}
+  ScoringRetrain__CandidatePrefix: ${SCORING_RETRAIN_CANDIDATE_PREFIX:-scoring/candidates}
+  ScoringRetrain__ExternalCandidatePrefix: ${SCORING_RETRAIN_EXTERNAL_CANDIDATE_PREFIX:-scoring/external/latest}
+  ScoringRetrain__ManifestPrefix: ${SCORING_RETRAIN_MANIFEST_PREFIX:-scoring/manifests}
+  ScoringRetrain__ArchivePrefix: ${SCORING_RETRAIN_ARCHIVE_PREFIX:-scoring/archive}
+  ScoringRetrain__YoloMapMetricKey: ${SCORING_RETRAIN_YOLO_MAP_KEY:-yolo.map}
+  ScoringRetrain__UnetMiouMetricKey: ${SCORING_RETRAIN_UNET_MIOU_KEY:-unet.miou}
+  ScoringRetrain__MinimumYoloMapImprovement: ${SCORING_RETRAIN_MIN_YOLO_MAP_IMPROVEMENT:-0}
+  ScoringRetrain__MinimumUnetMiouImprovement: ${SCORING_RETRAIN_MIN_UNET_MIOU_IMPROVEMENT:-0}
+  ScoringRetrain__PromoteWhenNoBaseline: ${SCORING_RETRAIN_PROMOTE_NO_BASELINE:-false}
+  ScoringRetrain__PromotionCommand: ${SCORING_RETRAIN_PROMOTION_COMMAND:-}
+  ScoringRetrain__RestartServiceCommand: ${SCORING_RETRAIN_RESTART_COMMAND:-}
 
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: cleanopsai-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   cleanopsai-api:
     container_name: cleanopsai-api
     build:
       context: ./src
       dockerfile: Api/CleanOpsAi.Api/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
     ports:
       - "5000:8080"
       - "5001:8081"
-    env_file:
-      - ./src/Api/CleanOpsAi.Api/.env
+    environment:
+      <<: *common-env
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      Jwt__Secret: ${JWT_SECRET:-CleanOpsAi-Dev-Secret-Key-ChangeMe-1234567890}
+      Jwt__Issuer: ${JWT_ISSUER:-CleanOpsAi}
+      Jwt__Audience: ${JWT_AUDIENCE:-CleanOpsAi.Client}
+      Jobs__WeeklyTaskGeneration__Enabled: ${WEEKLY_TASK_JOB_ENABLED:-false}
+      Jobs__WeeklyTaskGeneration__LookAheadDays: ${WEEKLY_TASK_JOB_LOOKAHEAD_DAYS:-7}
+      ScoringRetrain__WeeklyJobEnabled: ${SCORING_RETRAIN_WEEKLY_ENABLED_API:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  cleanopsai-scoring-worker:
+    container_name: cleanopsai-scoring-worker
+    build:
+      context: ./src
+      dockerfile: Workers/CleanOpsAi.Scoring.Worker/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
+    environment:
+      <<: [*common-env, *retrain-env]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+

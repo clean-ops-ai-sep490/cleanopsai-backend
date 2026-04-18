@@ -1,0 +1,40 @@
+﻿using MassTransit;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection; 
+using System.Reflection; 
+
+namespace CleanOpsAi.BuildingBlocks.Infrastructure.Extensions
+{
+	public static class MassTransitExtensions
+	{
+		public static IServiceCollection AddMessageBroker(
+			this IServiceCollection services,
+			IConfiguration configuration,
+			params Assembly[] consumerAssemblies) 
+		{
+			services.AddMassTransit(x =>
+			{
+				x.SetKebabCaseEndpointNameFormatter();
+
+				foreach (var assembly in consumerAssemblies)
+				{
+					x.AddConsumers(assembly);
+				}
+
+				x.UsingRabbitMq((ctx, cfg) =>
+				{
+					cfg.Host(configuration["MessageBroker:Host"], h =>
+					{
+						h.Username(configuration["MessageBroker:Username"]!);
+						h.Password(configuration["MessageBroker:Password"]!);
+					});
+
+					cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
+					cfg.ConfigureEndpoints(ctx);
+				});
+			});
+
+			return services;
+		}
+	}
+}

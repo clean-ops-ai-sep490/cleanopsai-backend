@@ -10,6 +10,8 @@ namespace CleanOpsAi.Modules.Workforce.Domain.Entities
 
 		public string? Description { get; set; }
 
-		public virtual ICollection<WorkerSkill> WorkerSkills { get; set; } = new List<WorkerSkill>();
+        public string Category { get; set; } = null!;
+
+        public virtual ICollection<WorkerSkill> WorkerSkills { get; set; } = new List<WorkerSkill>();
 	}
 }

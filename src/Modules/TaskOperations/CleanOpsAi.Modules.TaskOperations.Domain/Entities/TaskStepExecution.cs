@@ -12,7 +12,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public TaskStepExecutionStatus Status { get; set; }
 
-		public string ResultData { get; set; } = null!; 
+		public string ConfigSnapshot { get; set; } = null!; // config detail + configschema jsonb
+
+		public string ResultData { get; set; } = null!; //jsonb
+
+		public int StepOrder { get; set; }
 
 		public DateTime StartedAt { get; set; }
 

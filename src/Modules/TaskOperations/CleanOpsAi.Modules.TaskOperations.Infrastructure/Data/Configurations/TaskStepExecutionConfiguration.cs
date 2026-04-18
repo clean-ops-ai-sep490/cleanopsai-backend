@@ -8,7 +8,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 	{
 		public void Configure(EntityTypeBuilder<TaskStepExecution> builder)
 		{
-			builder.HasKey(x => x.Id); 
+			builder.HasKey(x => x.Id);
+
+			builder.Property(x => x.ConfigSnapshot)
+				.HasColumnType("jsonb");
 
 			builder.Property(x => x.ResultData)
 				.HasColumnType("jsonb"); 
@@ -19,6 +22,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 				.OnDelete(DeleteBehavior.Cascade);
 
 			builder.HasIndex(x => x.TaskAssignmentId);
+
+			builder.HasQueryFilter(x => !x.IsDeleted);
+
+			builder.Property(x => x.StepOrder);
 		}
 	}
 }

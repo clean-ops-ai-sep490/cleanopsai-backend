@@ -14,6 +14,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 
 		public string ConfigSchema { get; set; } = null!;
 
+		public bool IsActive { get; set; } = true;
+
 		public virtual ICollection<SopStep> SopSteps { get; set; } = new List<SopStep>();
 	}
 }
