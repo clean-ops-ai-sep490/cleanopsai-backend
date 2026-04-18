@@ -9,6 +9,7 @@ Repo nay duoc chuan hoa theo mo hinh:
 - 1 compose duy nhat: docker-compose.yml
 
 Compose chinh mac dinh chay backend infra + API + worker, va goi scoring service ben ngoai qua SCORING_SERVICE_BASE_URL.
+Database cho backend/worker duoc su dung truc tiep qua BACKEND_DB_CONNECTION (vd: Supabase Postgres).
 
 ## Prerequisites
 
@@ -21,7 +22,8 @@ Compose chinh mac dinh chay backend infra + API + worker, va goi scoring service
 ### 1. Chay backend stack mac dinh
 
 ```powershell
-cd e:\capstone\server-side\cleanops-backend
+$env:BACKEND_DB_CONNECTION = "Host=<supabase-host>;Port=5432;Database=postgres;Username=<user>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true"
+cd e:\capstone\test-server-side\cleanops-backend
 docker compose up -d --build
 docker compose ps
 ```
@@ -48,9 +50,7 @@ docker compose down
 
 Neu muon xoa volume Postgres local:
 
-```powershell
-docker compose down -v
-```
+Khong ap dung trong cau hinh Supabase-only (compose khong con postgres service local).
 
 ## Test Scoring Flow nhanh
 
@@ -71,11 +71,10 @@ Moi result trong response se co them `visualizationBlobUrl` de frontend/mobile m
 
 ## Environment Notes
 
-Compose su dung fallback defaults, nhung ban nen set env khi chay staging/prod:
+Compose yeu cau BACKEND_DB_CONNECTION. Cac bien nen set khi chay staging/prod:
 
-- BACKEND_DB_CONNECTION
+- BACKEND_DB_CONNECTION (bat buoc)
 - MESSAGE_BROKER_HOST, MESSAGE_BROKER_USERNAME, MESSAGE_BROKER_PASSWORD
-- REDIS_CONNECTION_STRING
 - SCORING_SERVICE_BASE_URL
 - SCORING_RETRAIN_STORAGE_CONNECTION_STRING
 - JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE
@@ -100,7 +99,7 @@ Tuy chon timeout/poll:
 - Khong commit secret that su vao file compose, README, hoac code.
 - Su dung file .env local (khong commit) hoac secret store (Key Vault/CI secret) de inject bien moi truong.
 - Neu secret da lo trong lich su git, can rotate ngay va scrub history bang cong cu rewrite history.
-- Doi password mac dinh RabbitMQ/Postgres/Redis khi len environment chia se.
+- Doi password mac dinh RabbitMQ khi len environment chia se.
 - Kiem tra lai log startup de dam bao khong in connection string day du.
 
 ## Troubleshooting nhanh

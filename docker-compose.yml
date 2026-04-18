@@ -1,9 +1,8 @@
 x-common-env: &common-env
-  ConnectionStrings__DefaultConnection: ${BACKEND_DB_CONNECTION:-Host=postgres;Port=5432;Database=cleanopsai;Username=cleanopsai;Password=cleanopsai}
+  ConnectionStrings__DefaultConnection: ${BACKEND_DB_CONNECTION:?BACKEND_DB_CONNECTION must be set}
   MessageBroker__Host: ${MESSAGE_BROKER_HOST:-rabbitmq}
   MessageBroker__Username: ${MESSAGE_BROKER_USERNAME:-guest}
   MessageBroker__Password: ${MESSAGE_BROKER_PASSWORD:-guest}
-  Redis__ConnectionString: ${REDIS_CONNECTION_STRING:-redis:6379}
   ScoringService__BaseUrl: ${SCORING_SERVICE_BASE_URL:-http://host.docker.internal:8000}
   ScoringService__EvaluateUrlVisualizeLinkPath: ${SCORING_SERVICE_VISUALIZE_PATH:-/evaluate-url-visualize-link}
 
@@ -53,23 +52,6 @@ x-retrain-env: &retrain-env
   ScoringRetrain__RestartServiceCommand: ${SCORING_RETRAIN_RESTART_COMMAND:-}
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: cleanopsai-postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-cleanopsai}
-      POSTGRES_USER: ${POSTGRES_USER:-cleanopsai}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cleanopsai}
-    ports:
-      - "5432:5432"
-    volumes:
-      - cleanopsai-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cleanopsai} -d ${POSTGRES_DB:-cleanopsai}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: cleanopsai-rabbitmq
@@ -77,23 +59,13 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-  redis:
-    image: redis:7-alpine
-    container_name: cleanopsai-redis
-    ports:
-      - "6379:6379"
-
   cleanopsai-api:
     container_name: cleanopsai-api
     build:
       context: ./src
       dockerfile: Api/CleanOpsAi.Api/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
       rabbitmq:
-        condition: service_started
-      redis:
         condition: service_started
     restart: unless-stopped
     ports:
@@ -117,11 +89,7 @@ services:
       context: ./src
       dockerfile: Workers/CleanOpsAi.Scoring.Worker/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
       rabbitmq:
-        condition: service_started
-      redis:
         condition: service_started
     restart: unless-stopped
     environment:
@@ -129,5 +97,3 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-volumes:
-  cleanopsai-postgres-data:

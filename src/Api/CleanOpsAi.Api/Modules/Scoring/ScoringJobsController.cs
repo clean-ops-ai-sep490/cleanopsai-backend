@@ -59,5 +59,26 @@ namespace CleanOpsAi.Api.Modules.Scoring
 
 			return Ok(result);
 		}
+
+		[HttpGet]
+		[SwaggerOperation(
+			Summary = "List scoring jobs",
+			Description = "Lists recent scoring jobs, optionally filtered by status for operational polling.",
+			Tags = new[] { "Scoring" }
+		)]
+		[ProducesResponseType(typeof(IReadOnlyCollection<ScoringJobListItemResponse>), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		public async Task<IActionResult> GetJobs([FromQuery] string? status = null, [FromQuery] int take = 50, CancellationToken ct = default)
+		{
+			try
+			{
+				var jobs = await _scoringJobService.GetJobsAsync(status, take, ct);
+				return Ok(jobs);
+			}
+			catch (ArgumentException ex)
+			{
+				return BadRequest(ex.Message);
+			}
+		}
 	}
 }
