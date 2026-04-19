@@ -74,6 +74,7 @@ public static class DependencyInjection
             typeof(GetWorkersByWorkAreaConsumer).Assembly,
             typeof(GetBusyWorkerIdsConsumer).Assembly,
             typeof(GetEquipmentsByIdsConsumer).Assembly,
+			typeof(TaskScheduleUpdateConsumer).Assembly,
             typeof(WorkAreaConsumer).Assembly
         );
 

@@ -16,5 +16,12 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.Repositories
 		{
 			return await _context.AccessDevices.FirstOrDefaultAsync(d => d.Identifier == identifier, ct);
 		}
+
+		public async Task<AccessDevice?> GetByUuidAsync(string uuid, CancellationToken ct = default)
+		{
+			return await _context.AccessDevices
+				.Include(x => x.BleInfo) 
+				.FirstOrDefaultAsync(x => x.BleInfo != null && x.BleInfo.ServiceUuid == uuid, ct);
+		}
 	}
 }

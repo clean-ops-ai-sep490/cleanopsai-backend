@@ -21,6 +21,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 		private readonly IIdGenerator _idGenerator;
 		private readonly IUserContext _userContext;
 
+		private readonly Guid _userId = Guid.NewGuid();
+
 		public EnvironmentTypeServiceTests()
 		{
 			_environmentTypeRepository = Substitute.For<IEnvironmentTypeRepository>();
@@ -28,6 +30,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
 			_idGenerator = Substitute.For<IIdGenerator>();
 			_userContext = Substitute.For<IUserContext>();
+
+			_userContext.UserId.Returns(_userId);
 
 			_service = new EnvironmentTypeService(
 				_environmentTypeRepository,
@@ -65,6 +69,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			Assert.Equal(dto.Description, result.Description);
 			Assert.Equal(expectedId, entity.Id);
 			Assert.Equal(expectedCreated, entity.Created);
+			Assert.Equal(_userId.ToString(), entity.CreatedBy);
 
 			await _environmentTypeRepository.Received(1).InsertAsync(entity, Arg.Any<CancellationToken>());
 			await _environmentTypeRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -183,6 +188,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 
 			// 🔥 assert chuẩn hơn
 			Assert.Equal(now, entity.LastModified);
+			Assert.Equal(_userId.ToString(), entity.LastModifiedBy);
 
 			await _environmentTypeRepository.Received(1)
 				.SaveChangesAsync(Arg.Any<CancellationToken>());

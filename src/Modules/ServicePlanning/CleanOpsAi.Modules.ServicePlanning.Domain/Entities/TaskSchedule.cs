@@ -40,6 +40,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Domain.Entities
 		public DateOnly ContractStartDate { get; set; }
 		public DateOnly? ContractEndDate { get; set; }
 
+		public DateOnly? LastGeneratedToDate { get; set; }
+
 		public bool IsActive { get; set; } = true;
 
 		public virtual Sop Sop { get; set; } = null!;

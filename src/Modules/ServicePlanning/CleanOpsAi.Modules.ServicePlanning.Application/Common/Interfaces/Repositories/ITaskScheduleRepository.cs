@@ -1,5 +1,6 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
+using System.Linq.Expressions;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories
 {
@@ -22,5 +23,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 
 		Task<PaginatedResult<TaskSchedule>> GetsPaging(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default);
 
+		Task<List<TaskSchedule>> GetListAsync(Expression<Func<TaskSchedule, bool>> predicate);
 	}
 }

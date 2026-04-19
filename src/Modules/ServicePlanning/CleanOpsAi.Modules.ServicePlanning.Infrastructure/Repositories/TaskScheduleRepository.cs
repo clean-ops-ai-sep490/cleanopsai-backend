@@ -6,6 +6,7 @@ using CleanOpsAi.Modules.ServicePlanning.Domain.Entities;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 {
@@ -77,6 +78,13 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 			taskSchedules = query.IsDescending ? taskSchedules.OrderByDescending(x => x.Name) : taskSchedules.OrderBy(x => x.Name);
 
 			return await taskSchedules.ToPaginatedResultAsync(request, ct);
+		}
+
+		public async Task<List<TaskSchedule>> GetListAsync(Expression<Func<TaskSchedule, bool>> predicate)
+		{
+			return await _context.TaskSchedules
+				.Where(predicate)
+				.ToListAsync();
 		}
 	}
 }
