@@ -365,3 +365,7 @@ FodyWeavers.xsd
 /src/Api/CleanOpsAi.Api/appsettings.json
 src/Workers/CleanOpsAi.Scoring.Worker/appsettings.json
 src/Workers/CleanOpsAi.Scoring.Worker/appsettings.json
+/.dotnet-cli/
+/.dotnet-home/
+/.env
+/.env.local

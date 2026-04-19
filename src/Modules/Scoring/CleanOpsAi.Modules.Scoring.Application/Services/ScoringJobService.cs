@@ -1,4 +1,5 @@
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
@@ -26,25 +27,28 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
 		};
 		private readonly IScoringJobRepository _repository;
-		private readonly IScoringJobCache _cache;
 		private readonly IScoringInferenceClient _inferenceClient;
 		private readonly IEventBus _eventBus;
 		private readonly IUserContext _userContext;
+		private readonly ISupervisorManagedWorkerQueryService _supervisorManagedWorkerQueryService;
+		private readonly IWorkerLookupQueryService _workerLookupQueryService;
 		private readonly ILogger<ScoringJobService> _logger;
 
 		public ScoringJobService(
 			IScoringJobRepository repository,
-			IScoringJobCache cache,
 			IScoringInferenceClient inferenceClient,
 			IEventBus eventBus,
 			IUserContext userContext,
+			ISupervisorManagedWorkerQueryService supervisorManagedWorkerQueryService,
+			IWorkerLookupQueryService workerLookupQueryService,
 			ILogger<ScoringJobService> logger)
 		{
 			_repository = repository;
-			_cache = cache;
 			_inferenceClient = inferenceClient;
 			_eventBus = eventBus;
 			_userContext = userContext;
+			_supervisorManagedWorkerQueryService = supervisorManagedWorkerQueryService;
+			_workerLookupQueryService = workerLookupQueryService;
 			_logger = logger;
 		}
 
@@ -112,8 +116,6 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				SubmittedByUserId = job.SubmittedByUserId,
 			}, ct);
 
-			await _cache.SetAsync(MapToDetail(job), ct);
-
 			return new SubmitScoringJobResponse
 			{
 				JobId = job.Id,
@@ -125,26 +127,42 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 		public async Task<ScoringJobDetailResponse?> GetByIdAsync(Guid jobId, CancellationToken ct = default)
 		{
-			var cached = await _cache.GetAsync(jobId, ct);
-			if (cached is not null)
-			{
-				return cached;
-			}
-
 			var job = await _repository.GetByIdWithResultsAsync(jobId, ct);
 			if (job is null)
 			{
 				return null;
 			}
 
-			var response = MapToDetail(job);
-			await _cache.SetAsync(response, ct);
-			return response;
+			return MapToDetail(job);
+		}
+
+		public async Task<IReadOnlyCollection<ScoringJobListItemResponse>> GetJobsAsync(string? status = null, int take = 50, CancellationToken ct = default)
+		{
+			ScoringJobStatus? parsedStatus = null;
+			if (!string.IsNullOrWhiteSpace(status))
+			{
+				if (!Enum.TryParse<ScoringJobStatus>(status, true, out var parsed))
+				{
+					throw new ArgumentException($"Unsupported scoring status '{status}'.", nameof(status));
+				}
+
+				parsedStatus = parsed;
+			}
+
+			var jobs = await _repository.GetJobsAsync(parsedStatus, take, ct);
+			return jobs.Select(MapToListItem).ToList();
 		}
 
 		public async Task<IReadOnlyCollection<PendingScoringReviewItemResponse>> GetPendingResultsAsync(int take = 100, CancellationToken ct = default)
 		{
-			var pendingResults = await _repository.GetPendingResultsAsync(take, ct);
+			var managedWorkerUserIds = await GetScopedManagedWorkerUserIdsAsync(ct);
+			if (IsSupervisor() && (managedWorkerUserIds?.Count ?? 0) == 0)
+			{
+				return Array.Empty<PendingScoringReviewItemResponse>();
+			}
+
+			var pendingResults = await _repository.GetPendingResultsAsync(take, managedWorkerUserIds, ct);
+			var workerLookup = await BuildWorkerLookupAsync(pendingResults, ct);
 
 			return pendingResults
 				.Select(x => new PendingScoringReviewItemResponse
@@ -152,6 +170,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					ResultId = x.Id,
 					JobId = x.ScoringJobId,
 					RequestId = x.ScoringJob.RequestId,
+					SubmittedByUserId = x.ScoringJob.SubmittedByUserId,
+					WorkerId = TryGetWorkerId(workerLookup, x.ScoringJob.SubmittedByUserId),
+					WorkerName = TryGetWorkerName(workerLookup, x.ScoringJob.SubmittedByUserId),
 					EnvironmentKey = x.ScoringJob.EnvironmentKey,
 					SourceType = x.SourceType,
 					Source = x.Source,
@@ -160,6 +181,23 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					CreatedAt = x.Created,
 				})
 				.ToList();
+		}
+
+		public async Task<IReadOnlyCollection<ScoringRetrainBatchListItemResponse>> GetRetrainBatchesAsync(string? status = null, int take = 50, CancellationToken ct = default)
+		{
+			ScoringRetrainBatchStatus? parsedStatus = null;
+			if (!string.IsNullOrWhiteSpace(status))
+			{
+				if (!Enum.TryParse<ScoringRetrainBatchStatus>(status, true, out var parsed))
+				{
+					throw new ArgumentException($"Unsupported retrain batch status '{status}'.", nameof(status));
+				}
+
+				parsedStatus = parsed;
+			}
+
+			var batches = await _repository.GetRetrainBatchesAsync(parsedStatus, take, ct);
+			return batches.Select(MapRetrainBatchListItem).ToList();
 		}
 
 		public async Task<ScoringResultReviewResponse?> ReviewPendingResultAsync(Guid resultId, ReviewScoringResultRequest request, CancellationToken ct = default)
@@ -188,6 +226,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			{
 				return null;
 			}
+
+			await EnsureCanReviewResultAsync(result, ct);
 
 			var originalVerdict = string.IsNullOrWhiteSpace(result.Verdict)
 				? "UNKNOWN"
@@ -227,12 +267,6 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 			if (result.ScoringJob is not null)
 			{
-				var updatedJob = await _repository.GetByIdWithResultsAsync(result.ScoringJob.Id, ct);
-				if (updatedJob is not null)
-				{
-					await _cache.SetAsync(MapToDetail(updatedJob), ct);
-				}
-
 				await _eventBus.PublishAsync(new ScoringResultReviewedEvent
 				{
 					JobId = result.ScoringJob.Id,
@@ -263,6 +297,90 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			};
 		}
 
+		private async Task<IReadOnlyCollection<Guid>?> GetScopedManagedWorkerUserIdsAsync(CancellationToken ct)
+		{
+			if (!IsSupervisor())
+			{
+				return null;
+			}
+
+			if (_userContext.UserId == Guid.Empty)
+			{
+				return Array.Empty<Guid>();
+			}
+
+			return await _supervisorManagedWorkerQueryService.GetManagedWorkerUserIdsAsync(_userContext.UserId, ct);
+		}
+
+		private async Task EnsureCanReviewResultAsync(ScoringJobResult result, CancellationToken ct)
+		{
+			if (!IsSupervisor())
+			{
+				return;
+			}
+
+			var managedWorkerUserIds = await GetScopedManagedWorkerUserIdsAsync(ct) ?? Array.Empty<Guid>();
+			var submittedByUserId = result.ScoringJob?.SubmittedByUserId;
+
+			if (!submittedByUserId.HasValue || !managedWorkerUserIds.Contains(submittedByUserId.Value))
+			{
+				throw new ForbiddenException("You are not allowed to review scoring results outside your managed workers.");
+			}
+		}
+
+		private async Task<IReadOnlyDictionary<Guid, WorkerLookupItem>> BuildWorkerLookupAsync(
+			IReadOnlyCollection<ScoringJobResult> pendingResults,
+			CancellationToken ct)
+		{
+			var submittedByUserIds = pendingResults
+				.Select(x => x.ScoringJob.SubmittedByUserId)
+				.Where(x => x.HasValue)
+				.Select(x => x!.Value)
+				.Distinct()
+				.ToList();
+
+			if (submittedByUserIds.Count == 0)
+			{
+				return new Dictionary<Guid, WorkerLookupItem>();
+			}
+
+			var workers = await _workerLookupQueryService.GetWorkersByUserIdsAsync(submittedByUserIds, ct);
+			return workers.ToDictionary(x => x.UserId);
+		}
+
+		private static Guid? TryGetWorkerId(
+			IReadOnlyDictionary<Guid, WorkerLookupItem> workerLookup,
+			Guid? submittedByUserId)
+		{
+			if (!submittedByUserId.HasValue)
+			{
+				return null;
+			}
+
+			return workerLookup.TryGetValue(submittedByUserId.Value, out var worker)
+				? worker.WorkerId
+				: null;
+		}
+
+		private static string? TryGetWorkerName(
+			IReadOnlyDictionary<Guid, WorkerLookupItem> workerLookup,
+			Guid? submittedByUserId)
+		{
+			if (!submittedByUserId.HasValue)
+			{
+				return null;
+			}
+
+			return workerLookup.TryGetValue(submittedByUserId.Value, out var worker)
+				? worker.FullName
+				: null;
+		}
+
+		private bool IsSupervisor()
+		{
+			return string.Equals(_userContext.Role, "Supervisor", StringComparison.OrdinalIgnoreCase);
+		}
+
 		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default)
 		{
 			var job = await _repository.GetByIdWithResultsAsync(jobId, ct);
@@ -280,7 +398,6 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			job.RetryCount += 1;
 			job.LastModified = DateTime.UtcNow;
 			await _repository.SaveChangesAsync(ct);
-			await _cache.SetAsync(MapToDetail(job), ct);
 
 			var inference = await _inferenceClient.EvaluateBatchAsync(environmentKey, imageUrls, ct);
 			var visualizationBySource = await BuildVisualizationMapAsync(environmentKey, inference.Results, ct);
@@ -329,8 +446,51 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				PendingCount = inference.Summary.Pending,
 				FailCount = inference.Summary.Fail,
 			}, ct);
+		}
 
-			await _cache.SetAsync(MapToDetail(job), ct);
+		public async Task<ScoringRetrainBatchDetailResponse> TriggerRetrainAsync(TriggerScoringRetrainRequest request, CancellationToken ct = default)
+		{
+			request ??= new TriggerScoringRetrainRequest();
+
+			var now = DateTime.UtcNow;
+			var lookbackDays = Math.Max(1, request.LookbackDays);
+			var minReviewedSamples = Math.Max(1, request.MinReviewedSamples);
+			var maxSamplesPerBatch = Math.Clamp(request.MaxSamplesPerBatch, 1, 5000);
+			var sinceUtc = now.AddDays(-lookbackDays);
+
+			var reviewedResults = await _repository.GetReviewedResultsForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
+			if (reviewedResults.Count < minReviewedSamples)
+			{
+				throw new InvalidOperationException(
+					$"Not enough reviewed scoring samples to trigger retrain. Found {reviewedResults.Count}, required {minReviewedSamples}.");
+			}
+
+			var batch = new ScoringRetrainBatch
+			{
+				Id = Guid.NewGuid(),
+				RequestedAtUtc = now,
+				SourceWindowFromUtc = sinceUtc,
+				ReviewedSampleCount = reviewedResults.Count,
+				Status = ScoringRetrainBatchStatus.Queued,
+				Created = now,
+				LastModified = now,
+				CreatedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
+				LastModifiedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
+			};
+
+			await _repository.InsertRetrainBatchAsync(batch, ct);
+			await _repository.SaveChangesAsync(ct);
+
+			await _eventBus.PublishAsync(new ScoringRetrainRequestedEvent
+			{
+				BatchId = batch.Id,
+				RequestedAtUtc = batch.RequestedAtUtc,
+				SourceWindowFromUtc = batch.SourceWindowFromUtc,
+				ReviewedSampleCount = batch.ReviewedSampleCount,
+				Samples = reviewedResults.Select(MapRetrainSample).ToList(),
+			}, ct);
+
+			return MapRetrainBatch(batch);
 		}
 
 		private async Task<Dictionary<string, ScoringVisualizationLinkResponse>> BuildVisualizationMapAsync(
@@ -348,19 +508,34 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 			var visualizationBySource = new Dictionary<string, ScoringVisualizationLinkResponse>(StringComparer.OrdinalIgnoreCase);
 
-			foreach (var sourceUrl in sourceUrls)
+			var tasks = sourceUrls.Select(async sourceUrl =>
 			{
 				try
 				{
 					var visualization = await _inferenceClient.EvaluateUrlVisualizeLinkAsync(environmentKey, sourceUrl, ct);
-					visualizationBySource[sourceUrl] = visualization;
+					return (SourceUrl: sourceUrl, Visualization: visualization, Error: (Exception?)null);
 				}
 				catch (Exception ex)
 				{
+					return (SourceUrl: sourceUrl, Visualization: (ScoringVisualizationLinkResponse?)null, Error: ex);
+				}
+			});
+
+			var results = await Task.WhenAll(tasks);
+			foreach (var item in results)
+			{
+				if (item.Error is not null)
+				{
 					_logger.LogWarning(
-						ex,
+						item.Error,
 						"Failed to generate visualization link for source {SourceUrl} in scoring job enrichment.",
-						sourceUrl);
+						item.SourceUrl);
+					continue;
+				}
+
+				if (item.Visualization is not null)
+				{
+					visualizationBySource[item.SourceUrl] = item.Visualization;
 				}
 			}
 
@@ -428,20 +603,23 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			var payloadNode = JsonNode.Parse(string.IsNullOrWhiteSpace(payloadJson) ? "{}" : payloadJson) as JsonObject
 				?? new JsonObject();
 
-			var reviewEntry = new JsonObject
+			JsonObject CreateReviewEntry()
 			{
-				["original_verdict"] = originalVerdict,
-				["reviewed_verdict"] = reviewedVerdict,
-				["review_reason"] = reviewReason,
-				["reviewed_at_utc"] = reviewedAtUtc,
-				["reviewed_by_user_id"] = reviewedByUserId?.ToString(),
-				["reviewed_by_email"] = reviewedByEmail,
-			};
+				return new JsonObject
+				{
+					["original_verdict"] = originalVerdict,
+					["reviewed_verdict"] = reviewedVerdict,
+					["review_reason"] = reviewReason,
+					["reviewed_at_utc"] = reviewedAtUtc,
+					["reviewed_by_user_id"] = reviewedByUserId?.ToString(),
+					["reviewed_by_email"] = reviewedByEmail,
+				};
+			}
 
 			var reviewHistory = payloadNode["human_review_history"] as JsonArray ?? new JsonArray();
-			reviewHistory.Add(reviewEntry);
+			reviewHistory.Add(CreateReviewEntry());
 			payloadNode["human_review_history"] = reviewHistory;
-			payloadNode["human_review"] = reviewEntry;
+			payloadNode["human_review"] = CreateReviewEntry();
 
 			return payloadNode;
 		}
@@ -466,8 +644,51 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestId = job.RequestId,
 				Reason = job.FailureReason,
 			}, ct);
+		}
 
-			await _cache.SetAsync(MapToDetail(job), ct);
+		public async Task<ScoringRetrainBatchDetailResponse?> GetRetrainBatchByIdAsync(Guid batchId, CancellationToken ct = default)
+		{
+			var batch = await _repository.GetRetrainBatchByIdWithRunsAsync(batchId, ct);
+			return batch is null ? null : MapRetrainBatch(batch);
+		}
+
+		private static ScoringRetrainSampleItem MapRetrainSample(ScoringJobResult result)
+		{
+			var reviewedAtUtc = result.LastModified;
+			var reviewedByEmail = default(string);
+
+			if (!string.IsNullOrWhiteSpace(result.PayloadJson))
+			{
+				try
+				{
+					var root = JsonNode.Parse(result.PayloadJson) as JsonObject;
+					var review = root?["human_review"] as JsonObject;
+					var reviewedAtRaw = review?["reviewed_at_utc"]?.GetValue<string>();
+					if (DateTime.TryParse(reviewedAtRaw, out var parsedReviewedAt))
+					{
+						reviewedAtUtc = DateTime.SpecifyKind(parsedReviewedAt, DateTimeKind.Utc);
+					}
+
+					reviewedByEmail = review?["reviewed_by_email"]?.GetValue<string>();
+				}
+				catch
+				{
+					// Keep fallback metadata when payload cannot be parsed.
+				}
+			}
+
+			return new ScoringRetrainSampleItem
+			{
+				ResultId = result.Id,
+				JobId = result.ScoringJobId,
+				RequestId = result.ScoringJob.RequestId,
+				EnvironmentKey = result.ScoringJob.EnvironmentKey,
+				SourceType = result.SourceType,
+				Source = result.Source,
+				ReviewedVerdict = result.Verdict,
+				ReviewedAtUtc = reviewedAtUtc,
+				ReviewedByEmail = reviewedByEmail,
+			};
 		}
 
 		private static ScoringJobDetailResponse MapToDetail(ScoringJob job)
@@ -510,6 +731,78 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 						PayloadJson = x.PayloadJson,
 					})
 					.ToList(),
+			};
+		}
+
+		private static ScoringJobListItemResponse MapToListItem(ScoringJob job)
+		{
+			var detail = MapToDetail(job);
+			return new ScoringJobListItemResponse
+			{
+				JobId = detail.JobId,
+				RequestId = detail.RequestId,
+				EnvironmentKey = detail.EnvironmentKey,
+				Status = detail.Status,
+				RetryCount = detail.RetryCount,
+				FailureReason = detail.FailureReason,
+				CreatedAt = detail.CreatedAt,
+				CompletedAt = detail.CompletedAt,
+				Summary = detail.Summary,
+			};
+		}
+
+		private static ScoringRetrainBatchDetailResponse MapRetrainBatch(ScoringRetrainBatch batch)
+		{
+			return new ScoringRetrainBatchDetailResponse
+			{
+				BatchId = batch.Id,
+				Status = batch.Status.ToString().ToUpperInvariant(),
+				RequestedAtUtc = batch.RequestedAtUtc,
+				SourceWindowFromUtc = batch.SourceWindowFromUtc,
+				ReviewedSampleCount = batch.ReviewedSampleCount,
+				CompletedAtUtc = batch.CompletedAtUtc,
+				FailureReason = batch.FailureReason,
+				Promoted = batch.Promoted,
+				MetricKey = batch.MetricKey,
+				CandidateMetric = batch.CandidateMetric,
+				BaselineMetric = batch.BaselineMetric,
+				MinimumImprovement = batch.MinimumImprovement,
+				PromotionReason = batch.PromotionReason,
+				Runs = batch.Runs
+					.OrderByDescending(x => x.StartedAtUtc)
+					.Select(x => new ScoringRetrainRunResponse
+					{
+						RunId = x.Id,
+						Status = x.Status.ToString().ToUpperInvariant(),
+						Mode = x.Mode,
+						StartedAtUtc = x.StartedAtUtc,
+						CompletedAtUtc = x.CompletedAtUtc,
+						ExitCode = x.ExitCode,
+						Message = x.Message,
+					})
+					.ToList(),
+			};
+		}
+
+		private static ScoringRetrainBatchListItemResponse MapRetrainBatchListItem(ScoringRetrainBatch batch)
+		{
+			var latestRun = batch.Runs
+				.OrderByDescending(x => x.StartedAtUtc)
+				.FirstOrDefault();
+
+			return new ScoringRetrainBatchListItemResponse
+			{
+				BatchId = batch.Id,
+				Status = batch.Status.ToString().ToUpperInvariant(),
+				RequestedAtUtc = batch.RequestedAtUtc,
+				SourceWindowFromUtc = batch.SourceWindowFromUtc,
+				ReviewedSampleCount = batch.ReviewedSampleCount,
+				CompletedAtUtc = batch.CompletedAtUtc,
+				Promoted = batch.Promoted,
+				FailureReason = batch.FailureReason,
+				PromotionReason = batch.PromotionReason,
+				RunCount = batch.Runs.Count,
+				LatestRunStartedAtUtc = latestRun?.StartedAtUtc,
 			};
 		}
 	}

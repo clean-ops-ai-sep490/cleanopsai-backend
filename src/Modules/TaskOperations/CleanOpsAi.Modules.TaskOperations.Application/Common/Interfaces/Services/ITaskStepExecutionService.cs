@@ -11,6 +11,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 			SubmitStepExecutionDto dto, 
 			CancellationToken ct = default);
 
+		Task<TaskStepExecutionPpeCheckResponse> EvaluatePpeAsync(Guid id, CancellationToken ct = default);
+
+		Task<TaskStepExecutionPpeCheckJobResponse> EnqueuePpeCheckAsync(Guid id, CancellationToken ct = default);
+
+		Task<TaskStepExecutionPpeCheckJobResponse> GetPpeCheckJobStatusAsync(Guid id, CancellationToken ct = default);
+
+		Task ProcessQueuedPpeCheckAsync(Guid id, CancellationToken ct = default);
+
 		Task<TaskStepExecutionDetailDto> GetStepDetailAsync(Guid id, CancellationToken ct = default);
 	}
 }
