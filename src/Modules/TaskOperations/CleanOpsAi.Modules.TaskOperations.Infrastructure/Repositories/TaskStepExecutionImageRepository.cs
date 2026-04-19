@@ -21,10 +21,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
         }
 
         public async Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAndTypeAsync(
-            Guid executionId, CancellationToken ct = default)
+            Guid executionId, ImageType imageType, CancellationToken ct = default)
         {
             return await _context.TaskStepExecutionImages
-                .Where(x => x.TaskStepExecutionId == executionId)
+                .Where(x => x.TaskStepExecutionId == executionId
+                    && x.ImageType == imageType
+                    && !x.IsDeleted)
                 .ToListAsync(ct);
         }
 

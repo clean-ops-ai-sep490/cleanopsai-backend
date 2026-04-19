@@ -52,5 +52,20 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			var result = await _service.GetStepDetailAsync(id, ct);
 			return Ok(result);
 		}
+
+		[HttpPost("{id}/ppe-check")]
+		[SwaggerOperation(
+			Summary = "Run AI PPE check for a task step",
+			Description = "Runs AI PPE validation for the current in-progress ai-ppe-check step using its PPE images and requiredPPE configuration from the step snapshot.",
+			Tags = new[] { "TaskStepExecution" }
+		)]
+		[ProducesResponseType(typeof(TaskStepExecutionPpeCheckResponse), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> EvaluatePpe(Guid id, CancellationToken ct)
+		{
+			var result = await _service.EvaluatePpeAsync(id, ct);
+			return Ok(result);
+		}
 	}
 }

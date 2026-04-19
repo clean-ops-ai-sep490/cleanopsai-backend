@@ -11,7 +11,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
     public interface ITaskStepExecutionImageRepository
     {
         Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAndTypeAsync(
-            Guid executionId, CancellationToken ct = default);
+            Guid executionId, ImageType imageType, CancellationToken ct = default);
         Task AddRangeAsync(IEnumerable<TaskStepExecutionImage> images, CancellationToken ct = default);
         Task SaveChangesAsync(CancellationToken ct = default);
 
