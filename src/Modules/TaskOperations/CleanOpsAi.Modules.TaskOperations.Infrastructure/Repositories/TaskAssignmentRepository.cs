@@ -66,8 +66,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 					t.WorkAreaId == workAreaId &&
 					t.AssigneeId != excludeAssigneeId &&
 					t.Status == TaskAssignmentStatus.NotStarted &&
-					t.ScheduledStartAt < scheduledEndAt &&
-					t.ScheduledEndAt > scheduledStartAt &&
+					//t.ScheduledStartAt < scheduledEndAt &&
+					//t.ScheduledEndAt > scheduledStartAt &&
 					t.ScheduledStartAt >= weekStart &&
 					t.ScheduledStartAt < weekEnd &&
 					!t.TaskSwapRequests.Any(s =>

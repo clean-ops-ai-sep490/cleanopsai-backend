@@ -475,6 +475,26 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			return await _sopRepository.GetSopStepsWithSchemaAsync(sopId, ct);
 		}
+
+		public async Task UpdateCheckpointsAsync(List<ScheduleUpdateItem> updates)
+		{ 
+			var scheduleIds = updates.Select(u => u.ScheduleId).ToList();
+			 
+			var schedules = await _taskScheduleRepository.GetListAsync(s => scheduleIds.Contains(s.Id));
+
+			// 3. Logic update như cũ
+			foreach (var schedule in schedules)
+			{
+				var updateInfo = updates.First(u => u.ScheduleId == schedule.Id);
+
+				if (!schedule.LastGeneratedToDate.HasValue || updateInfo.GeneratedToDate > schedule.LastGeneratedToDate)
+				{
+					schedule.LastGeneratedToDate = updateInfo.GeneratedToDate;
+				}
+			}
+
+			await _taskScheduleRepository.SaveChangesAsync();
+		}
 	}
 }
 
