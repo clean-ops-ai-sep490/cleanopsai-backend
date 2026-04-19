@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -10,6 +11,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using CleanOpsAi.Modules.TaskOperations.IntegrationEvents;
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
@@ -29,17 +31,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IMapper _mapper;
 		private readonly IScoringInferenceClient _inferenceClient;
+		private readonly IEventBus _eventBus;
 
 		public TaskStepExecutionService(
 			ITaskStepExecutionRepository taskStepExecutionRepository,
 			IDateTimeProvider dateTimeProvider,
 			IMapper mapper,
-			IScoringInferenceClient inferenceClient)
+			IScoringInferenceClient inferenceClient,
+			IEventBus eventBus)
 		{
 			_repository = taskStepExecutionRepository;
 			_dateTimeProvider = dateTimeProvider;
 			_mapper = mapper;
 			_inferenceClient = inferenceClient;
+			_eventBus = eventBus;
 		}
 
 		public async Task<TaskStepExecutionDto> CompleteStepAsync(Guid id, SubmitStepExecutionDto dto, CancellationToken ct = default)
@@ -95,36 +100,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task<TaskStepExecutionPpeCheckResponse> EvaluatePpeAsync(Guid id, CancellationToken ct = default)
 		{
-			var step = await _repository.GetByIdDetail(id, ct)
-				?? throw new NotFoundException(nameof(TaskStepExecution), id);
-
-			if (step.Status != TaskStepExecutionStatus.InProgress)
-			{
-				throw new BadRequestException("Step must be in progress to run PPE check.");
-			}
-
-			if (!IsAiPpeCheckStep(step.ConfigSnapshot))
-			{
-				throw new BadRequestException("This step is not configured for AI PPE check.");
-			}
-
-			var requiredItems = ParseRequiredPpe(step.ConfigSnapshot);
-			if (requiredItems.Count == 0)
-			{
-				throw new BadRequestException("This AI PPE check step does not define any required PPE items.");
-			}
-
-			var imageUrls = step.TaskStepExecutionImages
-				.Where(x => !x.IsDeleted && x.ImageType == ImageType.Ppe && !string.IsNullOrWhiteSpace(x.ImageUrl))
-				.OrderBy(x => x.Created)
-				.Select(x => x.ImageUrl)
-				.Distinct(StringComparer.OrdinalIgnoreCase)
-				.ToList();
-
-			if (imageUrls.Count < DefaultPpeMinPhotos)
-			{
-				throw new BadRequestException("At least one PPE image is required before running AI PPE check.");
-			}
+			var (step, requiredItems, imageUrls) = await LoadAndValidatePpeContextAsync(id, ct);
 
 			TaskStepExecutionPpeCheckResponse response;
 			try
@@ -146,6 +122,67 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			await _repository.SaveChangesAsync(ct);
 
 			return response;
+		}
+
+		public async Task<TaskStepExecutionPpeCheckJobResponse> EnqueuePpeCheckAsync(Guid id, CancellationToken ct = default)
+		{
+			var (step, requiredItems, imageUrls) = await LoadAndValidatePpeContextAsync(id, ct);
+			var queued = BuildPpeCheckPendingResponse(step, requiredItems, imageUrls);
+
+			step.ResultData = JsonSerializer.Serialize(queued, JsonOptions);
+			await _repository.SaveChangesAsync(ct);
+
+			try
+			{
+				await _eventBus.PublishAsync(new PpeCheckRequestedEvent
+				{
+					TaskStepExecutionId = step.Id,
+					RequestedAtUtc = _dateTimeProvider.UtcNow,
+				}, ct);
+			}
+			catch (Exception ex)
+			{
+				var failed = BuildPpeCheckErrorResponse(step, requiredItems, imageUrls, ex.Message);
+				step.ResultData = JsonSerializer.Serialize(failed, JsonOptions);
+				await _repository.SaveChangesAsync(ct);
+				return BuildPpeCheckJobResponse(step.Id, failed);
+			}
+
+			return BuildPpeCheckJobResponse(step.Id, queued);
+		}
+
+		public async Task<TaskStepExecutionPpeCheckJobResponse> GetPpeCheckJobStatusAsync(Guid id, CancellationToken ct = default)
+		{
+			var step = await _repository.GetByIdAsync(id, ct)
+				?? throw new NotFoundException(nameof(TaskStepExecution), id);
+
+			var response = TryParsePpeCheckResponse(step.ResultData);
+			if (response is null)
+			{
+				return new TaskStepExecutionPpeCheckJobResponse
+				{
+					JobId = step.Id,
+					TaskStepExecutionId = step.Id,
+					Status = "NOT_STARTED",
+					Message = "PPE check job has not been submitted.",
+					UpdatedAt = _dateTimeProvider.UtcNow,
+					Result = null,
+				};
+			}
+
+			return BuildPpeCheckJobResponse(step.Id, response);
+		}
+
+		public async Task ProcessQueuedPpeCheckAsync(Guid id, CancellationToken ct = default)
+		{
+			try
+			{
+				await EvaluatePpeAsync(id, ct);
+			}
+			catch (Exception ex)
+			{
+				await TryStoreQueuedPpeErrorAsync(id, ex.Message, ct);
+			}
 		}
 
 		public async Task<TaskStepExecutionDetailDto> GetStepDetailAsync(Guid id, CancellationToken ct = default)
@@ -273,6 +310,42 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			}
 		}
 
+		private async Task<(TaskStepExecution step, List<TaskStepExecutionPpeRequiredItemResponse> requiredItems, List<string> imageUrls)> LoadAndValidatePpeContextAsync(Guid id, CancellationToken ct)
+		{
+			var step = await _repository.GetByIdDetail(id, ct)
+				?? throw new NotFoundException(nameof(TaskStepExecution), id);
+
+			if (step.Status != TaskStepExecutionStatus.InProgress)
+			{
+				throw new BadRequestException("Step must be in progress to run PPE check.");
+			}
+
+			if (!IsAiPpeCheckStep(step.ConfigSnapshot))
+			{
+				throw new BadRequestException("This step is not configured for AI PPE check.");
+			}
+
+			var requiredItems = ParseRequiredPpe(step.ConfigSnapshot);
+			if (requiredItems.Count == 0)
+			{
+				throw new BadRequestException("This AI PPE check step does not define any required PPE items.");
+			}
+
+			var imageUrls = step.TaskStepExecutionImages
+				.Where(x => !x.IsDeleted && x.ImageType == ImageType.Ppe && !string.IsNullOrWhiteSpace(x.ImageUrl))
+				.OrderBy(x => x.Created)
+				.Select(x => x.ImageUrl)
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			if (imageUrls.Count < DefaultPpeMinPhotos)
+			{
+				throw new BadRequestException("At least one PPE image is required before running AI PPE check.");
+			}
+
+			return (step, requiredItems, imageUrls);
+		}
+
 		private TaskStepExecutionPpeCheckResponse BuildPpeCheckResponse(
 			TaskStepExecution step,
 			List<TaskStepExecutionPpeRequiredItemResponse> requiredItems,
@@ -360,6 +433,109 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					ImageIndex = index,
 					Error = string.IsNullOrWhiteSpace(errorMessage) ? "AI PPE check failed." : errorMessage,
 				}).ToList(),
+			};
+		}
+
+		private TaskStepExecutionPpeCheckResponse BuildPpeCheckPendingResponse(
+			TaskStepExecution step,
+			List<TaskStepExecutionPpeRequiredItemResponse> requiredItems,
+			List<string> imageUrls)
+		{
+			return new TaskStepExecutionPpeCheckResponse
+			{
+				TaskStepExecutionId = step.Id,
+				SopStepId = step.SopStepId,
+				StepOrder = step.StepOrder,
+				CheckedAt = _dateTimeProvider.UtcNow,
+				Status = "PENDING",
+				Message = "PPE check job has been queued.",
+				RequiredPpe = requiredItems,
+				ImageUrls = imageUrls,
+				DetectedItems = new List<TaskStepExecutionPpeDetectedItemResponse>(),
+				MissingItems = new List<TaskStepExecutionPpeRequiredItemResponse>(),
+				FailedImages = new List<TaskStepExecutionPpeFailedImageResponse>(),
+			};
+		}
+
+		private TaskStepExecutionPpeCheckJobResponse BuildPpeCheckJobResponse(Guid jobId, TaskStepExecutionPpeCheckResponse response)
+		{
+			return new TaskStepExecutionPpeCheckJobResponse
+			{
+				JobId = jobId,
+				TaskStepExecutionId = response.TaskStepExecutionId,
+				Status = NormalizeJobStatus(response.Status),
+				Message = response.Message,
+				UpdatedAt = response.CheckedAt,
+				Result = response,
+			};
+		}
+
+		private async Task TryStoreQueuedPpeErrorAsync(Guid id, string errorMessage, CancellationToken ct)
+		{
+			var step = await _repository.GetByIdDetail(id, ct);
+			if (step is null || step.Status != TaskStepExecutionStatus.InProgress || !IsAiPpeCheckStep(step.ConfigSnapshot))
+			{
+				return;
+			}
+
+			var requiredItems = TryParseRequiredPpe(step.ConfigSnapshot);
+			var imageUrls = step.TaskStepExecutionImages
+				.Where(x => !x.IsDeleted && x.ImageType == ImageType.Ppe && !string.IsNullOrWhiteSpace(x.ImageUrl))
+				.OrderBy(x => x.Created)
+				.Select(x => x.ImageUrl)
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+
+			var response = BuildPpeCheckErrorResponse(step, requiredItems, imageUrls, errorMessage);
+			step.ResultData = JsonSerializer.Serialize(response, JsonOptions);
+			await _repository.SaveChangesAsync(ct);
+		}
+
+		private static List<TaskStepExecutionPpeRequiredItemResponse> TryParseRequiredPpe(string configSnapshot)
+		{
+			try
+			{
+				return ParseRequiredPpe(configSnapshot);
+			}
+			catch
+			{
+				return new List<TaskStepExecutionPpeRequiredItemResponse>();
+			}
+		}
+
+		private static TaskStepExecutionPpeCheckResponse? TryParsePpeCheckResponse(string? resultData)
+		{
+			if (string.IsNullOrWhiteSpace(resultData))
+			{
+				return null;
+			}
+
+			try
+			{
+				var response = JsonSerializer.Deserialize<TaskStepExecutionPpeCheckResponse>(resultData, JsonOptions);
+				if (!string.Equals(response?.Type, AiPpeCheckBehavior, StringComparison.OrdinalIgnoreCase))
+				{
+					return null;
+				}
+
+				return response;
+			}
+			catch
+			{
+				return null;
+			}
+		}
+
+		private static string NormalizeJobStatus(string? status)
+		{
+			var normalized = NormalizeStatus(status);
+			return normalized switch
+			{
+				"PASS" => "SUCCEEDED",
+				"FAIL" => "SUCCEEDED",
+				"PENDING" => "PENDING",
+				"ERROR" => "FAILED",
+				_ => "PROCESSING",
 			};
 		}
 

@@ -67,5 +67,34 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			var result = await _service.EvaluatePpeAsync(id, ct);
 			return Ok(result);
 		}
+
+		[HttpPost("{id}/ppe-check/jobs")]
+		[SwaggerOperation(
+			Summary = "Submit AI PPE check job",
+			Description = "Queues AI PPE validation for asynchronous processing and returns a job handle for polling.",
+			Tags = new[] { "TaskStepExecution" }
+		)]
+		[ProducesResponseType(typeof(TaskStepExecutionPpeCheckJobResponse), StatusCodes.Status202Accepted)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> SubmitPpeCheckJob(Guid id, CancellationToken ct)
+		{
+			var result = await _service.EnqueuePpeCheckAsync(id, ct);
+			return AcceptedAtAction(nameof(GetPpeCheckJobStatus), new { id }, result);
+		}
+
+		[HttpGet("{id}/ppe-check/jobs")]
+		[SwaggerOperation(
+			Summary = "Get AI PPE check job status",
+			Description = "Returns asynchronous PPE check job status and final result when available.",
+			Tags = new[] { "TaskStepExecution" }
+		)]
+		[ProducesResponseType(typeof(TaskStepExecutionPpeCheckJobResponse), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> GetPpeCheckJobStatus(Guid id, CancellationToken ct)
+		{
+			var result = await _service.GetPpeCheckJobStatusAsync(id, ct);
+			return Ok(result);
+		}
 	}
 }
