@@ -16,6 +16,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 
 		public DateTime ScheduledStartAt { get; set; }
 
+		public DateTime ScheduledEndAt { get; set; }
+
 		public bool IsAdhocTask { get; set; }
 
 		public string? NameAdhocTask { get; set; }
