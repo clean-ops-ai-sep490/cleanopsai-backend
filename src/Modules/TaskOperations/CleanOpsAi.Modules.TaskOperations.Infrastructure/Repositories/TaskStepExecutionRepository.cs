@@ -34,6 +34,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 		{
 			return await _context.TaskStepExecutions
 				.Include(x => x.TaskAssignment)
+				.Include(x => x.TaskStepExecutionImages.Where(img => !img.IsDeleted))
 				.FirstOrDefaultAsync(x => x.Id == id, ct);
 		}
 

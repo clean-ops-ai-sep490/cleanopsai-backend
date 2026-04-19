@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CleanOpsAi.Modules.TaskOperations.Domain\CleanOpsAi.Modules.TaskOperations.Domain.csproj" />
     <ProjectReference Include="..\CleanOpsAi.Modules.TaskOperations.IntegrationEvents\CleanOpsAi.Modules.TaskOperations.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Scoring\CleanOpsAi.Modules.Scoring.Application\CleanOpsAi.Modules.Scoring.Application.csproj" />
   </ItemGroup>
 
 </Project>

@@ -27,6 +27,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        private const string AI_PPE_CHECK_BEHAVIOR = "ai-ppe-check";
+
         public TaskStepExecutionImageService(
             ITaskAssignmentRepository assignmentRepo,
             ITaskStepExecutionRepository stepRepo,
@@ -60,7 +62,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             await _imageRepo.AddRangeAsync(uploadedImages, ct);
 
             var response = BuildResponse(imageType, request.MinPhotos, uploadedImages.Count);
-            step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            if (!ShouldPreserveExistingResult(step, imageType))
+            {
+                step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            }
 
             await _imageRepo.SaveChangesAsync(ct);
 
@@ -84,7 +89,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             // Soft-delete ảnh cũ
             var existingImages = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(
-                taskStepExecutionId, ct);
+                taskStepExecutionId, imageType, ct);
 
             foreach (var img in existingImages)
                 img.IsDeleted = true;
@@ -96,7 +101,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             await _imageRepo.AddRangeAsync(newImages, ct);
 
             var response = BuildResponse(imageType, request.MinPhotos, newImages.Count);
-            step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            if (!ShouldPreserveExistingResult(step, imageType))
+            {
+                step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            }
 
             await _imageRepo.SaveChangesAsync(ct);
 
@@ -182,6 +190,42 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 MinPhotos = minPhotos,
                 ActualPhotos = actualPhotos
             };
+        }
+
+        private static bool ShouldPreserveExistingResult(TaskStepExecution step, ImageType imageType)
+        {
+            return imageType == ImageType.Ppe && IsAiPpeCheckStep(step.ConfigSnapshot);
+        }
+
+        private static bool IsAiPpeCheckStep(string configSnapshot)
+        {
+            if (string.IsNullOrWhiteSpace(configSnapshot))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(configSnapshot);
+                if (!document.RootElement.TryGetProperty("schema", out var schema))
+                {
+                    return false;
+                }
+
+                if (!schema.TryGetProperty("x-behavior", out var behavior))
+                {
+                    return false;
+                }
+
+                return string.Equals(
+                    behavior.GetString(),
+                    AI_PPE_CHECK_BEHAVIOR,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
         }
     }
 }

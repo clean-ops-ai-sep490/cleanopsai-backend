@@ -73,5 +73,35 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Services
 			var payload = JsonSerializer.Deserialize<ScoringVisualizationLinkResponse>(body, JsonOptions);
 			return payload ?? throw new InvalidOperationException("Scoring visualization service returned empty payload.");
 		}
+
+		public async Task<PpeEvaluationResponse> EvaluatePpeAsync(
+			IReadOnlyCollection<string> imageUrls,
+			IReadOnlyCollection<string> requiredObjects,
+			double minConfidence,
+			CancellationToken ct = default)
+		{
+			var requestPayload = JsonSerializer.Serialize(new
+			{
+				image_urls = imageUrls,
+				required_objects = requiredObjects,
+				min_confidence = minConfidence,
+			});
+
+			using var request = new HttpRequestMessage(HttpMethod.Post, _options.PpeEvaluatePath)
+			{
+				Content = new StringContent(requestPayload, Encoding.UTF8, "application/json"),
+			};
+			request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+			using var response = await _httpClient.SendAsync(request, ct);
+			var body = await response.Content.ReadAsStringAsync(ct);
+			if (!response.IsSuccessStatusCode)
+			{
+				throw new InvalidOperationException($"PPE evaluation service returned {(int)response.StatusCode}: {body}");
+			}
+
+			var payload = JsonSerializer.Deserialize<PpeEvaluationResponse>(body, JsonOptions);
+			return payload ?? throw new InvalidOperationException("PPE evaluation service returned empty payload.");
+		}
 	}
 }
