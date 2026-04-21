@@ -12,5 +12,6 @@
 		public string ImageUrl { get; init; } = null!;
 		public double QualityScore { get; init; }
 		public string Verdict { get; init; } = null!;
+		public string? VisualizationBlobUrl { get; init; }
 	}
 }

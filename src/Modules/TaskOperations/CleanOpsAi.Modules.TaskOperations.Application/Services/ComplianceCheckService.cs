@@ -13,8 +13,7 @@ using System.Text.Json;
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 { 
     public class ComplianceCheckService : IComplianceCheckService
-    {
-        // ── Business rule thresholds (unchanged) ──────────────────────────────
+    { 
         private const double FailThreshold = 50.0;
         private const double PendingThreshold = 80.0;
         private const int FailCountForAutoFail = 2;
@@ -27,11 +26,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
         private readonly IComplianceCheckRepository _complianceRepo;
         private readonly ITaskStepExecutionImageRepository _imageRepo;
+        private readonly ITaskStepExecutionRepository _stepExecutionRepo;
         private readonly IEventBus _eventBus;
         private readonly IComplianceNotifier _notifier;
         private readonly ILogger<ComplianceCheckService> _logger;
         private readonly IIdGenerator _idGenerator;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ISupervisorQueryService _supervisorQueryService;
 
 		private string environmentKey = "LOBBY_CORRIDOR";
 
@@ -39,18 +40,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         public ComplianceCheckService(
             IComplianceCheckRepository complianceRepo,
             ITaskStepExecutionImageRepository imageRepo,
+            ITaskStepExecutionRepository stepExecutionRepo,
             IEventBus eventBus,
             IComplianceNotifier notifier,
             ILogger<ComplianceCheckService> logger,
             IIdGenerator idGenerator,
-            IDateTimeProvider dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            ISupervisorQueryService supervisorQueryService)
         {
             _complianceRepo = complianceRepo;
             _imageRepo = imageRepo;
+            _stepExecutionRepo = stepExecutionRepo;
             _eventBus = eventBus;
             _notifier = notifier;
             _logger = logger;
             _idGenerator = idGenerator;
+			_dateTimeProvider = dateTimeProvider;
+            _supervisorQueryService = supervisorQueryService;
 		}
 
 		public async Task<InitiateAiCheckResult> InitiateAiCheckAsync(Guid taskStepExecutionId, CancellationToken ct = default)
@@ -61,6 +67,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			 
 			var existing = await _complianceRepo.GetByExecutionIdAndTypeAsync(
 				taskStepExecutionId, ComplianceCheckType.Automated, ct);
+			 
 
 			ComplianceCheck check;
 			if (existing is not null)
@@ -162,8 +169,43 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					evt.RequestId);
 				return;
 			}
+			// ── 2b. Resolve supervisor via WorkArea + Worker cross-module query ────
+			var execution = await _stepExecutionRepo.GetByIdDetail(check.TaskStepExecutionId, ct);
+			if (execution?.TaskAssignment is not null)
+			{
+				var workAreaId = execution.TaskAssignment.WorkAreaId;
+				var workerId  = execution.TaskAssignment.AssigneeId;
+				try
+				{
+					var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(workAreaId, workerId, ct);
+					if (supervisorId.HasValue)
+					{
+						check.SupervisorId = supervisorId;
+						_logger.LogInformation(
+							"Resolved SupervisorId {SupervisorId} for ComplianceCheck {CheckId} (WorkArea={WorkAreaId}, Worker={WorkerId})",
+							supervisorId, check.Id, workAreaId, workerId);
+					}
+					else
+					{
+						_logger.LogWarning(
+							"No supervisor found for WorkArea={WorkAreaId}, Worker={WorkerId}. SupervisorId left null on ComplianceCheck {CheckId}.",
+							workAreaId, workerId, check.Id);
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex,
+						"Failed to resolve supervisor for ComplianceCheck {CheckId}. Continuing without SupervisorId.",
+						check.Id);
+				}
+			}
+			else
+			{
+				_logger.LogWarning(
+					"TaskStepExecution {ExecutionId} not found or has no TaskAssignment. Cannot resolve supervisor.",
+					check.TaskStepExecutionId);
+			}
 
-			// ── 2. Load images ────────────────────────────────────────────────
 			var images = await _imageRepo.GetByExecutionIdAsync(check.TaskStepExecutionId, ct);
 			if (images.Count == 0)
 			{
@@ -192,8 +234,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					"Image {ImageId}: QualityScore={Score}, Verdict={Verdict}",
 					image.Id, result.QualityScore, result.Verdict);
 			}
-
-			// ── 4. Calculate aggregates ───────────────────────────────────────
+			 
 			var scoredValues = images
 				.Where(img => img.QualityScore.HasValue)
 				.Select(img => img.QualityScore!.Value)

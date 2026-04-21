@@ -450,12 +450,13 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 			await _eventBus.PublishAsync(new ScoringCompletedEvent
 			{
-				RequestId = job.RequestId, 
+				RequestId = job.RequestId,
 				Results = mappedResults.Select(r => new ScoringResultItem
 				{
 					ImageUrl = r.Source,
 					QualityScore = r.QualityScore,
-					Verdict = r.Verdict
+					Verdict = r.Verdict,
+					VisualizationBlobUrl = ExtractVisualizationBlobUrl(r.PayloadJson)
 				}).ToList()
 			});
 		}

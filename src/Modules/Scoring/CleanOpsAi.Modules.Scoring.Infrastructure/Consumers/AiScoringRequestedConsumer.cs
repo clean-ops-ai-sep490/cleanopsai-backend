@@ -36,8 +36,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				message.ImageUrls.Count);
 
 			try
-			{
-				// ── Map event to service request ──────────────────────────────────
+			{ 
 				var jobRequest = new CreateScoringJobRequest
 				{
 					RequestId = message.ComplianceCheckId.ToString(),
