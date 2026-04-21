@@ -342,6 +342,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var schedules = await _taskScheduleRepository.GetByIdsAsync(request.TaskScheduleIds, ct);
 
+			if (schedules == null || !schedules.Any())
+			{
+				throw new NotFoundException("No TaskSchedules found for the provided IDs");
+			}
+
 			var items = schedules.Select(schedule =>
 			{
 				var config = JsonSerializer.Deserialize<RecurrenceConfig>(
@@ -374,8 +379,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					},
 					ct);
 			}
-
-			//throw new NotImplementedException();
+			 
 		}
 
 		public async Task<PaginatedResult<TaskScheduleDto>> Gets(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default)
