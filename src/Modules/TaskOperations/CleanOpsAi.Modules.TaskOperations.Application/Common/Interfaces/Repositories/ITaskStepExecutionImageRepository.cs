@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
+using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
     {
         Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAndTypeAsync(
             Guid executionId, ImageType imageType, CancellationToken ct = default);
+
+        /// <summary>
+        /// Returns all non-deleted images for the given execution, regardless of image type.
+        /// Used by the scoring consumer to match results by URL.
+        /// </summary>
+        Task<List<TaskStepExecutionImage>> GetByExecutionIdAsync(
+            Guid executionId, CancellationToken ct = default);
+
         Task AddRangeAsync(IEnumerable<TaskStepExecutionImage> images, CancellationToken ct = default);
         Task SaveChangesAsync(CancellationToken ct = default);
 

@@ -1,6 +1,7 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Request;
@@ -444,8 +445,20 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				SkippedCount = inference.Summary.Skipped,
 				PassCount = inference.Summary.Pass,
 				PendingCount = inference.Summary.Pending,
-				FailCount = inference.Summary.Fail,
+				FailCount = inference.Summary.Fail,	
 			}, ct);
+
+			await _eventBus.PublishAsync(new ScoringCompletedEvent
+			{
+				RequestId = job.RequestId,
+				Results = mappedResults.Select(r => new ScoringResultItem
+				{
+					ImageUrl = r.Source,
+					QualityScore = r.QualityScore,
+					Verdict = r.Verdict,
+					VisualizationBlobUrl = ExtractVisualizationBlobUrl(r.PayloadJson)
+				}).ToList()
+			});
 		}
 
 		public async Task<ScoringRetrainBatchDetailResponse> TriggerRetrainAsync(TriggerScoringRetrainRequest request, CancellationToken ct = default)

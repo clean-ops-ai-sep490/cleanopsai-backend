@@ -1,0 +1,29 @@
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
+{
+    public class ComplianceCheckRepository : BaseRepo<ComplianceCheck, Guid>, IComplianceCheckRepository
+	{ 
+
+        public ComplianceCheckRepository(TaskOperationsDbContext context) : base(context)
+		{
+             
+        }
+         
+        public async Task<ComplianceCheck?> GetByExecutionIdAndTypeAsync(
+            Guid taskStepExecutionId,
+            ComplianceCheckType type,
+            CancellationToken ct = default)
+        {
+            return await _context.ComplianceChecks
+                .FirstOrDefaultAsync(
+                    x => x.TaskStepExecutionId == taskStepExecutionId
+                         && x.Type == type,
+                    ct);
+        } 
+    }
+}

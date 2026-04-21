@@ -11,7 +11,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 		public string ImageUrl { get; set; } = null!;
 
 		public ImageType ImageType { get; set; }
-		 
+
+		public double? QualityScore { get; set; }
+		public string? Verdict { get; set; }
+
 		public virtual TaskStepExecution TaskStepExecution { get; set; } = null!;
 	}
 }
