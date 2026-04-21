@@ -85,5 +85,5 @@ namespace CleanOpsAi.Modules.Scoring.IntegrationEvents
 		public double MinimumImprovement { get; init; }
 		public bool Promoted { get; init; }
 		public string Reason { get; init; } = null!;
-	}
+	} 
 }

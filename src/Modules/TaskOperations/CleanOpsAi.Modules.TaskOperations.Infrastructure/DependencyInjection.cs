@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings;
 using CleanOpsAi.Modules.TaskOperations.Application.Configurations;
@@ -44,6 +44,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IEmergencyLeaveRequestRepository, EmergencyLeaveRequestRepository>();
 		builder.Services.AddScoped<IAdHocRequestRepository, AdHocRequestRepository>();
         builder.Services.AddScoped<ITaskStepExecutionImageRepository, TaskStepExecutionImageRepository>();
+        builder.Services.AddScoped<IComplianceCheckRepository, ComplianceCheckRepository>();
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
 
@@ -56,6 +57,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IEmergencyLeaveRequestService, EmergencyLeaveRequestService>(); 
         builder.Services.AddScoped<IAdHocRequestService, AdHocRequestService>();
         builder.Services.AddScoped<ITaskStepExecutionImageService, TaskStepExecutionImageService>();
+        builder.Services.AddScoped<IComplianceCheckService, ComplianceCheckService>();
 
         builder.Services.AddScoped<ISupervisorQueryService, SupervisorQueryService>();
         builder.Services.AddScoped<IWorkAreaQueryService, WorkAreaQueryService>(); 

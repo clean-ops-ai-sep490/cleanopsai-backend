@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
@@ -27,6 +27,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .Where(x => x.TaskStepExecutionId == executionId
                     && x.ImageType == imageType
                     && !x.IsDeleted)
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<TaskStepExecutionImage>> GetByExecutionIdAsync(
+            Guid executionId, CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutionImages
+                .Where(x => x.TaskStepExecutionId == executionId && !x.IsDeleted)
                 .ToListAsync(ct);
         }
 
