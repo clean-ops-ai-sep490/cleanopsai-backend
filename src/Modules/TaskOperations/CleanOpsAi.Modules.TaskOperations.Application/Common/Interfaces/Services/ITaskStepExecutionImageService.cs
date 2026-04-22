@@ -25,5 +25,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 
         Task<TaskAssignmentImagesResponse> GetImagesByAssignmentIdAsync(
         Guid taskAssignmentId, CancellationToken ct = default);
+
+        Task<bool> DeleteImagesByStepExecutionIdAsync(Guid taskStepExecutionId, CancellationToken ct = default);
     }
 }

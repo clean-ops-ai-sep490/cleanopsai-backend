@@ -23,5 +23,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
         Task AddRangeAsync(IEnumerable<TaskStepExecutionImage> images, CancellationToken ct = default);
         Task SaveChangesAsync(CancellationToken ct = default);
 
+        Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAsync(
+            Guid taskStepExecutionId,
+            CancellationToken ct = default);
+
     }
 }
