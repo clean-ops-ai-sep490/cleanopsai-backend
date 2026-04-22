@@ -63,67 +63,38 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		{
 			_logger.LogInformation(
 				"Initiating AI compliance check for TaskStepExecution {ExecutionId}",
-				taskStepExecutionId);
+				taskStepExecutionId); 
 			 
-			var existing = await _complianceRepo.GetByExecutionIdAndTypeAsync(
-				taskStepExecutionId, ComplianceCheckType.Automated, ct);
+			var check = new ComplianceCheck
+			{
+				Id = _idGenerator.Generate(),
+				TaskStepExecutionId = taskStepExecutionId,
+				Type = ComplianceCheckType.Automated,
+				Status = ComplianceCheckStatus.Pending,
+				MinScore = 0,
+				FailedImageCount = 0,
+				Created = _dateTimeProvider.UtcNow,
+				CreatedBy = "system"
+			};
+			await _complianceRepo.InsertAsync(check, ct);
+			await _complianceRepo.SaveChangesAsync(ct);
+
+			_logger.LogInformation(
+				"AI compliance check {CheckId} created (Pending) for execution {ExecutionId}",
+				check.Id, taskStepExecutionId);
 			 
-
-			ComplianceCheck check;
-			if (existing is not null)
-			{
-				_logger.LogWarning(
-					"AI compliance check {CheckId} already exists for execution {ExecutionId}. Reusing.",
-					existing.Id, taskStepExecutionId);
-
-				check = existing;
-				check.Status = ComplianceCheckStatus.Pending;
-				check.MinScore = 0;
-				check.FailedImageCount = 0;
-				check.LastModified = _dateTimeProvider.UtcNow;
-				check.LastModifiedBy = "system";
-
-				await _complianceRepo.SaveChangesAsync(ct);
-			}
-			else
-			{
-				check = new ComplianceCheck
-				{
-					Id = _idGenerator.Generate(),
-					TaskStepExecutionId = taskStepExecutionId,
-					Type = ComplianceCheckType.Automated,
-					Status = ComplianceCheckStatus.Pending,
-					MinScore = 0,
-					FailedImageCount = 0,
-					Created = _dateTimeProvider.UtcNow,
-					CreatedBy = "system"
-
-				};
-
-				await _complianceRepo.InsertAsync(check, ct);
-				await _complianceRepo.SaveChangesAsync(ct);
-
-				_logger.LogInformation(
-					"AI compliance check {CheckId} created (Pending) for execution {ExecutionId}",
-					check.Id, taskStepExecutionId);
-			}
-
-			// ── 2. Fetch After images ─────────────────────────────────────────────
 			var afterImages = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(
 				taskStepExecutionId, ImageType.After, ct);
-
 			if (afterImages.Count == 0)
 			{
 				throw new InvalidOperationException(
 					$"No 'After' images found for step execution {taskStepExecutionId}. " +
 					"Upload images before initiating an AI check.");
 			}
-
 			_logger.LogInformation(
 				"Found {Count} After-images for execution {ExecutionId}",
 				afterImages.Count, taskStepExecutionId);
-
-			// ── 3. Publish event — Scoring module will consume ────────────────────
+			 
 			await _eventBus.PublishAsync(new AiScoringRequestedEvent
 			{
 				ComplianceCheckId = check.Id,
@@ -131,11 +102,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				EnvironmentKey = environmentKey,
 				ImageUrls = afterImages.Select(img => img.ImageUrl).ToList()
 			}, ct);
-
-			// ── 4. Mark as Processing after successful publish ────────────────────
+			 
 			check.Status = ComplianceCheckStatus.Processing;
 			await _complianceRepo.SaveChangesAsync(ct);
-
 			_logger.LogInformation(
 				"AiScoringRequestedEvent published, ComplianceCheck {CheckId} → Processing",
 				check.Id);
@@ -149,18 +118,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			};
 		}
 
-		 
 
 		public async Task ApplyScoringResultsAsync(
-	    ScoringCompletedEvent evt,
-	    CancellationToken ct = default)
-		{ 
+	ScoringCompletedEvent evt,
+	CancellationToken ct = default)
+		{
+			// ── 1. Validate RequestId ─────────────────────────────────────────
 			if (!Guid.TryParse(evt.RequestId, out var requestIdGuid))
 			{
 				_logger.LogError("Invalid RequestId format: {RequestId}", evt.RequestId);
 				return;
 			}
-
+			 
 			var check = await _complianceRepo.GetByIdAsync(requestIdGuid, ct);
 			if (check == null)
 			{
@@ -169,44 +138,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					evt.RequestId);
 				return;
 			}
-			// ── 2b. Resolve supervisor via WorkArea + Worker cross-module query ────
-			var execution = await _stepExecutionRepo.GetByIdDetail(check.TaskStepExecutionId, ct);
-			if (execution?.TaskAssignment is not null)
-			{
-				var workAreaId = execution.TaskAssignment.WorkAreaId;
-				var workerId  = execution.TaskAssignment.AssigneeId;
-				try
-				{
-					var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(workAreaId, workerId, ct);
-					if (supervisorId.HasValue)
-					{
-						check.SupervisorId = supervisorId;
-						_logger.LogInformation(
-							"Resolved SupervisorId {SupervisorId} for ComplianceCheck {CheckId} (WorkArea={WorkAreaId}, Worker={WorkerId})",
-							supervisorId, check.Id, workAreaId, workerId);
-					}
-					else
-					{
-						_logger.LogWarning(
-							"No supervisor found for WorkArea={WorkAreaId}, Worker={WorkerId}. SupervisorId left null on ComplianceCheck {CheckId}.",
-							workAreaId, workerId, check.Id);
-					}
-				}
-				catch (Exception ex)
-				{
-					_logger.LogWarning(ex,
-						"Failed to resolve supervisor for ComplianceCheck {CheckId}. Continuing without SupervisorId.",
-						check.Id);
-				}
-			}
-			else
-			{
-				_logger.LogWarning(
-					"TaskStepExecution {ExecutionId} not found or has no TaskAssignment. Cannot resolve supervisor.",
-					check.TaskStepExecutionId);
-			}
 
-			var images = await _imageRepo.GetByExecutionIdAsync(check.TaskStepExecutionId, ct);
+			var images = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(check.TaskStepExecutionId, ImageType.After, ct);
 			if (images.Count == 0)
 			{
 				_logger.LogWarning(
@@ -214,9 +147,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					check.TaskStepExecutionId);
 				return;
 			}
-			 
-			var imageMap = images.ToDictionary(img => img.ImageUrl, StringComparer.OrdinalIgnoreCase);
 
+			var imageMap = images.ToDictionary(img => img.ImageUrl, StringComparer.OrdinalIgnoreCase);
 			foreach (var result in evt.Results)
 			{
 				if (!imageMap.TryGetValue(result.ImageUrl, out var image))
@@ -246,19 +178,61 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			// ── 5. Determine compliance status ───────────────────────────────
 			var status = DetermineStatus(minScore, failedImageCount);
 
-			// ── 6. Update check & persist ─────────────────────────────────────
+			// ── 6. Update check ───────────────────────────────────────────────
 			check.Status = status;
 			check.MinScore = minScore;
 			check.FailedImageCount = failedImageCount;
 			check.AIResultRaw = JsonSerializer.Serialize(evt, _jsonOptions);
 
-			await _complianceRepo.SaveChangesAsync(ct);
+			// ── 7. Resolve supervisor when PendingSupervisor ───────────────
+			if (status == ComplianceCheckStatus.PendingSupervisor)
+			{
+				var execution = await _stepExecutionRepo.GetByIdDetail(check.TaskStepExecutionId, ct);
+				if (execution?.TaskAssignment is not null)
+				{
+					try
+					{
+						var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(
+							execution.TaskAssignment.WorkAreaId,
+							execution.TaskAssignment.AssigneeId,
+							ct);
 
+						if (supervisorId.HasValue)
+						{
+							check.SupervisorId = supervisorId;
+							_logger.LogInformation(
+								"Resolved SupervisorId {SupervisorId} for ComplianceCheck {CheckId}",
+								supervisorId, check.Id);
+						}
+						else
+						{
+							_logger.LogWarning(
+								"No supervisor found for ComplianceCheck {CheckId}. SupervisorId left null.",
+								check.Id);
+						}
+					}
+					catch (Exception ex)
+					{
+						_logger.LogWarning(ex,
+							"Failed to resolve supervisor for ComplianceCheck {CheckId}. Continuing without SupervisorId.",
+							check.Id);
+					}
+				}
+				else
+				{
+					_logger.LogWarning(
+						"TaskStepExecution {ExecutionId} not found or has no TaskAssignment. Cannot resolve supervisor.",
+						check.TaskStepExecutionId);
+				}
+			}
+
+			// ── 8. Persist ────────────────────────────────────────────────────
+			await _complianceRepo.SaveChangesAsync(ct);
 			_logger.LogInformation(
 				"ComplianceCheck {CheckId} saved: Status={Status}, MinScore={MinScore}, FailedImageCount={FailedCount}",
 				check.Id, status, minScore, failedImageCount);
 
-			// ── 7. Push result to client via SignalR ──────────────────────────
+			
 			var notification = new ComplianceCheckNotification
 			{
 				ComplianceCheckId = check.Id,
@@ -268,7 +242,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				MinScore = minScore,
 				FailedImageCount = failedImageCount,
 				Action = MapAction(status),
-				At = DateTime.UtcNow
+				At = _dateTimeProvider.UtcNow.AddHours(7)
 			};
 
 			try
@@ -287,7 +261,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			}
 		}
 
-		  
+
 		public async Task<ComplianceCheckStatusResponse?> GetCurrentStatusAsync(
             Guid taskStepExecutionId,
             CancellationToken ct = default)
