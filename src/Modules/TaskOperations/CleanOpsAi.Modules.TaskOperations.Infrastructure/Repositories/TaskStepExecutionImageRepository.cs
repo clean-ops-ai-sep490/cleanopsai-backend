@@ -43,5 +43,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             await _context.SaveChangesAsync(ct);
         }
 
+        public async Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAsync(
+            Guid taskStepExecutionId,
+            CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutionImages
+                .Where(x => x.TaskStepExecutionId == taskStepExecutionId
+                         && !x.IsDeleted)
+                .ToListAsync(ct);
+        }
+
     }
 }
