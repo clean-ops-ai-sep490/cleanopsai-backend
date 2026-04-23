@@ -1,4 +1,5 @@
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
@@ -7,6 +8,7 @@ using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
@@ -364,6 +366,76 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				paged.PageSize,
 				paged.TotalElements,
 				mapped);
+		}
+
+		public async Task<SupervisorCheckDetailDto> GetSupervisorCheckDetailAsync(
+		Guid complianceCheckId,
+		CancellationToken ct = default)
+		{
+			var check = await _complianceRepo.GetByIdAsync(complianceCheckId, ct);
+			if (check == null) throw new NotFoundException(nameof(ComplianceCheck), complianceCheckId);
+
+			var images = new List<ScoringImageDetailDto>();
+
+			if (!string.IsNullOrEmpty(check.AIResultRaw))
+			{
+				var raw = JsonSerializer.Deserialize<ScoringCompletedEvent>(
+					check.AIResultRaw, _jsonOptions);
+
+				images = raw?.Results.Select(r => new ScoringImageDetailDto
+				{
+					ImageUrl = r.ImageUrl,
+					VisualizationUrl = r.VisualizationBlobUrl,
+					QualityScore = r.QualityScore,
+					Verdict = r.Verdict
+				}).ToList() ?? new();
+			}
+
+			return new SupervisorCheckDetailDto
+			{
+				ComplianceCheckId = check.Id,
+				TaskStepExecutionId = check.TaskStepExecutionId,
+				MinScore = check.MinScore,
+				FailedImageCount = check.FailedImageCount,
+				Feedback = check.Feedback,
+				CreatedAt = check.Created.AddHours(7),
+				Images = images
+			};
+		}
+
+		public async Task ApplySupervisorReviewAsync(
+			Guid complianceCheckId,
+			SupervisorReviewRequest request,
+			CancellationToken ct = default)
+		{
+			var check = await _complianceRepo.GetByIdAsync(complianceCheckId, ct);
+			if (check == null) throw new NotFoundException(nameof(ComplianceCheck), complianceCheckId); 
+
+			if(check.SupervisorId != _userContext.UserId)
+			{
+				throw new UnauthorizedAccessException("You are not authorized to review this compliance check.");
+			}
+
+			check.Status = request.Approved
+				? ComplianceCheckStatus.Passed
+				: ComplianceCheckStatus.Failed;
+			check.Feedback = request.Feedback;
+			check.LastModified = _dateTimeProvider.UtcNow;
+			check.LastModifiedBy = _userContext.UserId.ToString();
+
+			await _complianceRepo.SaveChangesAsync(ct);
+
+			await _notifier.NotifyAsync(new ComplianceCheckNotification
+			{
+				ComplianceCheckId = check.Id,
+				TaskStepExecutionId = check.TaskStepExecutionId,
+				Status = check.Status.ToString(),
+				CheckedBy = _userContext.UserId.ToString(),
+				MinScore = check.MinScore,
+				FailedImageCount = check.FailedImageCount,
+				Action = MapAction(check.Status),
+				At = _dateTimeProvider.UtcNow.AddHours(7)
+			}, ct);
 		}
 	}
 }

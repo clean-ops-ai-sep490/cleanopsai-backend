@@ -40,8 +40,49 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             return Ok(result);
         }
 
+		[HttpGet("{id:guid}")]
+		[Authorize(Roles = "Supervisor")]
+		[SwaggerOperation(
+	        Summary = "Get compliance check detail for supervisor",
+	        Description =
+		        "Returns detailed information of a compliance check including AI scoring images, " +
+		        "visualization results, and feedback.",
+	        Tags = new[] { "ComplianceChecks" }
+        )]
+		[ProducesResponseType(typeof(SupervisorCheckDetailDto), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		public async Task<IActionResult> GetSupervisorCheckDetail(
+	    Guid id,
+	    CancellationToken ct)
+		{
+			var result = await _complianceCheckService.GetSupervisorCheckDetailAsync(id, ct);
 
-        [HttpPost("initiate")]
+			return Ok(result);
+		}
+
+		[HttpPost("{id}/review")]
+		[Authorize(Roles = "Supervisor")]
+		[SwaggerOperation(
+	        Summary = "Submit supervisor review decision",
+	        Description =
+		        "Supervisor approves or rejects a pending compliance check. " +
+		        "Result is pushed to the worker via SignalR (compliance-check-updated).",
+	        Tags = new[] { "ComplianceChecks" }
+        )]
+		[ProducesResponseType(StatusCodes.Status204NoContent)]
+		[ProducesResponseType(StatusCodes.Status404NotFound)]
+		[ProducesResponseType(StatusCodes.Status403Forbidden)]
+		public async Task<IActionResult> SubmitSupervisorReview(
+	    Guid id,
+	    [FromBody] SupervisorReviewRequest request,
+	    CancellationToken ct)
+		{
+			await _complianceCheckService.ApplySupervisorReviewAsync(id, request, ct);
+			return NoContent();
+		}
+
+
+		[HttpPost("initiate")]
         [Authorize(Roles = "Supervisor,Worker")]
         [SwaggerOperation(
             Summary = "Initiate AI compliance check",
