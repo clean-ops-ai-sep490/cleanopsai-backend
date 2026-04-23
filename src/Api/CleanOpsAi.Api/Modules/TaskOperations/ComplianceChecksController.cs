@@ -1,4 +1,6 @@
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,11 +8,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace CleanOpsAi.Api.Modules.TaskOperations
 {
-    /// <summary>
-    /// AI compliance check endpoints scoped to a task step execution.
-    /// Route: /api/task-step-executions/{taskStepExecutionId}/compliance-check
-    /// </summary>
-    [Route("api/task-step-executions/{taskStepExecutionId:guid}/compliance-check")]
+    [Route("api/[controller]")]
     [ApiController]
     public class ComplianceChecksController : ControllerBase
     {
@@ -21,20 +19,29 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             _complianceCheckService = complianceCheckService;
         }
 
-        /// <summary>
-        /// Initiates an AI compliance check for the given step execution.
-        /// </summary>
-        /// <remarks>
-        /// This endpoint is the single entry point for starting automated image scoring:
-        /// <list type="number">
-        ///   <item>Creates (or reuses) a <c>Pending</c> ComplianceCheck record.</item>
-        ///   <item>Fetches the After-type images already uploaded for the execution.</item>
-        ///   <item>Submits the images to the AI Scoring Module (async via RabbitMQ).</item>
-        /// </list>
-        /// When scoring completes the result is pushed to the client via SignalR
-        /// on the <c>compliance-check-updated</c> method, group key = <c>taskStepExecutionId</c>.
-        /// </remarks>
-        [HttpPost]
+		[HttpGet("pending-supervisor")]
+		[Authorize(Roles = "Supervisor")]
+		[SwaggerOperation(
+	        Summary = "Get pending supervisor compliance checks",
+	        Description =
+		        "Returns a paginated list of ComplianceChecks that are awaiting supervisor review. " +
+		        "Supervisors can see all pending cases regardless of who submitted them. " +
+		        "Images are not included in this response — call GET /{id}/detail to load images for a specific check.",
+	        Tags = new[] { "ComplianceChecks" }
+        )]
+		[ProducesResponseType(typeof(PaginatedResult<PendingSupervisorCheckDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		[ProducesResponseType(StatusCodes.Status403Forbidden)]
+		public async Task<IActionResult> GetPendingSupervisorChecks(
+        [FromQuery] PaginationRequest request,
+        CancellationToken ct)
+        {
+            var result = await _complianceCheckService.GetPendingSupervisorChecksAsync(request, ct);
+            return Ok(result);
+        }
+
+
+        [HttpPost("initiate")]
         [Authorize(Roles = "Supervisor,Worker")]
         [SwaggerOperation(
             Summary = "Initiate AI compliance check",
@@ -47,16 +54,16 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [ProducesResponseType(typeof(InitiateAiCheckResult), StatusCodes.Status202Accepted)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> InitiateAiCheck(
-            Guid taskStepExecutionId,
-            CancellationToken ct = default)
+		InitiateAiCheckRequest request,
+        CancellationToken ct = default)
         {
-            if (taskStepExecutionId == Guid.Empty)
+            if (request.TaskStepExecutionId == Guid.Empty)
                 return BadRequest("taskStepExecutionId cannot be empty.");
 
             try
             {
                 var result = await _complianceCheckService
-                    .InitiateAiCheckAsync(taskStepExecutionId, ct);
+                    .InitiateAiCheckAsync(request.TaskStepExecutionId, ct);
 
                 return Accepted(result);
             }
@@ -66,15 +73,9 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             }
         }
 
-        /// <summary>
-        /// Returns the current AI compliance check status for the given step execution.
-        /// </summary>
-        /// <remarks>
-        /// Polling fallback for clients that reconnect after a SignalR disconnect.
-        /// Returns 404 if no AI compliance check has been initiated yet.
-        /// </remarks>
-        [HttpGet]
-        [Authorize(Roles = "Supervisor,Worker")]
+
+		[HttpGet("task-step-executions/{taskStepExecutionId:guid}")]
+		[Authorize(Roles = "Supervisor,Worker")]
         [SwaggerOperation(
             Summary = "Get current compliance check status",
             Description =
@@ -98,5 +99,6 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 
             return Ok(result);
         }
-    }
+ 
+	}
 }
