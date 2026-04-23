@@ -33,10 +33,10 @@ public static class DependencyInjection
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
-		builder.Services.AddSingleton(_ =>
-			new DocumentIntelligenceClient(
-			new Uri(builder.Configuration["AzureDocumentIntelligence:Endpoint"]!),
-			new AzureKeyCredential(builder.Configuration["AzureDocumentIntelligence:Key"]!)));
+		//builder.Services.AddSingleton(_ =>
+		//	new DocumentIntelligenceClient(
+		//	new Uri(builder.Configuration["AzureDocumentIntelligence:Endpoint"]!),
+		//	new AzureKeyCredential(builder.Configuration["AzureDocumentIntelligence:Key"]!)));
 
 		// Dependency Injection for Repositories
 		builder.Services.AddScoped<IClientRepository, ClientRepository>();
@@ -61,14 +61,14 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ISlaShiftService, SlaShiftService>();
         builder.Services.AddScoped<IContractScanService, ContractScanService>();
 
-        // Dependency Injection for Azure Blob Storage Service
-        builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
+		// Dependency Injection for Azure Blob Storage Service
+		builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
         // HTTP Client for Gemini
-        builder.Services.AddHttpClient<ContractScanService>();
+        //builder.Services.AddHttpClient<ContractScanService>();
 
-        // ENUM -> STRING JSON
-        builder.Services.Configure<JsonOptions>(options =>
+		// ENUM -> STRING JSON
+		builder.Services.Configure<JsonOptions>(options =>
         {
             options.JsonSerializerOptions.Converters
                 .Add(new JsonStringEnumConverter());

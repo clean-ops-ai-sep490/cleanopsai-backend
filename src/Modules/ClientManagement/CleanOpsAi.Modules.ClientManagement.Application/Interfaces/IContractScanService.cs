@@ -1,12 +1,7 @@
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.ContractScan;
 
 namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
-{
-    /// <summary>
-    /// Scans a contract document (DOCX/PDF stored in Azure Blob Storage) with
-    /// Azure Document Intelligence and then uses Google Gemini to parse the
-    /// extracted text into structured SLA / shift / task data for user review.
-    /// </summary>
+{ 
     public interface IContractScanService
     {
         /// <summary>
@@ -20,6 +15,6 @@ namespace CleanOpsAi.Modules.ClientManagement.Application.Interfaces
         /// A <see cref="ContractScanResult"/> containing the AI-generated suggestion
         /// that the user can review and confirm before it is persisted.
         /// </returns>
-        Task<ContractScanResult> ScanContractAsync(Guid contractId, CancellationToken cancellationToken = default);
+        //Task<ContractScanResult> ScanContractAsync(Guid contractId, CancellationToken cancellationToken = default);
     }
 }
