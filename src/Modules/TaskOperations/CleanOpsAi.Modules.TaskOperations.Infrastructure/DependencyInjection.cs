@@ -6,6 +6,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services;
+using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Commands;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Queries;
 using Microsoft.EntityFrameworkCore; 
 using Microsoft.Extensions.Hosting;
@@ -66,5 +67,7 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ISopRequirementsQueryService, SopRequirementsQueryService>();
         builder.Services.AddScoped<IEquipmentQueryService, EquipmentQueryService>();
 
-    }
+		builder.Services.AddScoped<INotificationPublisher, NotificationPublisher>();
+
+	}
 }

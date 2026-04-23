@@ -2,8 +2,10 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
-using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces; 
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
@@ -25,6 +27,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		private readonly ISopRequirementsQueryService _sopRequirementsQueryService;
 		private readonly IWorkerCertificationSkillQueryService _workerCertificationSkillQueryService;
 		private readonly ISupervisorQueryService _supervisorQueryService;
+		private readonly INotificationPublisher _notificationPublisher;
 
 		public TaskSwapRequestService(
 			ITaskSwapRequestRepository taskSwapRequestRepository,
@@ -36,7 +39,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			IWorkerQueryService workerQueryService, 
 			ISopRequirementsQueryService sopRequirementsQueryService, 
 			IWorkerCertificationSkillQueryService workerCertificationSkillQueryService,
-			ISupervisorQueryService supervisorQueryService)
+			ISupervisorQueryService supervisorQueryService,
+			INotificationPublisher notificationPublisher)
 		{
 			_taskSwapRequestRepository = taskSwapRequestRepository;
 			_taskAssignmentRepository = taskAssignmentRepository;
@@ -48,6 +52,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			_sopRequirementsQueryService = sopRequirementsQueryService;
 			_workerCertificationSkillQueryService = workerCertificationSkillQueryService;
 			_supervisorQueryService = supervisorQueryService;
+			_notificationPublisher = notificationPublisher;
 		}
 
 		public async Task<SwapRequestDto> GetById(Guid id, CancellationToken ct = default)
@@ -141,6 +146,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			await _taskSwapRequestRepository.SaveChangesAsync(ct);
 
 			//notifi to Target
+			var notification = new SendNotificationEvent
+			{
+				Title = "Yêu cầu đổi ca",
+				Body = $"{requesterName} muốn đổi ca với bạn. Vui lòng xem xét và phản hồi.",
+				Payload = System.Text.Json.JsonSerializer.Serialize(new
+				{
+					type = "SWAP_REQUEST",
+					swapRequestId = swapRequest.Id,
+					requesterTaskAssignmentId = swapRequest.TaskAssignmentId,
+					targetTaskAssignmentId = swapRequest.TargetTaskAssignmentId,
+				}),
+				Priority = NotificationPriority.Normal,
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = dto.RequesterId,
+				Recipients = new List<NotificationRecipientEvent>
+				{
+					new NotificationRecipientEvent
+					{
+						RecipientType = RecipientTypeEnum.Worker,
+						RecipientId = dto.TargetWorkerId  // WorkerId — query theo WorkerId trong FCM
+					}
+				}
+			};
+
+			await _notificationPublisher.PublishAsync(notification, ct);
 
 			return Result<SwapRequestDto>.Success(_mapper.Map<SwapRequestDto>(swapRequest));
 		}
@@ -215,8 +245,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			{
 				swapRequest.Status = SwapRequestStatus.RejectedByTarget;
 				await _taskSwapRequestRepository.SaveChangesAsync(ct);
-				
+
 				// notifi reject to requester
+				await _notificationPublisher.PublishAsync(new SendNotificationEvent
+				{
+					Title = "Yêu cầu đổi ca bị từ chối",
+					Body = $"{swapRequest.TargetWorkerName} đã từ chối yêu cầu đổi ca của bạn.",
+					SenderType = SenderTypeEnum.Worker,
+					SenderId = dto.ResponderId,
+					Recipients = new List<NotificationRecipientEvent>
+					{
+						new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId }
+					}
+				}, ct);
 				return Result.Success();
 			}
 
@@ -231,11 +272,33 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if(!supervisorResp.Found || supervisorResp.SupervisorUserId == null)
 				throw new BadRequestException("No common supervisor found for approval in same area with worker and target worker");
 			
-			swapRequest.ReviewedByUserId = supervisorResp.SupervisorUserId.Value;
-
+			swapRequest.ReviewedByUserId = supervisorResp.SupervisorUserId.Value; 
 			await _taskSwapRequestRepository.SaveChangesAsync(ct);
+			 
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Yêu cầu đổi ca cần phê duyệt",
+				Body = $"{swapRequest.RequesterName} và {swapRequest.TargetWorkerName} muốn đổi ca, cần bạn phê duyệt.",
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = dto.ResponderId,
+				Recipients = new List<NotificationRecipientEvent>
+				{
+					new() { RecipientType = RecipientTypeEnum.Supervisor, RecipientId = supervisorResp.SupervisorUserId.Value }
+				}
+			}, ct);
 
-			// Notify manager
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Yêu cầu đổi ca đã được chấp nhận",
+				Body = $"{swapRequest.TargetWorkerName} đã đồng ý đổi ca, đang chờ supervisor phê duyệt.",
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = dto.ResponderId,
+				Recipients = new List<NotificationRecipientEvent>
+				{
+					new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId }
+				}
+			}, ct);
+
 			return Result.Success();
 		}
 
@@ -258,9 +321,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				swapRequest.Status = SwapRequestStatus.RejectedByManager;
 				await _taskSwapRequestRepository.SaveChangesAsync();
 
-				//notify faild to worker and target
-				//await _notificationService.NotifySwapRejectedByManagerAsync(
-				//	swapRequest.RequesterId, swapRequest.TargetWorkerId, swapRequest.Id);
+				await _notificationPublisher.PublishAsync(new SendNotificationEvent
+				{
+					Title = "Yêu cầu đổi ca bị từ chối",
+					Body = $"Supervisor {swapRequest.ReviewerName} đã từ chối yêu cầu đổi ca. Lý do: {dto.ReviewNote}",
+					SenderType = SenderTypeEnum.Supervisor,
+					SenderId = _userContext.UserId,
+					Recipients = new List<NotificationRecipientEvent>
+			{
+				new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId },
+				new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.TargetWorkerId }
+			}
+				}, ct);
 				return Result.Success();
 			}
 
@@ -268,10 +340,24 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			var targetTask = swapRequest.TargetTaskAssignment;
 
 			(requesterTask.AssigneeId, targetTask.AssigneeId) = (targetTask.AssigneeId, requesterTask.AssigneeId);
+			(requesterTask.AssigneeName, targetTask.AssigneeName) = (targetTask.AssigneeName, requesterTask.AssigneeName);
 			swapRequest.Status = SwapRequestStatus.Approved;
 
 			await _taskSwapRequestRepository.SaveChangesAsync();
+
 			//notify faild to worker and target
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Yêu cầu đổi ca đã được phê duyệt",
+				Body = $"Supervisor {swapRequest.ReviewerName} đã phê duyệt yêu cầu đổi ca giữa {swapRequest.RequesterName} và {swapRequest.TargetWorkerName}.",
+				SenderType = SenderTypeEnum.Supervisor,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+		{
+			new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId },
+			new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.TargetWorkerId }
+		}
+			}, ct);
 
 			return Result.Success();
 		}
