@@ -1,5 +1,8 @@
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -7,6 +10,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using MassTransit.Middleware;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -33,6 +37,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IIdGenerator _idGenerator;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ISupervisorQueryService _supervisorQueryService;
+		private readonly IUserContext _userContext;
 
 		private string environmentKey = "LOBBY_CORRIDOR";
 
@@ -46,7 +51,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             ILogger<ComplianceCheckService> logger,
             IIdGenerator idGenerator,
             IDateTimeProvider dateTimeProvider,
-            ISupervisorQueryService supervisorQueryService)
+            ISupervisorQueryService supervisorQueryService,
+			IUserContext userContext)
         {
             _complianceRepo = complianceRepo;
             _imageRepo = imageRepo;
@@ -57,6 +63,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _idGenerator = idGenerator;
 			_dateTimeProvider = dateTimeProvider;
             _supervisorQueryService = supervisorQueryService;
+			_userContext = userContext;
 		}
 
 		public async Task<InitiateAiCheckResult> InitiateAiCheckAsync(Guid taskStepExecutionId, CancellationToken ct = default)
@@ -125,8 +132,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 		{
 			// ── 1. Validate RequestId ─────────────────────────────────────────
 			if (!Guid.TryParse(evt.RequestId, out var requestIdGuid))
-			{
-				_logger.LogError("Invalid RequestId format: {RequestId}", evt.RequestId);
+			{ 
 				return;
 			}
 			 
@@ -200,9 +206,33 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 						if (supervisorId.HasValue)
 						{
 							check.SupervisorId = supervisorId;
-							_logger.LogInformation(
-								"Resolved SupervisorId {SupervisorId} for ComplianceCheck {CheckId}",
-								supervisorId, check.Id);
+							try
+							{
+								await _eventBus.PublishAsync(new SendNotificationEvent
+								{
+									Title = "Compliance Check cần duyệt",
+									Body = "Có ảnh cần bạn review và phê duyệt.",
+									Priority = NotificationPriority.High,
+									SenderType = SenderTypeEnum.System,
+									Recipients = new List<NotificationRecipientEvent>
+									{
+										new()
+										{
+											RecipientType = RecipientTypeEnum.Supervisor,
+											RecipientId = supervisorId.Value
+										}
+									}
+								}, ct);
+								_logger.LogInformation(
+									"Notification sent to Supervisor {SupervisorId} for ComplianceCheck {CheckId}",
+									supervisorId, check.Id);
+							}
+							catch (Exception ex)
+							{
+								_logger.LogWarning(ex,
+									"Failed to send notification to Supervisor {SupervisorId} for ComplianceCheck {CheckId}. Continuing.",
+									supervisorId, check.Id);
+							}
 						}
 						else
 						{
@@ -313,5 +343,27 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			ComplianceCheckStatus.Failed => "RetakePhotos",
 			_ => "None"
 		};
+
+		public async Task<PaginatedResult<PendingSupervisorCheckDto>> GetPendingSupervisorChecksAsync(
+		PaginationRequest request,
+		CancellationToken ct = default)
+		{
+			var paged = await _complianceRepo.GetPendingSupervisorChecksAsync(_userContext.UserId ,request, ct);
+
+			var mapped = paged.Content.Select(check => new PendingSupervisorCheckDto
+			{
+				ComplianceCheckId = check.Id,
+				TaskStepExecutionId = check.TaskStepExecutionId,
+				MinScore = check.MinScore,
+				FailedImageCount = check.FailedImageCount,
+				CreatedAt = check.Created.AddHours(7)
+			}).ToList();
+
+			return new PaginatedResult<PendingSupervisorCheckDto>(
+				paged.PageNumber,
+				paged.PageSize,
+				paged.TotalElements,
+				mapped);
+		}
 	}
 }
