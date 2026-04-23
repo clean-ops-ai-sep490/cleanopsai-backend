@@ -31,10 +31,11 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		public async Task<IActionResult> GetPagedByRecipient(
 			[FromQuery] bool? isRead,
+			[FromQuery] Guid? workerId,
 			[FromQuery] PaginationRequest request,
 			CancellationToken ct = default)
 		{
-			var (page, unreadCount) = await _service.GetPagedByRecipientAsync(request, isRead, ct);
+			var (page, unreadCount) = await _service.GetPagedByRecipientAsync(request, isRead, workerId, ct);
 
 			var response = new NotificationPagedResponse(page, unreadCount);
 
@@ -67,14 +68,14 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[ProducesResponseType(StatusCodes.Status204NoContent)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> MarkAsRead(Guid notificationId, CancellationToken ct = default)
+		public async Task<IActionResult> MarkAsRead(Guid notificationId, [FromQuery] Guid? workerId, CancellationToken ct = default)
 		{
 			if (notificationId == Guid.Empty)
 			{
 				return BadRequest("NotificationId cannot be empty.");
 			}
 
-			var success = await _service.MarkAsReadAsync(notificationId, ct);
+			var success = await _service.MarkAsReadAsync(notificationId, workerId, ct);
 
 			if (!success)
 			{
@@ -92,10 +93,9 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 			Tags = new[] { "NotificationRecipient" }
 		)]
 		[ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
-		public async Task<IActionResult> MarkAllAsRead(CancellationToken ct = default)
+		public async Task<IActionResult> MarkAllAsRead([FromQuery] Guid? workerId, CancellationToken ct = default)
 		{
-			var updatedCount = await _service.MarkAllAsReadAsync(ct);
-
+			var updatedCount = await _service.MarkAllAsReadAsync(workerId, ct);
 			return Ok(updatedCount);
 		}
 

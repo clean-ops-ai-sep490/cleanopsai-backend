@@ -3,6 +3,7 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Mappings;
@@ -62,14 +63,19 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			return _mapper.Map<NotificationDetailDto>(recipient);
 		}
 
-		public async Task<(PaginatedResult<NotificationListItemDto> Page, int UnreadCount)> GetPagedByRecipientAsync(PaginationRequest paginationRequest, bool? isRead, CancellationToken ct = default)
+		public async Task<(PaginatedResult<NotificationListItemDto> Page, int UnreadCount)> GetPagedByRecipientAsync(PaginationRequest paginationRequest, bool? isRead, Guid? workerId, CancellationToken ct = default)
 		{
 
 			var recipientType = RecipientTypeMapper.FromRole(_userContext.Role);
 
+			var recipientId = recipientType == RecipientTypeEnum.Worker
+				? workerId ?? throw new BadRequestException("WorkerId is required for worker role")
+				: _userContext.UserId;
+
+
 			var (page, unreadCount) = await _repo.GetPagedByRecipientAsync(
-				_userContext.UserId,
-				recipientType,       
+				recipientId,
+				recipientType,
 				paginationRequest,
 				isRead,
 				ct);
@@ -85,10 +91,24 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			return (mappedPage, unreadCount);
 		}
 
-		public Task<int> MarkAllAsReadAsync(CancellationToken ct = default)
-		 => _repo.MarkAllAsReadAsync(_userContext.UserId, ct);
+		public Task<int> MarkAllAsReadAsync(Guid? workerId, CancellationToken ct = default)
+		{
+			var recipientType = RecipientTypeMapper.FromRole(_userContext.Role);
+			var recipientId = recipientType == RecipientTypeEnum.Worker
+				? workerId ?? throw new BadRequestException("WorkerId is required for worker role")
+				: _userContext.UserId;
 
-		public Task<bool> MarkAsReadAsync(Guid notificationId, CancellationToken ct = default)
-		=> _repo.MarkAsReadAsync(notificationId, _userContext.UserId, ct);
+			return _repo.MarkAllAsReadAsync(recipientId, ct);
+		}
+
+		public Task<bool> MarkAsReadAsync(Guid notificationId, Guid? workerId, CancellationToken ct = default)
+		{
+			var recipientType = RecipientTypeMapper.FromRole(_userContext.Role);
+			var recipientId = recipientType == RecipientTypeEnum.Worker
+				? workerId ?? throw new BadRequestException("WorkerId is required for worker role")
+				: _userContext.UserId;
+
+			return _repo.MarkAsReadAsync(notificationId, recipientId, ct);
+		}
 	}
 }

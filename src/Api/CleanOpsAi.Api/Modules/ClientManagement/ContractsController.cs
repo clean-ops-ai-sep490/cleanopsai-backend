@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.Api.Modules.ClientManagement.Dtos;
+using CleanOpsAi.Api.Modules.ClientManagement.Dtos;
 using CleanOpsAi.Modules.ClientManagement.Application.Dtos.Contracts;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Services;
@@ -15,10 +15,12 @@ namespace CleanOpsAi.Api.Modules.ClientManagement
     public class ContractsController : ControllerBase
     {
         private readonly IContractService _service;
+        private readonly IContractScanService _scanService;
 
-        public ContractsController(IContractService service)
+        public ContractsController(IContractService service, IContractScanService scanService)
         {
             _service = service;
+            _scanService = scanService;
         }
 
         [HttpGet("{id:guid}")]
@@ -161,5 +163,26 @@ Tags = new[] { "Contracts" })]
             return Ok(result);
         }
 
+        [HttpPost("{id:guid}/scan")]
+        [SwaggerOperation(
+            Summary = "Scan contract using AI",
+            Description = "Extracts SLA, Shifts, and Tasks from the uploaded contract document using AI.",
+            Tags = new[] { "Contracts" })]
+        [SwaggerResponse(StatusCodes.Status200OK, "Scan completed successfully")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "Contract not found")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, "Failed to scan contract")]
+        public async Task<IActionResult> ScanContract(Guid id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _scanService.ScanContractAsync(id, cancellationToken);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // In a real app, this should be handled by a global exception filter, but we return a generic error for now
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }
