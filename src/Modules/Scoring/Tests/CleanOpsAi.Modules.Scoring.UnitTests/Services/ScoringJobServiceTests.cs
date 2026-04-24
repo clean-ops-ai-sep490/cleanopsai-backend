@@ -4,11 +4,13 @@ using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Request;
+using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
 using CleanOpsAi.Modules.Scoring.Application.Services;
 using CleanOpsAi.Modules.Scoring.Domain.Entities;
 using CleanOpsAi.Modules.Scoring.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 {
@@ -227,6 +229,107 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 				new ReviewScoringResultRequest { Verdict = "PASS" }));
 		}
 
+		[Fact]
+		public async Task ProcessQueuedJobAsync_ShouldPersistVisualizationResponseAsSingleSourceOfTruth()
+		{
+			var jobId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
+			var job = new ScoringJob
+			{
+				Id = jobId,
+				RequestId = "req-visual-1",
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				Status = ScoringJobStatus.Queued,
+				RetryCount = 0,
+				Created = now,
+				LastModified = now,
+				Results = new List<ScoringJobResult>()
+			};
+			IReadOnlyCollection<ScoringJobResult>? replacedResults = null;
+
+			_repository.GetByIdWithResultsAsync(jobId, Arg.Any<CancellationToken>()).Returns(job);
+			_repository
+				.When(x => x.ReplaceResultsAsync(jobId, Arg.Any<IReadOnlyCollection<ScoringJobResult>>(), Arg.Any<CancellationToken>()))
+				.Do(callInfo => replacedResults = callInfo.ArgAt<IReadOnlyCollection<ScoringJobResult>>(1));
+
+			_inferenceClient.EvaluateUrlVisualizeLinkAsync(
+				"LOBBY_CORRIDOR",
+				"https://example.com/a.jpg",
+				Arg.Any<CancellationToken>())
+				.Returns(BuildVisualizationResponse(
+					"https://example.com/a.jpg",
+					qualityScore: 82.615,
+					verdict: "PENDING",
+					visualizationUrl: "https://blob.example.com/a.jpg",
+					yoloDetectionsCount: 0));
+
+			await _service.ProcessQueuedJobAsync(
+				jobId,
+				"LOBBY_CORRIDOR",
+				new[] { "https://example.com/a.jpg" },
+				CancellationToken.None);
+
+			await _inferenceClient.DidNotReceive().EvaluateBatchAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
+			await _inferenceClient.Received(1).EvaluateUrlVisualizeLinkAsync("LOBBY_CORRIDOR", "https://example.com/a.jpg", Arg.Any<CancellationToken>());
+			Assert.NotNull(replacedResults);
+			var saved = Assert.Single(replacedResults!);
+			Assert.Equal("PENDING", saved.Verdict);
+			Assert.Equal(82.615, saved.QualityScore);
+			Assert.Contains("\"quality_score\":82.615", saved.PayloadJson);
+			Assert.Contains("\"visualization_blob_url\":\"https://blob.example.com/a.jpg\"", saved.PayloadJson);
+			Assert.Contains("\"detections_count\":0", saved.PayloadJson);
+			Assert.Contains("\"backend_runtime\":", saved.PayloadJson);
+			Assert.Contains("\"source_of_truth\":\"visualize-link-only\"", saved.PayloadJson);
+			Assert.Contains("\"code_path_version\":\"visualize_single_source_v1\"", saved.PayloadJson);
+			Assert.Equal(ScoringJobStatus.Succeeded, job.Status);
+		}
+
+		[Fact]
+		public async Task ProcessQueuedJobAsync_ShouldPersistFailurePlaceholder_WhenVisualizationCallFails()
+		{
+			var jobId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
+			var job = new ScoringJob
+			{
+				Id = jobId,
+				RequestId = "req-visual-2",
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				Status = ScoringJobStatus.Queued,
+				RetryCount = 0,
+				Created = now,
+				LastModified = now,
+				Results = new List<ScoringJobResult>()
+			};
+			IReadOnlyCollection<ScoringJobResult>? replacedResults = null;
+
+			_repository.GetByIdWithResultsAsync(jobId, Arg.Any<CancellationToken>()).Returns(job);
+			_repository
+				.When(x => x.ReplaceResultsAsync(jobId, Arg.Any<IReadOnlyCollection<ScoringJobResult>>(), Arg.Any<CancellationToken>()))
+				.Do(callInfo => replacedResults = callInfo.ArgAt<IReadOnlyCollection<ScoringJobResult>>(1));
+
+			_inferenceClient.EvaluateUrlVisualizeLinkAsync(
+				"LOBBY_CORRIDOR",
+				"https://example.com/b.jpg",
+				Arg.Any<CancellationToken>())
+				.Returns<Task<ScoringVisualizationLinkResponse>>(_ => throw new InvalidOperationException("boom"));
+
+			await _service.ProcessQueuedJobAsync(
+				jobId,
+				"LOBBY_CORRIDOR",
+				new[] { "https://example.com/b.jpg" },
+				CancellationToken.None);
+
+			Assert.NotNull(replacedResults);
+			var saved = Assert.Single(replacedResults!);
+			Assert.Equal("FAIL", saved.Verdict);
+			Assert.Equal(0, saved.QualityScore);
+			Assert.Contains("\"message\":\"boom\"", saved.PayloadJson);
+			Assert.Contains("\"backend_runtime\":", saved.PayloadJson);
+			Assert.Contains("\"source_of_truth\":\"visualize-link-only\"", saved.PayloadJson);
+			Assert.DoesNotContain("visualization_blob_url", saved.PayloadJson);
+			Assert.Equal(ScoringJobStatus.Succeeded, job.Status);
+		}
+
 		private static ScoringJobResult BuildPendingResult(Guid? submittedByUserId, Guid? resultId = null)
 		{
 			var now = DateTime.UtcNow;
@@ -251,6 +354,52 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					SubmittedByUserId = submittedByUserId,
 					Created = now,
 					LastModified = now
+				}
+			};
+		}
+
+		private static ScoringVisualizationLinkResponse BuildVisualizationResponse(
+			string source,
+			double qualityScore,
+			string verdict,
+			string visualizationUrl,
+			int yoloDetectionsCount)
+		{
+			return new ScoringVisualizationLinkResponse
+			{
+				SourceType = "url",
+				Source = source,
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				Visualization = new ScoringVisualizationMetadata
+				{
+					Url = visualizationUrl,
+					MimeType = "image/jpeg",
+					ByteSize = 12345
+				},
+				Scoring = new ScoringInferenceScore
+				{
+					Verdict = verdict,
+					QualityScore = qualityScore,
+					BaseCleanScore = qualityScore,
+					ObjectPenalty = 0,
+					PassThreshold = 90,
+					Reasons = new List<string> { "test reason" }
+				},
+				AdditionalData = new Dictionary<string, System.Text.Json.JsonElement>
+				{
+					["yolo"] = JsonSerializer.SerializeToElement(new
+					{
+						results = Array.Empty<object>(),
+						detections_count = yoloDetectionsCount
+					}),
+					["unet"] = JsonSerializer.SerializeToElement(new
+					{
+						total_dirty_coverage_pct = 17.385
+					}),
+					["llm_filter"] = JsonSerializer.SerializeToElement(new
+					{
+						route_mode = "visualize_enhanced"
+					})
 				}
 			};
 		}

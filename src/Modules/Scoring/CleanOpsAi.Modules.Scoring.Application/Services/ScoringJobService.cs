@@ -17,6 +17,10 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 	public class ScoringJobService : IScoringJobService
 	{
 		private const int MaxBatchImages = 5;
+		private const int MaxVisualizationConcurrency = 2;
+		private const string SourceOfTruth = "visualize-link-only";
+		private const string RuntimeServiceName = "scoring-job-service";
+		private const string CodePathVersion = "visualize_single_source_v1";
 		private static readonly HashSet<string> AllowedReviewedVerdicts = new(StringComparer.OrdinalIgnoreCase)
 		{
 			"PASS",
@@ -398,18 +402,22 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			job.RetryCount += 1;
 			job.LastModified = DateTime.UtcNow;
 			await _repository.SaveChangesAsync(ct);
+			_logger.LogInformation(
+				"Processing scoring job {JobId} requestId={RequestId} env={EnvironmentKey} imageCount={ImageCount} scoring_job_source_of_truth={SourceOfTruth} code_path_version={CodePathVersion}",
+				job.Id,
+				job.RequestId,
+				environmentKey,
+				imageUrls.Count,
+				SourceOfTruth,
+				CodePathVersion);
 
-			var inference = await _inferenceClient.EvaluateBatchAsync(environmentKey, imageUrls, ct);
-			var visualizationBySource = await BuildVisualizationMapAsync(environmentKey, inference.Results, ct);
-
-			var mappedResults = new List<ScoringJobResult>(inference.Results.Count);
-			foreach (var result in inference.Results)
+			var visualizedResults = await EvaluateVisualizationResultsAsync(environmentKey, imageUrls, ct);
+			var mappedResults = new List<ScoringJobResult>(visualizedResults.Count);
+			foreach (var result in visualizedResults)
 			{
-				var sourceType = string.IsNullOrWhiteSpace(result.SourceType) ? "unknown" : result.SourceType;
-				var source = string.IsNullOrWhiteSpace(result.Source) ? $"result-{result.Id ?? 0}" : result.Source;
+				var sourceType = string.IsNullOrWhiteSpace(result.SourceType) ? "unknown" : result.SourceType!;
+				var source = string.IsNullOrWhiteSpace(result.Source) ? "unknown-source" : result.Source!;
 				var verdict = string.IsNullOrWhiteSpace(result.Scoring?.Verdict) ? "UNKNOWN" : result.Scoring!.Verdict!;
-
-				visualizationBySource.TryGetValue(source, out var visualization);
 
 				mappedResults.Add(new ScoringJobResult
 				{
@@ -419,10 +427,18 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					Source = source,
 					Verdict = verdict,
 					QualityScore = result.Scoring?.QualityScore ?? 0,
-					PayloadJson = BuildResultPayloadJson(result, visualization),
+					PayloadJson = BuildResultPayloadJson(result, DateTime.UtcNow),
 					Created = DateTime.UtcNow,
 					LastModified = DateTime.UtcNow,
 				});
+				_logger.LogInformation(
+					"Mapped scoring result source={Source} verdict={Verdict} qualityScore={QualityScore} visualizationUrl={VisualizationUrl} scoring_job_source_of_truth={SourceOfTruth} code_path_version={CodePathVersion}",
+					source,
+					verdict,
+					result.Scoring?.QualityScore ?? 0,
+					result.Visualization?.Url,
+					SourceOfTruth,
+					CodePathVersion);
 			}
 
 			await _repository.ReplaceResultsAsync(job.Id, mappedResults, ct);
@@ -439,12 +455,12 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			{
 				JobId = job.Id,
 				RequestId = job.RequestId,
-				TotalRequested = inference.Summary.TotalRequested,
-				ProcessedCount = inference.Summary.Processed,
-				SkippedCount = inference.Summary.Skipped,
-				PassCount = inference.Summary.Pass,
-				PendingCount = inference.Summary.Pending,
-				FailCount = inference.Summary.Fail,
+				TotalRequested = imageUrls.Count,
+				ProcessedCount = mappedResults.Count,
+				SkippedCount = Math.Max(0, imageUrls.Count - mappedResults.Count),
+				PassCount = mappedResults.Count(x => string.Equals(x.Verdict, "PASS", StringComparison.OrdinalIgnoreCase)),
+				PendingCount = mappedResults.Count(x => string.Equals(x.Verdict, "PENDING", StringComparison.OrdinalIgnoreCase)),
+				FailCount = mappedResults.Count(x => string.Equals(x.Verdict, "FAIL", StringComparison.OrdinalIgnoreCase)),
 			}, ct);
 		}
 
@@ -493,67 +509,94 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			return MapRetrainBatch(batch);
 		}
 
-		private async Task<Dictionary<string, ScoringVisualizationLinkResponse>> BuildVisualizationMapAsync(
+		private async Task<List<ScoringVisualizationLinkResponse>> EvaluateVisualizationResultsAsync(
 			string environmentKey,
-			IReadOnlyCollection<ScoringInferenceResult> inferenceResults,
+			IReadOnlyCollection<string> imageUrls,
 			CancellationToken ct)
 		{
-			var sourceUrls = inferenceResults
-				.Where(r => string.Equals(r.SourceType, "url", StringComparison.OrdinalIgnoreCase))
-				.Select(r => r.Source)
-				.Where(s => !string.IsNullOrWhiteSpace(s))
-				.Select(s => s!)
+			var sourceUrls = imageUrls
+				.Where(x => !string.IsNullOrWhiteSpace(x))
+				.Select(x => x.Trim())
 				.Distinct(StringComparer.OrdinalIgnoreCase)
 				.ToList();
+			var results = new ScoringVisualizationLinkResponse[sourceUrls.Count];
+			using var gate = new SemaphoreSlim(MaxVisualizationConcurrency);
 
-			var visualizationBySource = new Dictionary<string, ScoringVisualizationLinkResponse>(StringComparer.OrdinalIgnoreCase);
-
-			var tasks = sourceUrls.Select(async sourceUrl =>
+			var tasks = sourceUrls.Select(async (sourceUrl, index) =>
 			{
+				await gate.WaitAsync(ct);
 				try
 				{
-					var visualization = await _inferenceClient.EvaluateUrlVisualizeLinkAsync(environmentKey, sourceUrl, ct);
-					return (SourceUrl: sourceUrl, Visualization: visualization, Error: (Exception?)null);
+					results[index] = await _inferenceClient.EvaluateUrlVisualizeLinkAsync(environmentKey, sourceUrl, ct);
 				}
 				catch (Exception ex)
 				{
-					return (SourceUrl: sourceUrl, Visualization: (ScoringVisualizationLinkResponse?)null, Error: ex);
+					_logger.LogWarning(
+						ex,
+						"Failed to evaluate visualization link for source {SourceUrl}. Persisting failed placeholder payload.",
+						sourceUrl);
+					results[index] = BuildFailedVisualizationResponse(sourceUrl, environmentKey, ex);
+				}
+				finally
+				{
+					gate.Release();
 				}
 			});
 
-			var results = await Task.WhenAll(tasks);
-			foreach (var item in results)
-			{
-				if (item.Error is not null)
-				{
-					_logger.LogWarning(
-						item.Error,
-						"Failed to generate visualization link for source {SourceUrl} in scoring job enrichment.",
-						item.SourceUrl);
-					continue;
-				}
-
-				if (item.Visualization is not null)
-				{
-					visualizationBySource[item.SourceUrl] = item.Visualization;
-				}
-			}
-
-			return visualizationBySource;
+			await Task.WhenAll(tasks);
+			return results.ToList();
 		}
 
-		private static string BuildResultPayloadJson(ScoringInferenceResult result, ScoringVisualizationLinkResponse? visualization)
+		private static string BuildResultPayloadJson(ScoringVisualizationLinkResponse result, DateTime generatedAtUtc)
 		{
 			var payloadNode = JsonSerializer.SerializeToNode(result, PayloadSerializerOptions) as JsonObject
 				?? new JsonObject();
 
-			var blobUrl = visualization?.Visualization?.Url;
+			var blobUrl = result.Visualization?.Url;
 			if (!string.IsNullOrWhiteSpace(blobUrl))
 			{
 				payloadNode["visualization_blob_url"] = blobUrl;
 			}
+			payloadNode["backend_runtime"] = new JsonObject
+			{
+				["source_of_truth"] = SourceOfTruth,
+				["service"] = RuntimeServiceName,
+				["generated_at_utc"] = generatedAtUtc,
+				["code_path_version"] = CodePathVersion,
+			};
 
 			return payloadNode.ToJsonString(PayloadSerializerOptions);
+		}
+
+		private static ScoringVisualizationLinkResponse BuildFailedVisualizationResponse(
+			string sourceUrl,
+			string environmentKey,
+			Exception ex)
+		{
+			var message = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
+			return new ScoringVisualizationLinkResponse
+			{
+				SourceType = "url",
+				Source = sourceUrl,
+				EnvironmentKey = environmentKey,
+				Scoring = new ScoringInferenceScore
+				{
+					Verdict = "FAIL",
+					QualityScore = 0,
+					BaseCleanScore = 0,
+					ObjectPenalty = 0,
+					PassThreshold = null,
+					Reasons = new List<string> { "visualization evaluation failed" },
+				},
+				AdditionalData = new Dictionary<string, JsonElement>
+				{
+					["error"] = JsonSerializer.SerializeToElement(new
+					{
+						message,
+						type = ex.GetType().Name,
+					})
+				}
+			};
 		}
 
 		private static string? ExtractVisualizationBlobUrl(string payloadJson)

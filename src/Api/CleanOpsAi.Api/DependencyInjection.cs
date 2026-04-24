@@ -83,7 +83,8 @@ public static class DependencyInjection
 		{
 			policy.WithOrigins(
 				"http://localhost:3000",
-				"https://localhost:3000")
+				"https://localhost:3000",
+				"http://localhost:8081")
 			.AllowAnyHeader()
 			.AllowAnyMethod()
 			.AllowCredentials();
