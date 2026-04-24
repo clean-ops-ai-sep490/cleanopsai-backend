@@ -20,5 +20,7 @@ namespace CleanOpsAi.Modules.Scoring.Domain.Entities
 		public string PayloadJson { get; set; } = "{}";
 
 		public virtual ScoringJob ScoringJob { get; set; } = null!;
+
+		public virtual ICollection<ScoringAnnotationCandidate> AnnotationCandidates { get; set; } = new List<ScoringAnnotationCandidate>();
 	}
 }

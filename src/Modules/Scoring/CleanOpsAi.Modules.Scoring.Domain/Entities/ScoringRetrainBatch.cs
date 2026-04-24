@@ -13,6 +13,12 @@ namespace CleanOpsAi.Modules.Scoring.Domain.Entities
 
 		public int ReviewedSampleCount { get; set; }
 
+		public int AnnotatedSampleCount { get; set; }
+
+		public int ApprovedAnnotationCount { get; set; }
+
+		public int CalibrationSampleCount { get; set; }
+
 		public ScoringRetrainBatchStatus Status { get; set; } = ScoringRetrainBatchStatus.Queued;
 
 		public DateTime? CompletedAtUtc { get; set; }

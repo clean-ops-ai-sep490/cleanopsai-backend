@@ -1,6 +1,9 @@
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.Scoring.Domain.Entities;
+using CleanOpsAi.Modules.Scoring.Domain.Enums;
 using CleanOpsAi.Modules.Scoring.IntegrationEvents;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Options;
 using MassTransit;
@@ -16,15 +19,18 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 	{
 		private readonly IOptions<ScoringRetrainOptions> _options;
 		private readonly IHttpClientFactory _httpClientFactory;
+		private readonly IScoringJobRepository _repository;
 		private readonly ILogger<ScoringResultReviewedConsumer> _logger;
 
 		public ScoringResultReviewedConsumer(
 			IOptions<ScoringRetrainOptions> options,
 			IHttpClientFactory httpClientFactory,
+			IScoringJobRepository repository,
 			ILogger<ScoringResultReviewedConsumer> logger)
 		{
 			_options = options;
 			_httpClientFactory = httpClientFactory;
+			_repository = repository;
 			_logger = logger;
 		}
 
@@ -32,6 +38,10 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		{
 			var config = _options.Value;
 			var message = context.Message;
+			var reviewedAtUtc = message.ReviewedAtUtc == default
+				? DateTime.UtcNow
+				: DateTime.SpecifyKind(message.ReviewedAtUtc, DateTimeKind.Utc);
+			var candidate = await EnsureAnnotationCandidateAsync(message, reviewedAtUtc, context.CancellationToken);
 
 			if (!config.ObjectStorageEnabled || !config.ReviewedSnapshotsEnabled)
 			{
@@ -55,9 +65,6 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					$"Reviewed source is not a valid HTTP URL. result_id={message.ResultId}, source='{message.Source}'.");
 			}
 
-			var reviewedAtUtc = message.ReviewedAtUtc == default
-				? DateTime.UtcNow
-				: DateTime.SpecifyKind(message.ReviewedAtUtc, DateTimeKind.Utc);
 			var capturedAtUtc = DateTime.UtcNow;
 			var reviewToken = reviewedAtUtc.ToString("yyyyMMddTHHmmssfffZ", CultureInfo.InvariantCulture);
 
@@ -119,6 +126,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["jobId"] = message.JobId.ToString(),
 				["source"] = message.Source,
 				["sourceType"] = message.SourceType,
+				["visualizationBlobUrl"] = candidate?.VisualizationBlobUrl,
 				["environmentKey"] = message.EnvironmentKey,
 				["originalVerdict"] = message.OriginalVerdict,
 				["reviewedVerdict"] = message.ReviewedVerdict,
@@ -161,11 +169,71 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				capturedAtUtc,
 				context.CancellationToken);
 
+			if (candidate is not null)
+			{
+				candidate.SnapshotBlobKey = snapshotKey;
+				candidate.MetadataBlobKey = metadataKey;
+				candidate.LastModified = DateTime.UtcNow;
+				candidate.LastModifiedBy = "system";
+				await _repository.SaveChangesAsync(context.CancellationToken);
+			}
+
 			_logger.LogInformation(
 				"Uploaded reviewed snapshot for result {ResultId}. snapshot_key={SnapshotKey}, metadata_key={MetadataKey}",
 				message.ResultId,
 				snapshotKey,
 				metadataKey);
+		}
+
+		private async Task<ScoringAnnotationCandidate?> EnsureAnnotationCandidateAsync(
+			ScoringResultReviewedEvent message,
+			DateTime reviewedAtUtc,
+			CancellationToken ct)
+		{
+			if (!string.Equals(message.OriginalVerdict, "PENDING", StringComparison.OrdinalIgnoreCase) ||
+				!string.Equals(message.ReviewedVerdict, "FAIL", StringComparison.OrdinalIgnoreCase))
+			{
+				return null;
+			}
+
+			var existing = await _repository.GetAnnotationCandidateByResultIdAsync(message.ResultId, ct);
+			if (existing is not null)
+			{
+				return existing;
+			}
+
+			var result = await _repository.GetResultByIdWithJobAsync(message.ResultId, ct);
+			if (result is null)
+			{
+				_logger.LogWarning(
+					"Unable to create annotation candidate because scoring result {ResultId} was not found.",
+					message.ResultId);
+				return null;
+			}
+
+			var candidate = new ScoringAnnotationCandidate
+			{
+				Id = Guid.NewGuid(),
+				ResultId = result.Id,
+				JobId = result.ScoringJobId,
+				RequestId = result.ScoringJob.RequestId,
+				EnvironmentKey = result.ScoringJob.EnvironmentKey,
+				ImageUrl = result.Source,
+				VisualizationBlobUrl = ExtractVisualizationBlobUrl(result.PayloadJson),
+				OriginalVerdict = message.OriginalVerdict,
+				ReviewedVerdict = message.ReviewedVerdict,
+				SourceType = "reviewed-fail-from-pending",
+				CandidateStatus = ScoringAnnotationCandidateStatus.Queued,
+				CreatedAtUtc = reviewedAtUtc,
+				Created = reviewedAtUtc,
+				LastModified = reviewedAtUtc,
+				CreatedBy = "system",
+				LastModifiedBy = "system",
+			};
+
+			await _repository.InsertAnnotationCandidateAsync(candidate, ct);
+			await _repository.SaveChangesAsync(ct);
+			return candidate;
 		}
 
 		private static async Task UpsertDailyManifestAsync(
@@ -314,6 +382,31 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["reviewed_at_token"] = reviewToken,
 				["source_type"] = message.SourceType,
 			};
+		}
+
+		private static string? ExtractVisualizationBlobUrl(string payloadJson)
+		{
+			if (string.IsNullOrWhiteSpace(payloadJson))
+			{
+				return null;
+			}
+
+			try
+			{
+				var node = JsonNode.Parse(payloadJson) as JsonObject;
+				var direct = node?["visualization_blob_url"]?.GetValue<string>();
+				if (!string.IsNullOrWhiteSpace(direct))
+				{
+					return direct;
+				}
+
+				var legacy = node?["visualization"]?["url"]?.GetValue<string>();
+				return string.IsNullOrWhiteSpace(legacy) ? null : legacy;
+			}
+			catch
+			{
+				return null;
+			}
 		}
 	}
 }

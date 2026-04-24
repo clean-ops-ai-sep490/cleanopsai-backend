@@ -22,6 +22,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 		private readonly IUserContext _userContext;
 		private readonly ISupervisorManagedWorkerQueryService _managedWorkerQueryService;
 		private readonly IWorkerLookupQueryService _workerLookupQueryService;
+		private readonly IScoringAnnotationArtifactService _annotationArtifactService;
 		private readonly ILogger<ScoringJobService> _logger;
 		private readonly ScoringJobService _service;
 
@@ -33,6 +34,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			_userContext = Substitute.For<IUserContext>();
 			_managedWorkerQueryService = Substitute.For<ISupervisorManagedWorkerQueryService>();
 			_workerLookupQueryService = Substitute.For<IWorkerLookupQueryService>();
+			_annotationArtifactService = Substitute.For<IScoringAnnotationArtifactService>();
 			_logger = Substitute.For<ILogger<ScoringJobService>>();
 
 			_service = new ScoringJobService(
@@ -42,6 +44,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 				_userContext,
 				_managedWorkerQueryService,
 				_workerLookupQueryService,
+				_annotationArtifactService,
 				_logger);
 		}
 
@@ -330,6 +333,159 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			Assert.Equal(ScoringJobStatus.Succeeded, job.Status);
 		}
 
+		[Fact]
+		public async Task UpsertAnnotationCandidateAsync_ShouldCreateSubmittedAnnotation()
+		{
+			var candidateId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
+			var candidate = new ScoringAnnotationCandidate
+			{
+				Id = candidateId,
+				ResultId = Guid.NewGuid(),
+				JobId = Guid.NewGuid(),
+				RequestId = "req-ann-1",
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				ImageUrl = "https://example.com/after.jpg",
+				OriginalVerdict = "PENDING",
+				ReviewedVerdict = "FAIL",
+				SourceType = "reviewed-fail-from-pending",
+				CandidateStatus = ScoringAnnotationCandidateStatus.Queued,
+				CreatedAtUtc = now,
+				Created = now,
+				LastModified = now,
+				Result = new ScoringJobResult
+				{
+					Id = Guid.NewGuid(),
+					ScoringJobId = Guid.NewGuid(),
+					SourceType = "url",
+					Source = "https://example.com/after.jpg",
+					Verdict = "FAIL",
+					QualityScore = 52,
+					PayloadJson = "{\"yolo\":{\"results\":[]}}",
+					Created = now,
+					LastModified = now,
+					ScoringJob = new ScoringJob
+					{
+						Id = Guid.NewGuid(),
+						RequestId = "req-ann-1",
+						EnvironmentKey = "LOBBY_CORRIDOR",
+						Status = ScoringJobStatus.Succeeded,
+						Created = now,
+						LastModified = now,
+					}
+				}
+			};
+
+			_userContext.Role.Returns("Manager");
+			_userContext.UserId.Returns(Guid.NewGuid());
+			_repository.GetAnnotationCandidateByIdAsync(candidateId, Arg.Any<CancellationToken>()).Returns(candidate);
+
+			var result = await _service.UpsertAnnotationCandidateAsync(candidateId, new UpsertScoringAnnotationRequest
+			{
+				Labels = JsonDocument.Parse("[{\"label\":\"stain_or_water\",\"shapeType\":\"rectangle\",\"points\":[[10,10],[100,100]]}]").RootElement.Clone(),
+				ReviewerNote = "Needs cleanup",
+				Submit = true,
+			});
+
+			Assert.NotNull(result);
+			Assert.Equal(ScoringAnnotationCandidateStatus.Submitted, candidate.CandidateStatus);
+			Assert.NotNull(candidate.Annotation);
+			Assert.Equal(1, candidate.Annotation!.Version);
+			Assert.Contains("stain_or_water", candidate.Annotation.LabelsJson);
+			await _repository.Received(1).InsertAnnotationAsync(Arg.Any<ScoringAnnotation>(), Arg.Any<CancellationToken>());
+			await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
+		public async Task ApproveAnnotationCandidateAsync_ShouldPublishApprovedArtifact()
+		{
+			var candidateId = Guid.NewGuid();
+			var reviewerId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
+			var annotation = new ScoringAnnotation
+			{
+				Id = Guid.NewGuid(),
+				CandidateId = candidateId,
+				LabelsJson = "[]",
+				Version = 1,
+				Created = now,
+				LastModified = now,
+			};
+			var candidate = new ScoringAnnotationCandidate
+			{
+				Id = candidateId,
+				ResultId = Guid.NewGuid(),
+				JobId = Guid.NewGuid(),
+				RequestId = "req-ann-2",
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				ImageUrl = "https://example.com/after.jpg",
+				OriginalVerdict = "PENDING",
+				ReviewedVerdict = "FAIL",
+				SourceType = "reviewed-fail-from-pending",
+				CandidateStatus = ScoringAnnotationCandidateStatus.Submitted,
+				CreatedAtUtc = now,
+				SnapshotBlobKey = "snapshots/file.jpg",
+				MetadataBlobKey = "metadata/file.json",
+				Created = now,
+				LastModified = now,
+				Annotation = annotation,
+				Result = BuildPendingResult(Guid.NewGuid()),
+			};
+
+			_userContext.Role.Returns("Admin");
+			_userContext.UserId.Returns(reviewerId);
+			_repository.GetAnnotationCandidateByIdAsync(candidateId, Arg.Any<CancellationToken>()).Returns(candidate);
+
+			var result = await _service.ApproveAnnotationCandidateAsync(candidateId, new ApproveScoringAnnotationCandidateRequest
+			{
+				Note = "Approved for retrain"
+			});
+
+			Assert.NotNull(result);
+			Assert.Equal(ScoringAnnotationCandidateStatus.Approved, candidate.CandidateStatus);
+			Assert.Equal(reviewerId, candidate.Annotation!.ApprovedByUserId);
+			await _annotationArtifactService.Received(1).PublishApprovedAnnotationAsync(candidate, annotation, Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
+		public async Task TriggerRetrainAsync_ShouldPopulateAnnotationCounts()
+		{
+			var now = DateTime.UtcNow;
+			var reviewed = new[] { BuildReviewedResult("PASS"), BuildReviewedResult("FAIL") };
+			var annotatedCandidates = new[]
+			{
+				BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Submitted),
+				BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Approved),
+			};
+			var approvedCandidates = new[]
+			{
+				BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Approved),
+			};
+
+			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>()).Returns(reviewed);
+			_repository.GetAnnotatedCandidatesForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>()).Returns(annotatedCandidates);
+			_repository.GetApprovedAnnotationCandidatesForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>()).Returns(approvedCandidates);
+
+			var response = await _service.TriggerRetrainAsync(new TriggerScoringRetrainRequest
+			{
+				LookbackDays = 7,
+				MinReviewedSamples = 1,
+				MaxSamplesPerBatch = 500,
+			});
+
+			Assert.Equal(2, response.ReviewedSampleCount);
+			Assert.Equal(2, response.AnnotatedSampleCount);
+			Assert.Equal(1, response.ApprovedAnnotationCount);
+			Assert.Equal(2, response.CalibrationSampleCount);
+			await _repository.Received(1).InsertRetrainBatchAsync(
+				Arg.Is<ScoringRetrainBatch>(x =>
+					x.ReviewedSampleCount == 2 &&
+					x.AnnotatedSampleCount == 2 &&
+					x.ApprovedAnnotationCount == 1 &&
+					x.CalibrationSampleCount == 2),
+				Arg.Any<CancellationToken>());
+		}
+
 		private static ScoringJobResult BuildPendingResult(Guid? submittedByUserId, Guid? resultId = null)
 		{
 			var now = DateTime.UtcNow;
@@ -400,6 +556,62 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					{
 						route_mode = "visualize_enhanced"
 					})
+				}
+			};
+		}
+
+		private static ScoringJobResult BuildReviewedResult(string reviewedVerdict)
+		{
+			var now = DateTime.UtcNow;
+			return new ScoringJobResult
+			{
+				Id = Guid.NewGuid(),
+				ScoringJobId = Guid.NewGuid(),
+				SourceType = "url",
+				Source = "https://example.com/reviewed.jpg",
+				Verdict = reviewedVerdict,
+				QualityScore = 77,
+				PayloadJson = "{\"human_review\":{\"original_verdict\":\"PENDING\",\"reviewed_at_utc\":\"2026-04-24T00:00:00Z\"}}",
+				Created = now,
+				LastModified = now,
+				ScoringJob = new ScoringJob
+				{
+					Id = Guid.NewGuid(),
+					RequestId = "req-review",
+					EnvironmentKey = "LOBBY_CORRIDOR",
+					Status = ScoringJobStatus.Succeeded,
+					Created = now,
+					LastModified = now,
+				}
+			};
+		}
+
+		private static ScoringAnnotationCandidate BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus status)
+		{
+			var now = DateTime.UtcNow;
+			return new ScoringAnnotationCandidate
+			{
+				Id = Guid.NewGuid(),
+				ResultId = Guid.NewGuid(),
+				JobId = Guid.NewGuid(),
+				RequestId = "req-candidate",
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				ImageUrl = "https://example.com/after.jpg",
+				OriginalVerdict = "PENDING",
+				ReviewedVerdict = "FAIL",
+				SourceType = "reviewed-fail-from-pending",
+				CandidateStatus = status,
+				CreatedAtUtc = now,
+				Created = now,
+				LastModified = now,
+				Annotation = new ScoringAnnotation
+				{
+					Id = Guid.NewGuid(),
+					CandidateId = Guid.NewGuid(),
+					LabelsJson = "[]",
+					Version = 1,
+					Created = now,
+					LastModified = now,
 				}
 			};
 		}

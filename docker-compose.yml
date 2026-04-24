@@ -64,7 +64,7 @@ services:
       - "5000:8080"
       - "5001:8081"
     environment:
-      <<: *common-env
+      <<: [*common-env, *retrain-env]
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       Jwt__Secret: ${JWT_SECRET:-CleanOpsAi-Dev-Secret-Key-ChangeMe-1234567890}
       Jwt__Issuer: ${JWT_ISSUER:-CleanOpsAi}

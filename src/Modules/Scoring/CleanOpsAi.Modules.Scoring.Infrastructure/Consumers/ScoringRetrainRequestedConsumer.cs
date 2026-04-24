@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Domain.Entities;
 using CleanOpsAi.Modules.Scoring.Domain.Enums;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Options;
@@ -19,7 +20,7 @@ using System.Text.Json.Nodes;
 
 namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 {
-	public class ScoringRetrainRequestedConsumer : IConsumer<ScoringRetrainRequestedEvent>
+	public class ScoringRetrainRequestedConsumer : IConsumer<ScoringRetrainRequestedEvent>, IScoringRetrainRequestHandler
 	{
 		private readonly IEventBus _eventBus;
 		private readonly IOptions<ScoringRetrainOptions> _options;
@@ -43,20 +44,35 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 
 		public async Task Consume(ConsumeContext<ScoringRetrainRequestedEvent> context)
 		{
+			await HandleAsync(context.Message, context.CancellationToken);
+		}
+
+		public bool InlineExecutionEnabled => ResolveInlineExecutionEnabled();
+
+		public async Task HandleAsync(ScoringRetrainRequestedEvent message, CancellationToken ct = default)
+		{
 			var config = _options.Value;
-			var message = context.Message;
 			var now = DateTime.UtcNow;
+			var remoteTrainerEnabled = ResolveRemoteTrainerEnabled(config);
 			var useExternalCandidate = config.ObjectStorageEnabled
 				&& config.UseExternalCandidateForRetrain
 				&& !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix);
 
-			var batch = await EnsureBatchAsync(message, now, context.CancellationToken);
+			_logger.LogInformation(
+				"Scoring retrain batch {BatchId} starting. RemoteTrainerEnabled={RemoteTrainerEnabled}. UseExternalCandidate={UseExternalCandidate}. ExternalCandidatePrefix={ExternalCandidatePrefix}. TrainerCommandConfigured={TrainerCommandConfigured}.",
+				message.BatchId,
+				remoteTrainerEnabled,
+				useExternalCandidate,
+				config.ExternalCandidatePrefix,
+				!string.IsNullOrWhiteSpace(config.TrainerCommand));
+
+			var batch = await EnsureBatchAsync(message, now, ct);
 			var run = new ScoringRetrainRun
 			{
 				Id = Guid.NewGuid(),
 				ScoringRetrainBatchId = batch.Id,
 				Status = ScoringRetrainRunStatus.Running,
-				Mode = ResolveRunMode(config, useExternalCandidate),
+				Mode = ResolveRunMode(useExternalCandidate, remoteTrainerEnabled),
 				StartedAtUtc = now,
 				Created = now,
 				LastModified = now,
@@ -64,7 +80,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				LastModifiedBy = "system",
 			};
 
-			await _repository.InsertRetrainRunAsync(run, context.CancellationToken);
+			await _repository.InsertRetrainRunAsync(run, ct);
 			batch.Status = ScoringRetrainBatchStatus.Running;
 			batch.CompletedAtUtc = null;
 			batch.FailureReason = null;
@@ -72,12 +88,12 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			batch.PromotionReason = null;
 			batch.LastModified = now;
 			batch.LastModifiedBy = "system";
-			await _repository.SaveChangesAsync(context.CancellationToken);
+			await _repository.SaveChangesAsync(ct);
 
-			if (!config.RemoteTrainerEnabled && !useExternalCandidate && string.IsNullOrWhiteSpace(config.TrainerCommand))
+			if (!remoteTrainerEnabled && !useExternalCandidate && string.IsNullOrWhiteSpace(config.TrainerCommand))
 			{
 				var reason = $"Trainer command is empty. Skip retrain batch {message.BatchId}.";
-				await MarkBatchFailedAsync(batch, run, reason, 1, context.CancellationToken);
+				await MarkBatchFailedAsync(batch, run, reason, 1, ct);
 				_logger.LogWarning(reason);
 				return;
 			}
@@ -90,7 +106,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					config.ReviewedBridgeCommand,
 					config.TrainerWorkingDirectory,
 					Math.Max(30, config.TrainerTimeoutSeconds),
-					context.CancellationToken);
+					ct);
 
 				if (bridgeExecution.ExitCode != 0)
 				{
@@ -102,9 +118,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 						Succeeded = false,
 						ExitCode = bridgeExecution.ExitCode,
 						Message = bridgeReason,
-					}, context.CancellationToken);
+					}, ct);
 
-					await MarkBatchFailedAsync(batch, run, bridgeReason, bridgeExecution.ExitCode, context.CancellationToken);
+					await MarkBatchFailedAsync(batch, run, bridgeReason, bridgeExecution.ExitCode, ct);
 					_logger.LogError(
 						"Scoring reviewed bridge command failed for batch {BatchId}. ExitCode={ExitCode}. StdErr={StdErr}",
 						message.BatchId,
@@ -120,9 +136,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			}
 
 			CommandExecutionResult execution;
-			if (config.RemoteTrainerEnabled)
+			if (remoteTrainerEnabled)
 			{
-				execution = await RunRemoteTrainerAsync(message, config, context.CancellationToken);
+				execution = await RunRemoteTrainerAsync(message, config, ct);
 				if (execution.ExitCode == 0 && !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix))
 				{
 					useExternalCandidate = true;
@@ -141,7 +157,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					config.TrainerCommand,
 					config.TrainerWorkingDirectory,
 					Math.Max(30, config.TrainerTimeoutSeconds),
-					context.CancellationToken);
+					ct);
 			}
 
 			var executionCompletedAt = DateTime.UtcNow;
@@ -154,7 +170,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				Message = execution.ExitCode == 0
 					? "Trainer command completed successfully."
 					: $"Trainer command failed with exit code {execution.ExitCode}.",
-			}, context.CancellationToken);
+			}, ct);
 
 			if (execution.ExitCode != 0)
 			{
@@ -163,7 +179,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					run,
 					$"Trainer command failed with exit code {execution.ExitCode}. {Truncate(execution.StandardError, 1500)}".Trim(),
 					execution.ExitCode,
-					context.CancellationToken);
+					ct);
 
 				_logger.LogError(
 					"Scoring retrain batch {BatchId} failed. ExitCode={ExitCode}. StdErr={StdErr}",
@@ -176,11 +192,11 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			PromotionGateResult gateResult;
 			if (config.ObjectStorageEnabled)
 			{
-				gateResult = await EvaluateAndPromoteViaObjectStorageAsync(message, config, useExternalCandidate, context.CancellationToken);
+				gateResult = await EvaluateAndPromoteViaObjectStorageAsync(message, config, useExternalCandidate, ct);
 			}
 			else
 			{
-				gateResult = await EvaluatePromotionGateAsync(config, context.CancellationToken);
+				gateResult = await EvaluatePromotionGateAsync(config, ct);
 			}
 
 			if (gateResult.Promoted && !string.IsNullOrWhiteSpace(config.PromotionCommand))
@@ -189,7 +205,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					config.PromotionCommand,
 					config.TrainerWorkingDirectory,
 					Math.Max(30, config.TrainerTimeoutSeconds),
-					context.CancellationToken);
+					ct);
 
 				if (promotionExecution.ExitCode != 0)
 				{
@@ -207,7 +223,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					config.RestartServiceCommand,
 					config.TrainerWorkingDirectory,
 					Math.Max(30, config.TrainerTimeoutSeconds),
-					context.CancellationToken);
+					ct);
 
 				if (restartExecution.ExitCode != 0)
 				{
@@ -229,9 +245,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				MinimumImprovement = gateResult.MinimumImprovement,
 				Promoted = gateResult.Promoted,
 				Reason = gateResult.Reason,
-			}, context.CancellationToken);
+			}, ct);
 
-			await MarkBatchCompletedAsync(batch, run, gateResult, finalCompletedAt, context.CancellationToken);
+			await MarkBatchCompletedAsync(batch, run, gateResult, finalCompletedAt, ct);
 
 			_logger.LogInformation(
 				"Scoring model promotion evaluated for batch {BatchId}. Promoted={Promoted}. Candidate={Candidate}. Baseline={Baseline}. Reason={Reason}",
@@ -338,14 +354,72 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			await _repository.SaveChangesAsync(ct);
 		}
 
-		private static string ResolveRunMode(ScoringRetrainOptions config, bool useExternalCandidate)
+		private static string ResolveRunMode(bool useExternalCandidate, bool remoteTrainerEnabled)
 		{
-			if (config.RemoteTrainerEnabled)
+			if (remoteTrainerEnabled)
 			{
 				return "remote-trainer";
 			}
 
 			return useExternalCandidate ? "external-candidate" : "trainer-command";
+		}
+
+		private static bool ResolveRemoteTrainerEnabled(ScoringRetrainOptions options)
+		{
+			if (options.RemoteTrainerEnabled)
+			{
+				return true;
+			}
+
+			var enabledFromEnv = TryReadBooleanEnvironmentVariable("ScoringRetrain__RemoteTrainerEnabled")
+				?? TryReadBooleanEnvironmentVariable("SCORING_RETRAIN_REMOTE_ENABLED")
+				?? false;
+
+			if (enabledFromEnv)
+			{
+				return true;
+			}
+
+			var remoteBaseUrl = !string.IsNullOrWhiteSpace(options.RemoteTrainerBaseUrl)
+				? options.RemoteTrainerBaseUrl
+				: Environment.GetEnvironmentVariable("ScoringRetrain__RemoteTrainerBaseUrl")
+					?? Environment.GetEnvironmentVariable("SCORING_RETRAIN_REMOTE_BASE_URL");
+
+			var remoteApiKey = !string.IsNullOrWhiteSpace(options.RemoteTrainerApiKey)
+				? options.RemoteTrainerApiKey
+				: Environment.GetEnvironmentVariable("ScoringRetrain__RemoteTrainerApiKey")
+					?? Environment.GetEnvironmentVariable("SCORING_RETRAIN_REMOTE_API_KEY");
+
+			return !string.IsNullOrWhiteSpace(remoteBaseUrl)
+				&& !string.IsNullOrWhiteSpace(remoteApiKey);
+		}
+
+		private static bool? TryReadBooleanEnvironmentVariable(string name)
+		{
+			var raw = Environment.GetEnvironmentVariable(name);
+			if (string.IsNullOrWhiteSpace(raw))
+			{
+				return null;
+			}
+
+			if (bool.TryParse(raw, out var parsed))
+			{
+				return parsed;
+			}
+
+			return raw.Trim() switch
+			{
+				"1" => true,
+				"0" => false,
+				_ => null,
+			};
+		}
+
+		private static bool ResolveInlineExecutionEnabled()
+		{
+			return TryReadBooleanEnvironmentVariable("ScoringRetrain__InlineExecutionEnabled")
+				?? TryReadBooleanEnvironmentVariable("SCORING_RETRAIN_INLINE_ENABLED")
+				?? false;
 		}
 
 		private async Task<PromotionGateResult> EvaluateAndPromoteViaObjectStorageAsync(

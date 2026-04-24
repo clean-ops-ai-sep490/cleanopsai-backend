@@ -37,6 +37,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 		private readonly IUserContext _userContext;
 		private readonly ISupervisorManagedWorkerQueryService _supervisorManagedWorkerQueryService;
 		private readonly IWorkerLookupQueryService _workerLookupQueryService;
+		private readonly IScoringAnnotationArtifactService _scoringAnnotationArtifactService;
+		private readonly IScoringRetrainRequestHandler _scoringRetrainRequestHandler;
 		private readonly ILogger<ScoringJobService> _logger;
 
 		public ScoringJobService(
@@ -46,6 +48,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			IUserContext userContext,
 			ISupervisorManagedWorkerQueryService supervisorManagedWorkerQueryService,
 			IWorkerLookupQueryService workerLookupQueryService,
+			IScoringAnnotationArtifactService scoringAnnotationArtifactService,
+			IScoringRetrainRequestHandler scoringRetrainRequestHandler,
 			ILogger<ScoringJobService> logger)
 		{
 			_repository = repository;
@@ -54,6 +58,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			_userContext = userContext;
 			_supervisorManagedWorkerQueryService = supervisorManagedWorkerQueryService;
 			_workerLookupQueryService = workerLookupQueryService;
+			_scoringAnnotationArtifactService = scoringAnnotationArtifactService;
+			_scoringRetrainRequestHandler = scoringRetrainRequestHandler;
 			_logger = logger;
 		}
 
@@ -188,6 +194,261 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				.ToList();
 		}
 
+		public async Task<IReadOnlyCollection<ScoringAnnotationCandidateListItemResponse>> GetAnnotationCandidatesAsync(
+			string? status = null,
+			string? environmentKey = null,
+			Guid? assignedToUserId = null,
+			DateTime? createdFromUtc = null,
+			int take = 50,
+			CancellationToken ct = default)
+		{
+			EnsureAnnotationManagerOrAdmin();
+
+			ScoringAnnotationCandidateStatus? parsedStatus = null;
+			if (!string.IsNullOrWhiteSpace(status))
+			{
+				if (!Enum.TryParse<ScoringAnnotationCandidateStatus>(status, true, out var parsed))
+				{
+					throw new ArgumentException($"Unsupported annotation candidate status '{status}'.", nameof(status));
+				}
+
+				parsedStatus = parsed;
+			}
+
+			var candidates = await _repository.GetAnnotationCandidatesAsync(
+				parsedStatus,
+				environmentKey,
+				assignedToUserId,
+				createdFromUtc,
+				take,
+				ct);
+
+			return candidates.Select(MapAnnotationCandidateListItem).ToList();
+		}
+
+		public async Task<ScoringAnnotationCandidateDetailResponse?> GetAnnotationCandidateByIdAsync(Guid candidateId, CancellationToken ct = default)
+		{
+			EnsureAnnotationManagerOrAdmin();
+
+			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
+			if (candidate is null)
+			{
+				return null;
+			}
+
+			EnsureCanManageCandidate(candidate);
+			return MapAnnotationCandidateDetail(candidate);
+		}
+
+		public async Task<ScoringAnnotationCandidateDetailResponse?> ClaimAnnotationCandidateAsync(Guid candidateId, CancellationToken ct = default)
+		{
+			EnsureAnnotationManagerOrAdmin();
+
+			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
+			if (candidate is null)
+			{
+				return null;
+			}
+
+			EnsureCanManageCandidate(candidate);
+			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
+			{
+				throw new InvalidOperationException("Approved annotation candidates cannot be claimed.");
+			}
+
+			var now = DateTime.UtcNow;
+			candidate.AssignedToUserId = _userContext.UserId == Guid.Empty ? null : _userContext.UserId;
+			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Queued)
+			{
+				candidate.CandidateStatus = ScoringAnnotationCandidateStatus.InProgress;
+			}
+			candidate.LastModified = now;
+			candidate.LastModifiedBy = GetActorIdentifier();
+			await _repository.SaveChangesAsync(ct);
+
+			return MapAnnotationCandidateDetail(candidate);
+		}
+
+		public async Task<ScoringAnnotationCandidateDetailResponse?> UpsertAnnotationCandidateAsync(
+			Guid candidateId,
+			UpsertScoringAnnotationRequest request,
+			CancellationToken ct = default)
+		{
+			EnsureAnnotationManagerOrAdmin();
+			if (request is null)
+			{
+				throw new ArgumentException("Annotation payload cannot be null.", nameof(request));
+			}
+
+			if (request.Labels.ValueKind != JsonValueKind.Array)
+			{
+				throw new ArgumentException("Annotation labels must be a JSON array.", nameof(request));
+			}
+
+			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
+			if (candidate is null)
+			{
+				return null;
+			}
+
+			EnsureCanManageCandidate(candidate);
+			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
+			{
+				throw new InvalidOperationException("Approved annotation candidates cannot be edited.");
+			}
+
+			var annotationFormat = ParseAnnotationFormat(request.AnnotationFormat);
+			var now = DateTime.UtcNow;
+			var normalizedNote = string.IsNullOrWhiteSpace(request.ReviewerNote) ? null : request.ReviewerNote.Trim();
+
+			var annotation = candidate.Annotation;
+			if (annotation is null)
+			{
+				annotation = new ScoringAnnotation
+				{
+					Id = Guid.NewGuid(),
+					CandidateId = candidate.Id,
+					AnnotationFormat = annotationFormat,
+					LabelsJson = request.Labels.GetRawText(),
+					ReviewerNote = normalizedNote,
+					Version = 1,
+					CreatedByUserId = _userContext.UserId == Guid.Empty ? null : _userContext.UserId,
+					Created = now,
+					LastModified = now,
+					CreatedBy = GetActorIdentifier(),
+					LastModifiedBy = GetActorIdentifier(),
+				};
+				await _repository.InsertAnnotationAsync(annotation, ct);
+				candidate.Annotation = annotation;
+			}
+			else
+			{
+				annotation.AnnotationFormat = annotationFormat;
+				annotation.LabelsJson = request.Labels.GetRawText();
+				annotation.ReviewerNote = normalizedNote;
+				annotation.Version += 1;
+				annotation.LastModified = now;
+				annotation.LastModifiedBy = GetActorIdentifier();
+				if (!annotation.CreatedByUserId.HasValue && _userContext.UserId != Guid.Empty)
+				{
+					annotation.CreatedByUserId = _userContext.UserId;
+				}
+			}
+
+			candidate.AssignedToUserId = _userContext.UserId == Guid.Empty ? candidate.AssignedToUserId : _userContext.UserId;
+			candidate.CandidateStatus = request.Submit
+				? ScoringAnnotationCandidateStatus.Submitted
+				: ScoringAnnotationCandidateStatus.InProgress;
+			candidate.SubmittedAtUtc = request.Submit ? now : null;
+			candidate.LastModified = now;
+			candidate.LastModifiedBy = GetActorIdentifier();
+			await _repository.SaveChangesAsync(ct);
+
+			return MapAnnotationCandidateDetail(candidate);
+		}
+
+		public async Task<ScoringAnnotationCandidateDetailResponse?> ApproveAnnotationCandidateAsync(
+			Guid candidateId,
+			ApproveScoringAnnotationCandidateRequest? request,
+			CancellationToken ct = default)
+		{
+			EnsureAnnotationManagerOrAdmin();
+
+			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
+			if (candidate is null)
+			{
+				return null;
+			}
+
+			EnsureCanManageCandidate(candidate);
+			if (candidate.Annotation is null)
+			{
+				throw new InvalidOperationException("Annotation candidate must have annotation data before approval.");
+			}
+
+			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
+			{
+				return MapAnnotationCandidateDetail(candidate);
+			}
+
+			var now = DateTime.UtcNow;
+			Guid? actorId = _userContext.UserId == Guid.Empty ? null : _userContext.UserId;
+			if (!string.IsNullOrWhiteSpace(request?.Note))
+			{
+				candidate.Annotation.ReviewerNote = request.Note.Trim();
+			}
+
+			candidate.CandidateStatus = ScoringAnnotationCandidateStatus.Approved;
+			candidate.ApprovedAtUtc = now;
+			candidate.SubmittedAtUtc ??= now;
+			candidate.LastModified = now;
+			candidate.LastModifiedBy = GetActorIdentifier();
+			candidate.Annotation.ApprovedByUserId = actorId;
+			candidate.Annotation.LastModified = now;
+			candidate.Annotation.LastModifiedBy = GetActorIdentifier();
+
+			if ((string.IsNullOrWhiteSpace(candidate.SnapshotBlobKey) || string.IsNullOrWhiteSpace(candidate.MetadataBlobKey)) &&
+				candidate.Result is not null)
+			{
+				await _scoringAnnotationArtifactService.EnsureReviewedSnapshotAsync(candidate, candidate.Result, ct);
+			}
+
+			await _repository.SaveChangesAsync(ct);
+
+			try
+			{
+				await _scoringAnnotationArtifactService.PublishApprovedAnnotationAsync(candidate, candidate.Annotation, ct);
+			}
+			catch
+			{
+				candidate.CandidateStatus = ScoringAnnotationCandidateStatus.Submitted;
+				candidate.ApprovedAtUtc = null;
+				candidate.LastModified = DateTime.UtcNow;
+				candidate.LastModifiedBy = GetActorIdentifier();
+				candidate.Annotation.ApprovedByUserId = null;
+				candidate.Annotation.LastModified = candidate.LastModified;
+				candidate.Annotation.LastModifiedBy = candidate.LastModifiedBy;
+				await _repository.SaveChangesAsync(ct);
+				throw;
+			}
+
+			return MapAnnotationCandidateDetail(candidate);
+		}
+
+		public async Task<ScoringAnnotationCandidateDetailResponse?> RejectAnnotationCandidateAsync(
+			Guid candidateId,
+			RejectScoringAnnotationCandidateRequest? request,
+			CancellationToken ct = default)
+		{
+			EnsureAnnotationManagerOrAdmin();
+
+			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
+			if (candidate is null)
+			{
+				return null;
+			}
+
+			EnsureCanManageCandidate(candidate);
+			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
+			{
+				throw new InvalidOperationException("Approved annotation candidates cannot be rejected.");
+			}
+
+			var now = DateTime.UtcNow;
+			candidate.CandidateStatus = ScoringAnnotationCandidateStatus.Rejected;
+			candidate.LastModified = now;
+			candidate.LastModifiedBy = GetActorIdentifier();
+			if (candidate.Annotation is not null && !string.IsNullOrWhiteSpace(request?.Reason))
+			{
+				candidate.Annotation.ReviewerNote = request.Reason.Trim();
+				candidate.Annotation.LastModified = now;
+				candidate.Annotation.LastModifiedBy = GetActorIdentifier();
+			}
+
+			await _repository.SaveChangesAsync(ct);
+			return MapAnnotationCandidateDetail(candidate);
+		}
+
 		public async Task<IReadOnlyCollection<ScoringRetrainBatchListItemResponse>> GetRetrainBatchesAsync(string? status = null, int take = 50, CancellationToken ct = default)
 		{
 			ScoringRetrainBatchStatus? parsedStatus = null;
@@ -269,6 +530,12 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			}
 
 			await _repository.SaveChangesAsync(ct);
+			var annotationCandidate = await EnsureAnnotationCandidateForReviewedFailAsync(result, originalVerdict, reviewedVerdict, now, ct);
+			if (annotationCandidate is not null)
+			{
+				await _scoringAnnotationArtifactService.EnsureReviewedSnapshotAsync(annotationCandidate, result, ct);
+				await _repository.SaveChangesAsync(ct);
+			}
 
 			if (result.ScoringJob is not null)
 			{
@@ -300,6 +567,55 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				ReviewedByUserId = _userContext.IsAuthenticated ? _userContext.UserId : null,
 				ReviewedByEmail = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
 			};
+		}
+
+		private async Task<ScoringAnnotationCandidate?> EnsureAnnotationCandidateForReviewedFailAsync(
+			ScoringJobResult result,
+			string originalVerdict,
+			string reviewedVerdict,
+			DateTime reviewedAtUtc,
+			CancellationToken ct)
+		{
+			if (!string.Equals(originalVerdict, "PENDING", StringComparison.OrdinalIgnoreCase) ||
+				!string.Equals(reviewedVerdict, "FAIL", StringComparison.OrdinalIgnoreCase))
+			{
+				return null;
+			}
+
+			if (result.ScoringJob is null)
+			{
+				return null;
+			}
+
+			var existing = await _repository.GetAnnotationCandidateByResultIdAsync(result.Id, ct);
+			if (existing is not null)
+			{
+				return existing;
+			}
+
+			var candidate = new ScoringAnnotationCandidate
+			{
+				Id = Guid.NewGuid(),
+				ResultId = result.Id,
+				JobId = result.ScoringJobId,
+				RequestId = result.ScoringJob.RequestId,
+				EnvironmentKey = result.ScoringJob.EnvironmentKey,
+				ImageUrl = result.Source,
+				VisualizationBlobUrl = ExtractVisualizationBlobUrl(result.PayloadJson),
+				OriginalVerdict = originalVerdict,
+				ReviewedVerdict = reviewedVerdict,
+				SourceType = "reviewed-fail-from-pending",
+				CandidateStatus = ScoringAnnotationCandidateStatus.Queued,
+				CreatedAtUtc = reviewedAtUtc,
+				Created = reviewedAtUtc,
+				LastModified = reviewedAtUtc,
+				CreatedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
+				LastModifiedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
+			};
+
+			await _repository.InsertAnnotationCandidateAsync(candidate, ct);
+			await _repository.SaveChangesAsync(ct);
+			return candidate;
 		}
 
 		private async Task<IReadOnlyCollection<Guid>?> GetScopedManagedWorkerUserIdsAsync(CancellationToken ct)
@@ -488,6 +804,8 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			var sinceUtc = now.AddDays(-lookbackDays);
 
 			var reviewedResults = await _repository.GetReviewedResultsForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
+			var annotatedCandidates = await _repository.GetAnnotatedCandidatesForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
+			var approvedAnnotationCandidates = await _repository.GetApprovedAnnotationCandidatesForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
 			if (reviewedResults.Count < minReviewedSamples)
 			{
 				throw new InvalidOperationException(
@@ -500,6 +818,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestedAtUtc = now,
 				SourceWindowFromUtc = sinceUtc,
 				ReviewedSampleCount = reviewedResults.Count,
+				AnnotatedSampleCount = annotatedCandidates.Count,
+				ApprovedAnnotationCount = approvedAnnotationCandidates.Count,
+				CalibrationSampleCount = reviewedResults.Count,
 				Status = ScoringRetrainBatchStatus.Queued,
 				Created = now,
 				LastModified = now,
@@ -510,14 +831,26 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			await _repository.InsertRetrainBatchAsync(batch, ct);
 			await _repository.SaveChangesAsync(ct);
 
-			await _eventBus.PublishAsync(new ScoringRetrainRequestedEvent
+			var retrainRequestedEvent = new ScoringRetrainRequestedEvent
 			{
 				BatchId = batch.Id,
 				RequestedAtUtc = batch.RequestedAtUtc,
 				SourceWindowFromUtc = batch.SourceWindowFromUtc,
 				ReviewedSampleCount = batch.ReviewedSampleCount,
 				Samples = reviewedResults.Select(MapRetrainSample).ToList(),
-			}, ct);
+			};
+
+			if (_scoringRetrainRequestHandler.InlineExecutionEnabled)
+			{
+				_logger.LogInformation(
+					"Executing scoring retrain inline for batch {BatchId} because inline local mode is enabled.",
+					batch.Id);
+				await _scoringRetrainRequestHandler.HandleAsync(retrainRequestedEvent, ct);
+			}
+			else
+			{
+				await _eventBus.PublishAsync(retrainRequestedEvent, ct);
+			}
 
 			return MapRetrainBatch(batch);
 		}
@@ -708,6 +1041,37 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			return batch is null ? null : MapRetrainBatch(batch);
 		}
 
+		private void EnsureAnnotationManagerOrAdmin()
+		{
+			if (IsAdmin())
+			{
+				return;
+			}
+
+			if (!string.Equals(_userContext.Role, "Manager", StringComparison.OrdinalIgnoreCase))
+			{
+				throw new ForbiddenException("Only Manager or Admin can access scoring annotations.");
+			}
+		}
+
+		private void EnsureCanManageCandidate(ScoringAnnotationCandidate candidate)
+		{
+			if (IsAdmin())
+			{
+				return;
+			}
+
+			if (_userContext.UserId == Guid.Empty)
+			{
+				throw new ForbiddenException("Authenticated user is required to manage annotation candidates.");
+			}
+
+			if (candidate.AssignedToUserId.HasValue && candidate.AssignedToUserId.Value != _userContext.UserId)
+			{
+				throw new ForbiddenException("This annotation candidate is already assigned to another reviewer.");
+			}
+		}
+
 		private static ScoringRetrainSampleItem MapRetrainSample(ScoringJobResult result)
 		{
 			var reviewedAtUtc = result.LastModified;
@@ -816,6 +1180,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestedAtUtc = batch.RequestedAtUtc,
 				SourceWindowFromUtc = batch.SourceWindowFromUtc,
 				ReviewedSampleCount = batch.ReviewedSampleCount,
+				AnnotatedSampleCount = batch.AnnotatedSampleCount,
+				ApprovedAnnotationCount = batch.ApprovedAnnotationCount,
+				CalibrationSampleCount = batch.CalibrationSampleCount,
 				CompletedAtUtc = batch.CompletedAtUtc,
 				FailureReason = batch.FailureReason,
 				Promoted = batch.Promoted,
@@ -853,6 +1220,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestedAtUtc = batch.RequestedAtUtc,
 				SourceWindowFromUtc = batch.SourceWindowFromUtc,
 				ReviewedSampleCount = batch.ReviewedSampleCount,
+				AnnotatedSampleCount = batch.AnnotatedSampleCount,
+				ApprovedAnnotationCount = batch.ApprovedAnnotationCount,
+				CalibrationSampleCount = batch.CalibrationSampleCount,
 				CompletedAtUtc = batch.CompletedAtUtc,
 				Promoted = batch.Promoted,
 				FailureReason = batch.FailureReason,
@@ -860,6 +1230,173 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RunCount = batch.Runs.Count,
 				LatestRunStartedAtUtc = latestRun?.StartedAtUtc,
 			};
+		}
+
+		private static ScoringAnnotationCandidateListItemResponse MapAnnotationCandidateListItem(ScoringAnnotationCandidate candidate)
+		{
+			return new ScoringAnnotationCandidateListItemResponse
+			{
+				CandidateId = candidate.Id,
+				ResultId = candidate.ResultId,
+				JobId = candidate.JobId,
+				RequestId = candidate.RequestId,
+				EnvironmentKey = candidate.EnvironmentKey,
+				CandidateStatus = candidate.CandidateStatus.ToString().ToUpperInvariant(),
+				ImageUrl = candidate.ImageUrl,
+				VisualizationBlobUrl = candidate.VisualizationBlobUrl,
+				OriginalVerdict = candidate.OriginalVerdict,
+				ReviewedVerdict = candidate.ReviewedVerdict,
+				SourceType = candidate.SourceType,
+				AssignedToUserId = candidate.AssignedToUserId,
+				CreatedAtUtc = candidate.CreatedAtUtc,
+				SubmittedAtUtc = candidate.SubmittedAtUtc,
+				ApprovedAtUtc = candidate.ApprovedAtUtc,
+				HasAnnotation = candidate.Annotation is not null,
+				AnnotationVersion = candidate.Annotation?.Version,
+			};
+		}
+
+		private static ScoringAnnotationCandidateDetailResponse MapAnnotationCandidateDetail(ScoringAnnotationCandidate candidate)
+		{
+			var payloadJson = candidate.Result?.PayloadJson ?? "{}";
+			return new ScoringAnnotationCandidateDetailResponse
+			{
+				CandidateId = candidate.Id,
+				ResultId = candidate.ResultId,
+				JobId = candidate.JobId,
+				RequestId = candidate.RequestId,
+				EnvironmentKey = candidate.EnvironmentKey,
+				CandidateStatus = candidate.CandidateStatus.ToString().ToUpperInvariant(),
+				ImageUrl = candidate.ImageUrl,
+				VisualizationBlobUrl = !string.IsNullOrWhiteSpace(candidate.VisualizationBlobUrl)
+					? candidate.VisualizationBlobUrl
+					: ExtractVisualizationBlobUrl(payloadJson),
+				OriginalVerdict = candidate.OriginalVerdict,
+				ReviewedVerdict = candidate.ReviewedVerdict,
+				SourceType = candidate.SourceType,
+				AssignedToUserId = candidate.AssignedToUserId,
+				CreatedAtUtc = candidate.CreatedAtUtc,
+				SubmittedAtUtc = candidate.SubmittedAtUtc,
+				ApprovedAtUtc = candidate.ApprovedAtUtc,
+				PayloadJson = payloadJson,
+				PreAnnotationJson = BuildPreAnnotationJson(payloadJson),
+				SnapshotBlobKey = candidate.SnapshotBlobKey,
+				MetadataBlobKey = candidate.MetadataBlobKey,
+				Annotation = candidate.Annotation is null ? null : MapAnnotation(candidate.Annotation),
+			};
+		}
+
+		private static ScoringAnnotationResponse MapAnnotation(ScoringAnnotation annotation)
+		{
+			return new ScoringAnnotationResponse
+			{
+				AnnotationId = annotation.Id,
+				AnnotationFormat = MapAnnotationFormat(annotation.AnnotationFormat),
+				LabelsJson = string.IsNullOrWhiteSpace(annotation.LabelsJson) ? "[]" : annotation.LabelsJson,
+				ReviewerNote = annotation.ReviewerNote,
+				Version = annotation.Version,
+				CreatedByUserId = annotation.CreatedByUserId,
+				ApprovedByUserId = annotation.ApprovedByUserId,
+				LastModifiedUtc = annotation.LastModified,
+			};
+		}
+
+		private static string BuildPreAnnotationJson(string payloadJson)
+		{
+			if (string.IsNullOrWhiteSpace(payloadJson))
+			{
+				return "{\"schemaVersion\":1,\"format\":\"bbox-region-v1\",\"labels\":[]}";
+			}
+
+			try
+			{
+				var root = JsonNode.Parse(payloadJson) as JsonObject;
+				var yoloResults = root?["yolo"]?["results"] as JsonArray;
+				var labels = new JsonArray();
+				if (yoloResults is not null)
+				{
+					foreach (var item in yoloResults.OfType<JsonObject>())
+					{
+						var bbox = item["bbox"] as JsonArray;
+						if (bbox is null || bbox.Count < 4)
+						{
+							continue;
+						}
+
+						var x1 = bbox[0]?.GetValue<double>() ?? 0;
+						var y1 = bbox[1]?.GetValue<double>() ?? 0;
+						var x2 = bbox[2]?.GetValue<double>() ?? 0;
+						var y2 = bbox[3]?.GetValue<double>() ?? 0;
+						var classLabel = item["class_label"]?.GetValue<string>();
+						if (string.IsNullOrWhiteSpace(classLabel))
+						{
+							classLabel = MapYoloClassLabel(item["class_id"]?.GetValue<int>() ?? 0);
+						}
+
+						labels.Add(new JsonObject
+						{
+							["label"] = classLabel,
+							["shapeType"] = "rectangle",
+							["source"] = "ai-preannotation",
+							["points"] = new JsonArray
+							{
+								new JsonArray(x1, y1),
+								new JsonArray(x2, y2),
+							}
+						});
+					}
+				}
+
+				return new JsonObject
+				{
+					["schemaVersion"] = 1,
+					["format"] = "bbox-region-v1",
+					["labels"] = labels,
+				}.ToJsonString(PayloadSerializerOptions);
+			}
+			catch
+			{
+				return "{\"schemaVersion\":1,\"format\":\"bbox-region-v1\",\"labels\":[]}";
+			}
+		}
+
+		private static string MapYoloClassLabel(int classId)
+		{
+			return classId == 1 ? "wet_surface" : "stain_or_water";
+		}
+
+		private static ScoringAnnotationFormat ParseAnnotationFormat(string? raw)
+		{
+			var normalized = string.IsNullOrWhiteSpace(raw) ? "bbox-region-v1" : raw.Trim();
+			return normalized.ToLowerInvariant() switch
+			{
+				"bbox-region-v1" => ScoringAnnotationFormat.BboxRegionV1,
+				_ => throw new ArgumentException($"Unsupported annotation format '{raw}'.", nameof(raw)),
+			};
+		}
+
+		private static string MapAnnotationFormat(ScoringAnnotationFormat format)
+		{
+			return format switch
+			{
+				ScoringAnnotationFormat.BboxRegionV1 => "bbox-region-v1",
+				_ => format.ToString(),
+			};
+		}
+
+		private string GetActorIdentifier()
+		{
+			if (_userContext.UserId != Guid.Empty)
+			{
+				return _userContext.UserId.ToString();
+			}
+
+			return string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email;
+		}
+
+		private bool IsAdmin()
+		{
+			return string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }
