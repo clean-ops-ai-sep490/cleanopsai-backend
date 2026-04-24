@@ -342,6 +342,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		{
 			var schedules = await _taskScheduleRepository.GetByIdsAsync(request.TaskScheduleIds, ct);
 
+			if (schedules == null || !schedules.Any())
+			{
+				throw new NotFoundException("No TaskSchedules found for the provided IDs");
+			}
+
 			var items = schedules.Select(schedule =>
 			{
 				var config = JsonSerializer.Deserialize<RecurrenceConfig>(
@@ -374,8 +379,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					},
 					ct);
 			}
-
-			//throw new NotImplementedException();
+			 
 		}
 
 		public async Task<PaginatedResult<TaskScheduleDto>> Gets(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default)
@@ -474,6 +478,26 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(Guid sopId, CancellationToken ct = default)
 		{
 			return await _sopRepository.GetSopStepsWithSchemaAsync(sopId, ct);
+		}
+
+		public async Task UpdateCheckpointsAsync(List<ScheduleUpdateItem> updates)
+		{ 
+			var scheduleIds = updates.Select(u => u.ScheduleId).ToList();
+			 
+			var schedules = await _taskScheduleRepository.GetListAsync(s => scheduleIds.Contains(s.Id));
+
+			// 3. Logic update như cũ
+			foreach (var schedule in schedules)
+			{
+				var updateInfo = updates.First(u => u.ScheduleId == schedule.Id);
+
+				if (!schedule.LastGeneratedToDate.HasValue || updateInfo.GeneratedToDate > schedule.LastGeneratedToDate)
+				{
+					schedule.LastGeneratedToDate = updateInfo.GeneratedToDate;
+				}
+			}
+
+			await _taskScheduleRepository.SaveChangesAsync();
 		}
 	}
 }

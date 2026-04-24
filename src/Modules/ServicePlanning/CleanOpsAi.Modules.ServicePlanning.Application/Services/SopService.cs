@@ -21,7 +21,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateProvider;
 		private readonly IIdGenerator _idGenerator;
-		private readonly IUserContext _userContext;
+		private readonly IUserContext _userContext;  
 
 		public SopService(ISopRepository sopRepository, 
 			IStepRepository stepRepository,

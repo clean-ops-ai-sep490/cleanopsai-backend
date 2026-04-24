@@ -1,6 +1,8 @@
 using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
@@ -26,23 +28,30 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 
         private readonly TaskStepExecutionService _service;
 
-        public TaskStepExecutionServiceTests()
-        {
-            _repository = Substitute.For<ITaskStepExecutionRepository>();
-            _dateTimeProvider = Substitute.For<IDateTimeProvider>();
-            _mapper = Substitute.For<IMapper>();
+		private readonly IScoringInferenceClient _inferenceClient;
+		private readonly IEventBus _eventBus;
 
-            _service = new TaskStepExecutionService(
-                _repository,
-                _dateTimeProvider,
-                _mapper
-            );
-        }
+		public TaskStepExecutionServiceTests()
+		{
+			_repository = Substitute.For<ITaskStepExecutionRepository>();
+			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
+			_mapper = Substitute.For<IMapper>();
+			_inferenceClient = Substitute.For<IScoringInferenceClient>();
+			_eventBus = Substitute.For<IEventBus>();
 
-        // =========================
-        // COMPLETE STEP SUCCESS
-        // =========================
-        [Fact]
+			_service = new TaskStepExecutionService(
+				_repository,
+				_dateTimeProvider,
+				_mapper,
+				_inferenceClient,
+				_eventBus
+			);
+		}
+
+		// =========================
+		// COMPLETE STEP SUCCESS
+		// =========================
+		[Fact]
         public async Task CompleteStepAsync_ShouldCompleteStep_WhenValidRequest()
         {
             var stepId = Guid.NewGuid();

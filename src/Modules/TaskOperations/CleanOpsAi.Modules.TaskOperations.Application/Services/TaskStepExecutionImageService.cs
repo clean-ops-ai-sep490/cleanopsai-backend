@@ -137,6 +137,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             };
         }
 
+        public async Task<bool> DeleteImagesByStepExecutionIdAsync(
+            Guid taskStepExecutionId,
+            CancellationToken ct = default)
+        {
+            var step = await _stepRepo.GetByIdAsync(taskStepExecutionId, ct)
+                ?? throw new NotFoundException(nameof(TaskStepExecution), taskStepExecutionId);
+
+            // Chỉ cho xoá khi đang InProgress
+            EnsureStepIsInProgress(step);
+
+            var images = await _imageRepo.GetActiveByExecutionIdAsync(taskStepExecutionId, ct);
+
+            if (images == null || images.Count == 0)
+                throw new BadRequestException("No images to delete.");
+
+            foreach (var img in images)
+            {
+                img.IsDeleted = true;
+            }
+
+            await _imageRepo.SaveChangesAsync(ct);
+
+            return true;
+        }
+
         // ---------- Helpers ----------
 
         private static void EnsureStepIsInProgress(TaskStepExecution step)

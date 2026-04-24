@@ -108,6 +108,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AIResultRaw")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("ai_result_raw");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
@@ -115,6 +119,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
                         .HasColumnName("created_by");
+
+                    b.Property<int>("FailedImageCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_image_count");
 
                     b.Property<string>("Feedback")
                         .HasMaxLength(1000)
@@ -133,9 +143,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
+                    b.Property<double>("MinScore")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("min_score");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("SupervisorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supervisor_id");
 
                     b.Property<Guid>("TaskStepExecutionId")
                         .HasColumnType("uuid")
@@ -660,9 +682,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
+                    b.Property<double?>("QualityScore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("double precision")
+                        .HasColumnName("quality_score");
+
                     b.Property<Guid>("TaskStepExecutionId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_step_execution_id");
+
+                    b.Property<string>("Verdict")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("verdict");
 
                     b.HasKey("Id")
                         .HasName("pk_task_step_execution_images");

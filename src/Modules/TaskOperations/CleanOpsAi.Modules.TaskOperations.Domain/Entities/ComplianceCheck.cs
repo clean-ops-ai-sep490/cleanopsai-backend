@@ -12,6 +12,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public ComplianceCheckType Type { get; set; }
 
+		public Guid? SupervisorId { get; set; }
+		public double MinScore { get; set; }        
+		public int FailedImageCount { get; set; }
+
+		public string? AIResultRaw { get; set; }
+
 		public string? Feedback { get; set; }
 
 		public TaskStepExecution TaskStepExecution { get; set; } = null!;

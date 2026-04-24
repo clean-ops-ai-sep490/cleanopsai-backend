@@ -35,11 +35,11 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 		}
 
 		public async Task<(PaginatedResult<NotificationRecipient> Page, int UnreadCount)> GetPagedByRecipientAsync(
-			Guid recipientId,
-			RecipientTypeEnum recipientType,
-			PaginationRequest paginationRequest,
-			bool? isRead,
-			CancellationToken ct = default)
+		Guid recipientId,
+		RecipientTypeEnum recipientType,
+		PaginationRequest paginationRequest,
+		bool? isRead,
+		CancellationToken ct = default)
 		{
 			IQueryable<NotificationRecipient> query;
 			int unreadCount;
@@ -48,7 +48,6 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 			{
 				unreadCount = await _context.NotificationRecipients
 					.CountAsync(r => r.RecipientType == recipientType && !r.IsRead, ct);
-
 				query = _context.NotificationRecipients
 					.Include(r => r.AppNotification)
 					.Where(r => r.RecipientType == recipientType);
@@ -57,7 +56,6 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 			{
 				unreadCount = await _context.NotificationRecipients
 					.CountAsync(r => r.RecipientId == recipientId && !r.IsRead, ct);
-
 				query = _context.NotificationRecipients
 					.Include(r => r.AppNotification)
 					.Where(r => r.RecipientId == recipientId);
@@ -65,10 +63,9 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 
 			if (isRead.HasValue)
 				query = query.Where(r => r.IsRead == isRead.Value);
-			 
+
 			var orderedQuery = query.OrderByDescending(r => r.AppNotification.Created);
 			var page = await orderedQuery.ToPaginatedResultAsync(paginationRequest, ct);
-
 			return (page, unreadCount);
 		}
 

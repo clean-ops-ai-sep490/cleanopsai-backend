@@ -1,6 +1,7 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Common;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos.Sops;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.ServicePlanning.Application.DTOs;
 
 namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Services
@@ -27,5 +28,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Servi
 		Task<List<SopStepMetadataDto>> GetSopStepsWithSchemaAsync(
 			Guid sopId,
 			CancellationToken ct = default);
+
+		Task UpdateCheckpointsAsync(List<ScheduleUpdateItem> updates);
 	}
 }
