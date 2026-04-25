@@ -8,6 +8,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 
 		public Guid TaskScheduleId { get; set; }
 
+		public string? TaskName { get; set; }
+
 		public Guid AssigneeId { get; set; }
 
 		public Guid OriginalAssigneeId { get; set; }

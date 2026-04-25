@@ -17,7 +17,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public Guid WorkAreaId { get; set; }
 
-		public TaskAssignmentStatus Status { get; set; }  
+		public TaskAssignmentStatus Status { get; set; }
+
+		public string? TaskName { get; set; }
 
 		public DateTime ScheduledStartAt { get; set; }
 		public DateTime ScheduledEndAt { get; set; }

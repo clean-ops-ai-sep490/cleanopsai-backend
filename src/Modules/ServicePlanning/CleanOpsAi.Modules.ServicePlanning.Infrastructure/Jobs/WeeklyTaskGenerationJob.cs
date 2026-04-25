@@ -63,6 +63,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Jobs
 						DurationMinutes = schedule.DurationMinutes,
 						AssigneeName = schedule.AssigneeName,
 						DisplayLocation = schedule.DisplayLocation,
+						TaskName = schedule.Name,
 						Source = "auto"
 					});
 				}
