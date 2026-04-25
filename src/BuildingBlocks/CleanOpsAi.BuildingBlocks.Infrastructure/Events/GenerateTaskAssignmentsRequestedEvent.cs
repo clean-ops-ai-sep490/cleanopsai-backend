@@ -19,6 +19,7 @@ namespace CleanOpsAi.BuildingBlocks.Infrastructure.Events
 		public int DurationMinutes { get; init; }
 		public string AssigneeName { get; init; } = default!;
 		public string DisplayLocation { get; init; } = default!;
+		public string TaskName { get; init; } = default!;
 		public string Source { get; init; } = default!;
 	}
 }

@@ -131,6 +131,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 						Id = _idGenerator.Generate(),
 						TaskScheduleId = item.ScheduleId,
 						AssigneeId = item.AssigneeId ?? Guid.Empty,
+						TaskName = item.TaskName,
 						OriginalAssigneeId = item.AssigneeId ?? Guid.Empty,
 						AssigneeName = item.AssigneeName!,
 						OriginalAssigneeName = item.AssigneeName!,

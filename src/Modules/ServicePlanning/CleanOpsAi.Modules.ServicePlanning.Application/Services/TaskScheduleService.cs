@@ -357,6 +357,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					ScheduleId = schedule.Id,
 					AssigneeId = schedule.AssigneeId,
 					WorkAreaId = schedule.WorkAreaId,
+					TaskName = schedule.Name,
 					FromDate = request.FromDate,
 					ToDate = request.ToDate,
 					RecurrenceType = schedule.RecurrenceType,
