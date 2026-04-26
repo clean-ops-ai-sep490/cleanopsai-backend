@@ -76,20 +76,70 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return _mapper.Map<TaskAssignmentDto>(taskAssignment);
 		}
 
-		public async Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentDto dto)
+		public async Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentUpdateDto dto, CancellationToken ct = default)
 		{
-			var taskAssignment = await _taskAssignmentRepository.GetByIdAsync(id);
-
+			var taskAssignment = await _taskAssignmentRepository.GetByIdAsync(id, ct);
 			if (taskAssignment == null)
 				throw new NotFoundException(nameof(TaskAssignment), id);
 
-			_mapper.Map(dto, taskAssignment);
-			taskAssignment.LastModified = DateTime.UtcNow;
-			taskAssignment.LastModifiedBy = "admin-123";
-			 
-			await _taskAssignmentRepository.SaveChangesAsync();
+			if (taskAssignment.Status != TaskAssignmentStatus.NotStarted)
+				throw new BadRequestException(
+					$"Task can only be updated when status is NotStarted. Current status: {taskAssignment.Status}.");
 
-			return _mapper.Map<TaskAssignmentDto>(taskAssignment); 
+			if (taskAssignment.IsAdhocTask)
+				throw new BadRequestException(
+					"Adhoc task cannot be updated. Please contact your supervisor.");
+			 
+			if (dto.AssigneeId.HasValue && string.IsNullOrWhiteSpace(dto.AssigneeName))
+				throw new BadRequestException("AssigneeName is required when AssigneeId is provided.");
+
+			if (!string.IsNullOrWhiteSpace(dto.AssigneeName) && !dto.AssigneeId.HasValue)
+				throw new BadRequestException("AssigneeId is required when AssigneeName is provided.");
+
+			if (!string.IsNullOrWhiteSpace(dto.TaskName))
+				taskAssignment.TaskName = dto.TaskName;
+
+			if (!string.IsNullOrWhiteSpace(dto.DisplayLocation))
+				taskAssignment.DisplayLocation = dto.DisplayLocation;
+
+			if (dto.AssigneeId.HasValue)
+			{
+				taskAssignment.AssigneeId = dto.AssigneeId.Value;
+				taskAssignment.AssigneeName = dto.AssigneeName!;
+			}
+
+			if (dto.ScheduledStartAt.HasValue)
+			{
+				var oldDuration = taskAssignment.ScheduledEndAt - taskAssignment.ScheduledStartAt;
+				taskAssignment.ScheduledStartAt = dto.ScheduledStartAt.Value;
+				taskAssignment.ScheduledEndAt = taskAssignment.ScheduledStartAt + oldDuration;
+			}
+
+			if (dto.DurationMinutes.HasValue)
+			{
+				if (dto.DurationMinutes.Value <= 0)
+					throw new BadRequestException("DurationMinutes must be greater than 0.");
+
+				taskAssignment.ScheduledEndAt = taskAssignment.ScheduledStartAt
+					.AddMinutes(dto.DurationMinutes.Value);
+			}
+
+			var hasOverlap = await _taskAssignmentRepository.HasOverlapAsync(
+				assigneeId: taskAssignment.AssigneeId,
+				newStart: taskAssignment.ScheduledStartAt,
+				newEnd: taskAssignment.ScheduledEndAt,
+				excludeTaskId: id,
+				ct: ct);
+
+			if (hasOverlap)
+				throw new BadRequestException(
+					"Assignee already has a task scheduled during this time period.");
+
+			taskAssignment.LastModified = _dateTimeProvider.UtcNow;
+			taskAssignment.LastModifiedBy = _userContext.UserId.ToString();
+
+			await _taskAssignmentRepository.SaveChangesAsync(ct);
+			return _mapper.Map<TaskAssignmentDto>(taskAssignment);
 		}
 
 		public async Task<bool> UpdateStatus(Guid id, TaskAssignmentStatus status)
@@ -279,11 +329,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (assignment.AssigneeId != dto.WorkerId)
 				throw new ForbiddenException("Not your task");
 
-			if (assignment.Status != TaskAssignmentStatus.InProgress)
-				throw new BadRequestException($"Task is in status {assignment.Status}, cannot complete");
-
 			if (assignment.Status == TaskAssignmentStatus.Completed)
 				throw new BadRequestException("Task already completed");
+
+			if (assignment.Status != TaskAssignmentStatus.InProgress)
+				throw new BadRequestException($"Task is in {assignment.Status} status, only InProgress tasks can be completed");
 
 			if (!assignment.IsAdhocTask)
 			{

@@ -10,7 +10,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 	{
 		Task<TaskAssignmentDto?> GetById(Guid id, CancellationToken ct = default);
 
-		Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentDto dto);
+		Task<TaskAssignmentDto?> Update(Guid id, TaskAssignmentUpdateDto dto, CancellationToken ct = default);
 
 		Task<bool> Delete(Guid id);
 

@@ -70,6 +70,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (swapRequest == null)
 				throw new NotFoundException(nameof(TaskSwapRequest), swapRequestId);
 
+			if (swapRequest.RequesterId != requesterId)
+				throw new ForbiddenException("You are not the requester of this swap request");
+
 			swapRequest.Status = SwapRequestStatus.CancelledByRequester;
 			await _taskSwapRequestRepository.SaveChangesAsync(ct);
 
@@ -382,7 +385,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (task.Status != TaskAssignmentStatus.NotStarted)
 				throw new BadRequestException("Target task already started/completed");
 
-			if (task.ScheduledStartAt - DateTime.UtcNow < TimeSpan.FromHours(12))
+			if (task.ScheduledStartAt - DateTime.UtcNow < TimeSpan.FromHours(2))
 				throw new BadRequestException("Target task too close");
 		}
 

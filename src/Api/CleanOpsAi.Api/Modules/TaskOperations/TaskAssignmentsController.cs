@@ -3,6 +3,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -80,20 +81,19 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			return Ok(result);
 		}
 
+		[Authorize(Roles = "Manager")]
 		[HttpPut("{id:guid}")]
 		[SwaggerOperation(
 			Summary = "Update Task Assignment",
-			Description = "Updates the properties of a task assignment. Requires a TaskAssignmentDto payload. " +
-					  "Automatically updates LastModified and LastModifiedBy fields.",
+			Description = "Updates the properties of a task assignment. Only allowed when status is NotStarted and task is not adhoc.",
 			Tags = new[] { "TaskAssignment" }
 		)]
 		[ProducesResponseType(typeof(TaskAssignmentDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> Update(Guid id, [FromBody] TaskAssignmentDto dto)
+		public async Task<IActionResult> Update(Guid id, [FromBody] TaskAssignmentUpdateDto dto, CancellationToken ct)
 		{
-			var updated = await _taskAssignmentService.Update(id, dto);
-			if (updated == null) return NotFound();
+			var updated = await _taskAssignmentService.Update(id, dto, ct);
 			return Ok(updated);
 		}
 

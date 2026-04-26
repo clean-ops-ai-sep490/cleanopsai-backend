@@ -151,7 +151,8 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 			var entity = new TaskSwapRequest
 			{
 				Id = swapRequestId,
-				Status = SwapRequestStatus.PendingTargetApproval
+				Status = SwapRequestStatus.PendingTargetApproval,
+				RequesterId = requesterId
 			};
 
 			_swapRequestRepo
