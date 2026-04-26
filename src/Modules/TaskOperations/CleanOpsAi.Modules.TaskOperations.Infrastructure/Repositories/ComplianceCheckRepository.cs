@@ -21,12 +21,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             ComplianceCheckType type,
             CancellationToken ct = default)
         {
-            return await _context.ComplianceChecks
-                .FirstOrDefaultAsync(
-                    x => x.TaskStepExecutionId == taskStepExecutionId
-                         && x.Type == type,
-                    ct);
-        }
+			return await _context.ComplianceChecks
+				.Where(x => x.TaskStepExecutionId == taskStepExecutionId && x.Type == type)
+				.OrderByDescending(x => x.Id)  
+				.FirstOrDefaultAsync(ct);
+		}
 
 		public async Task<PaginatedResult<ComplianceCheck>> GetPendingSupervisorChecksAsync(
         Guid supervisorId,

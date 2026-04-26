@@ -56,5 +56,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 
         Task<List<TaskAssignment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default);
 
-    }
+		Task<bool> HasOverlapAsync(
+			Guid assigneeId,
+			DateTime newStart,
+			DateTime newEnd,
+			Guid? excludeTaskId = null,
+			CancellationToken ct = default);
+
+
+	}
 }

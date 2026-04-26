@@ -1,4 +1,5 @@
-﻿using CleanOpsAi.Modules.WorkareaCheckin.Domain.Entities;
+﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.Modules.WorkareaCheckin.Domain.Entities;
 
 namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Repositories
 {
@@ -7,5 +8,10 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Repos
 		Task<AccessDevice?> GetByUuidAsync(string uuid, CancellationToken ct = default);
 
 		Task<AccessDevice?> GetByIdentifierAsync(string identifier, CancellationToken ct = default);
+
+		Task<PaginatedResult<AccessDevice>> GetByCheckinPointAsync(
+		Guid checkinPointId,
+		PaginationRequest request,
+		CancellationToken ct = default);
 	}
 }

@@ -120,6 +120,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<SopDto?> GetSopByIdAsync(Guid id, CancellationToken ct = default)
 		{
 			var sop = await _sopRepository.GetByIdAsync(id, ct);
+			if(sop==null) throw new NotFoundException(nameof(Sop), id);
 			return _mapper.Map<SopDto>(sop);
 		}
 

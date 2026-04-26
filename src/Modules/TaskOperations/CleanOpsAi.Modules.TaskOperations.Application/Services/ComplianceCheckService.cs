@@ -70,10 +70,16 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		public async Task<InitiateAiCheckResult> InitiateAiCheckAsync(Guid taskStepExecutionId, CancellationToken ct = default)
 		{
-			_logger.LogInformation(
-				"Initiating AI compliance check for TaskStepExecution {ExecutionId}",
-				taskStepExecutionId); 
-			 
+			var afterImages = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(
+				taskStepExecutionId, ImageType.After, ct);
+
+			if (!afterImages.Any())
+			{
+				throw new InvalidOperationException(
+					$"No 'After' images found for step execution {taskStepExecutionId}. " +
+					"Upload images before initiating an AI check.");
+			}
+
 			var check = new ComplianceCheck
 			{
 				Id = _idGenerator.Generate(),
@@ -85,25 +91,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				Created = _dateTimeProvider.UtcNow,
 				CreatedBy = "system"
 			};
-			await _complianceRepo.InsertAsync(check, ct);
-			await _complianceRepo.SaveChangesAsync(ct);
+			await _complianceRepo.InsertAsync(check, ct);  
 
-			_logger.LogInformation(
-				"AI compliance check {CheckId} created (Pending) for execution {ExecutionId}",
-				check.Id, taskStepExecutionId);
-			 
-			var afterImages = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(
-				taskStepExecutionId, ImageType.After, ct);
-			if (afterImages.Count == 0)
-			{
-				throw new InvalidOperationException(
-					$"No 'After' images found for step execution {taskStepExecutionId}. " +
-					"Upload images before initiating an AI check.");
-			}
-			_logger.LogInformation(
-				"Found {Count} After-images for execution {ExecutionId}",
-				afterImages.Count, taskStepExecutionId);
-			 
 			await _eventBus.PublishAsync(new AiScoringRequestedEvent
 			{
 				ComplianceCheckId = check.Id,

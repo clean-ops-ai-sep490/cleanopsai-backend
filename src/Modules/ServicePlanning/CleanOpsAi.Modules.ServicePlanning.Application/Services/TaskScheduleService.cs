@@ -154,9 +154,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			);
 
 			if (hasConflict)
-				throw new BadRequestException("Schedule conflict detected");
-
-			//var isSopChanged = dto.SopId != Guid.Empty && dto.SopId != taskSchedule.SopId;
+				throw new BadRequestException("Schedule conflict detected"); 
 
 			_mapper.Map(dto, taskSchedule);
 
