@@ -41,6 +41,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		)]
 		[ProducesResponseType(typeof(ScoringResultReviewResponse), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status403Forbidden)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		[ProducesResponseType(StatusCodes.Status409Conflict)]
 		public async Task<IActionResult> ReviewResult(Guid resultId, [FromBody] ReviewScoringResultRequest request, CancellationToken ct = default)

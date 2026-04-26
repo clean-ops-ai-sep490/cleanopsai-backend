@@ -25,6 +25,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 
         Task<List<Worker>> GetWorkersByIds(List<Guid> ids);
 
+        Task<List<Worker>> GetWorkersByUserIds(List<Guid> userIds);
+
         Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(
            List<Guid> workerIds,
            List<Guid> requiredSkillIds,

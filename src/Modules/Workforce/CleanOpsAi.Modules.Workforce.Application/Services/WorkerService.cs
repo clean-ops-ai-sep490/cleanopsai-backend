@@ -358,6 +358,18 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 			}).ToList();
 		}
 
+		public async Task<List<WorkerByUserIdResponse>> GetWorkersByUserIds(List<Guid> userIds)
+		{
+			var workers = await _workerRepository.GetWorkersByUserIds(userIds);
+
+			return workers.Select(x => new WorkerByUserIdResponse
+			{
+				UserId = x.UserId,
+				WorkerId = x.Id,
+				FullName = x.FullName
+			}).ToList();
+		}
+
 		public async Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(List<Guid> workerIds, List<Guid> requiredSkillIds, List<Guid> requiredCertIds, CancellationToken ct)
 		{
 			return await _workerRepository.GetWorkersWithAllSkillsAndCertsAsync(workerIds, requiredSkillIds, requiredCertIds, ct);

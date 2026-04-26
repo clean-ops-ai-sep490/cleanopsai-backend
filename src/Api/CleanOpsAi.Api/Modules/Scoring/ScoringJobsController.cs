@@ -1,6 +1,7 @@
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Request;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -18,6 +19,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost]
+		[Authorize(Roles = "Worker")]
 		[SwaggerOperation(
 			Summary = "Submit scoring job",
 			Description = "Submits a clean/dirty scoring job and returns a job id for async polling.",
@@ -58,6 +60,27 @@ namespace CleanOpsAi.Api.Modules.Scoring
 			}
 
 			return Ok(result);
+		}
+
+		[HttpGet]
+		[SwaggerOperation(
+			Summary = "List scoring jobs",
+			Description = "Lists recent scoring jobs, optionally filtered by status for operational polling.",
+			Tags = new[] { "Scoring" }
+		)]
+		[ProducesResponseType(typeof(IReadOnlyCollection<ScoringJobListItemResponse>), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		public async Task<IActionResult> GetJobs([FromQuery] string? status = null, [FromQuery] int take = 50, CancellationToken ct = default)
+		{
+			try
+			{
+				var jobs = await _scoringJobService.GetJobsAsync(status, take, ct);
+				return Ok(jobs);
+			}
+			catch (ArgumentException ex)
+			{
+				return BadRequest(ex.Message);
+			}
 		}
 	}
 }

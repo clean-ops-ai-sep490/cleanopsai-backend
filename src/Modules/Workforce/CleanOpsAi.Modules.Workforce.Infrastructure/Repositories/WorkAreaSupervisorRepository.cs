@@ -178,5 +178,14 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 				.Select(x => x.UserId) 
 				.ToListAsync(ct);
 		}
+
+        public async Task<List<WorkAreaSupervisor>> GetWorkersBySupervisorIdAsync(Guid supervisorId)
+        {
+            return await _dbContext.Set<WorkAreaSupervisor>()
+                .Include(x => x.Worker)
+                .Where(x => x.UserId == supervisorId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created)
+                .ToListAsync();
+        }
 	} 
 }

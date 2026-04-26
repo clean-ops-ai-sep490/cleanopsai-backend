@@ -145,6 +145,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 				.ToListAsync();
 		}
 
+		public Task<List<Worker>> GetWorkersByUserIds(List<Guid> userIds)
+		{
+			return _dbContext.Set<Worker>()
+				.Where(x => userIds.Contains(x.UserId) && x.IsDeleted == false)
+				.ToListAsync();
+		}
+
 		public async Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(List<Guid> workerIds, List<Guid> requiredSkillIds, List<Guid> requiredCertIds, CancellationToken ct)
 		{
 			var query = _dbContext.Set<Worker>().AsQueryable();

@@ -18,5 +18,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> DeleteByWorkAreaAndSupervisorAsync(Guid workAreaId, Guid supervisorId);
         Task<WorkAreaSupervisor?> GetByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
         Task<List<Guid>> GetSupervisorIdsAsync(Guid workAreaId, Guid workerId, CancellationToken ct = default);
+        Task<List<WorkAreaSupervisor>> GetWorkersBySupervisorIdAsync(Guid supervisorId);
 	} 
 }

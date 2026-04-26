@@ -171,6 +171,172 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Migrations
                     b.ToTable("scoring_job_results", "scoring");
                 });
 
+            modelBuilder.Entity("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringRetrainBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double?>("BaselineMetric")
+                        .HasColumnType("double precision")
+                        .HasColumnName("baseline_metric");
+
+                    b.Property<double?>("CandidateMetric")
+                        .HasColumnType("double precision")
+                        .HasColumnName("candidate_metric");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at_utc");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("failure_reason");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("MetricKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("metric_key");
+
+                    b.Property<double?>("MinimumImprovement")
+                        .HasColumnType("double precision")
+                        .HasColumnName("minimum_improvement");
+
+                    b.Property<bool>("Promoted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("promoted");
+
+                    b.Property<string>("PromotionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("promotion_reason");
+
+                    b.Property<DateTime>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at_utc");
+
+                    b.Property<int>("ReviewedSampleCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("reviewed_sample_count");
+
+                    b.Property<DateTime>("SourceWindowFromUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("source_window_from_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_scoring_retrain_batches");
+
+                    b.HasIndex("Created")
+                        .HasDatabaseName("ix_scoring_retrain_batches_created");
+
+                    b.HasIndex("RequestedAtUtc")
+                        .HasDatabaseName("ix_scoring_retrain_batches_requested_at_utc");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_scoring_retrain_batches_status");
+
+                    b.ToTable("scoring_retrain_batches", "scoring");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringRetrainRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at_utc");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<int?>("ExitCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("exit_code");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("mode");
+
+                    b.Property<Guid>("ScoringRetrainBatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scoring_retrain_batch_id");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_scoring_retrain_runs");
+
+                    b.HasIndex("ScoringRetrainBatchId")
+                        .HasDatabaseName("ix_scoring_retrain_runs_scoring_retrain_batch_id");
+
+                    b.HasIndex("StartedAtUtc")
+                        .HasDatabaseName("ix_scoring_retrain_runs_started_at_utc");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_scoring_retrain_runs_status");
+
+                    b.ToTable("scoring_retrain_runs", "scoring");
+                });
+
             modelBuilder.Entity("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringJobResult", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringJob", "ScoringJob")
@@ -183,9 +349,26 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Migrations
                     b.Navigation("ScoringJob");
                 });
 
+            modelBuilder.Entity("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringRetrainRun", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringRetrainBatch", "Batch")
+                        .WithMany("Runs")
+                        .HasForeignKey("ScoringRetrainBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_scoring_retrain_runs_scoring_retrain_batches_scoring_retrai_8d4a2f5c");
+
+                    b.Navigation("Batch");
+                });
+
             modelBuilder.Entity("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringJob", b =>
                 {
                     b.Navigation("Results");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.Scoring.Domain.Entities.ScoringRetrainBatch", b =>
+                {
+                    b.Navigation("Runs");
                 });
 #pragma warning restore 612, 618
         }
