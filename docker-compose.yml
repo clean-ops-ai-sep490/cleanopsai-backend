@@ -100,11 +100,24 @@ services:
       - "5000:8080"
       - "5001:8081"
     environment:
-      <<: *common-env
+      <<: [*common-env, *retrain-env]
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       Jwt__Secret: ${JWT_SECRET:-CleanOpsAi-Dev-Secret-Key-ChangeMe-1234567890}
       Jwt__Issuer: ${JWT_ISSUER:-CleanOpsAi}
       Jwt__Audience: ${JWT_AUDIENCE:-CleanOpsAi.Client}
+      AzureBlob__ConnectionString: ${AZURE_BLOB_CONNECTION_STRING:-}
+      AutoMapper__Key: ${AUTOMAPPER_KEY:-}
+      Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      Frontend__ResetPasswordPath: ${FRONTEND_RESET_PASSWORD_PATH:-/reset-password}
+      EmailSettings__SmtpServer: ${EMAIL_SMTP_SERVER:-smtp.gmail.com}
+      EmailSettings__Port: ${EMAIL_SMTP_PORT:-587}
+      EmailSettings__SenderName: ${EMAIL_SENDER_NAME:-CleanOpsAI}
+      EmailSettings__SenderEmail: ${EMAIL_SENDER_EMAIL:-}
+      EmailSettings__Password: ${EMAIL_PASSWORD:-}
+      Firebase__ServiceAccountKey: ${FIREBASE_SERVICE_ACCOUNT_KEY:-}
+      Firebase__ProjectId: ${FIREBASE_PROJECT_ID:-cleanopsai}
+      Goong__ApiKey: ${GOONG_API_KEY:-}
+      Gemini__ApiKey: ${GEMINI_API_KEY:-}
       Jobs__WeeklyTaskGeneration__Enabled: ${WEEKLY_TASK_JOB_ENABLED:-false}
       Jobs__WeeklyTaskGeneration__LookAheadDays: ${WEEKLY_TASK_JOB_LOOKAHEAD_DAYS:-7}
       ScoringRetrain__WeeklyJobEnabled: ${SCORING_RETRAIN_WEEKLY_ENABLED_API:-false}

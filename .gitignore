@@ -361,6 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local environment files
+/.env
+/.env.*
+!/.env.example
+
 /src/Api/CleanOpsAi.Api/.env
 /src/Api/CleanOpsAi.Api/appsettings.json
 src/Workers/CleanOpsAi.Scoring.Worker/appsettings.json
