@@ -24,6 +24,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
+        private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 
         private const string ContainerName = "contracts";
         private const string AudioFolder = "audios";
@@ -34,7 +35,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
-            IWorkerQueryService workerQueryService)
+            IWorkerQueryService workerQueryService,
+            ITaskAssignmentRepository taskAssignmentRepository)
         {
             _emergencyLeaveRequestRepository = emergencyLeaveRequestRepository;
             _fileStorageService = fileStorageService;
@@ -42,6 +44,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
+            _taskAssignmentRepository = taskAssignmentRepository;
         }
 
         public async Task<EmergencyLeaveRequestDto?> GetById(Guid id, CancellationToken ct = default)
@@ -252,6 +255,29 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 : null;
 
             var reviewByUserName = _userContext.FullName;
+
+            if (dto.Status == RequestStatus.Approved)
+            {
+                var tasks = await _taskAssignmentRepository
+                    .GetTasksByWorkerAndDateRange(
+                        entity.WorkerId,
+                        entity.LeaveDateFrom,
+                        entity.LeaveDateTo,
+                        ct);
+
+                foreach (var task in tasks)
+                {
+                    if (task.Status == TaskAssignmentStatus.NotStarted ||
+                        task.Status == TaskAssignmentStatus.InProgress)
+                    {
+                        task.Status = TaskAssignmentStatus.Block;
+                        task.LastModified = _dateTimeProvider.UtcNow;
+                        task.LastModifiedBy = _userContext.UserId.ToString();
+                    }
+                }
+
+                await _taskAssignmentRepository.SaveChangesAsync(ct);
+            }
 
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
 
