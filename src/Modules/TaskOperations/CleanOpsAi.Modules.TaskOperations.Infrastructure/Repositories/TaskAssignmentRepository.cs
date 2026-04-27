@@ -211,5 +211,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .ToListAsync(ct);
         }
 
+        public async Task<List<TaskAssignment>> GetTasksByWorkerAndDateRange(
+			Guid workerId,
+			DateTime from,
+			DateTime to,
+			CancellationToken ct)
+        {
+            return await _context.TaskAssignments
+                .Where(x =>
+                    x.AssigneeId == workerId &&
+                    !x.IsDeleted &&
+                    x.ScheduledStartAt < to &&
+                    x.ScheduledEndAt > from // overlap
+                )
+                .ToListAsync(ct);
+        }
+
     }
 }

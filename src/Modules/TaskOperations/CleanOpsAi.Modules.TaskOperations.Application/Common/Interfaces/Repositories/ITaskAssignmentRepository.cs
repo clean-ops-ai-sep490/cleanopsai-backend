@@ -63,6 +63,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 			Guid? excludeTaskId = null,
 			CancellationToken ct = default);
 
+        Task<List<TaskAssignment>> GetTasksByWorkerAndDateRange(
+			Guid workerId,
+			DateTime from,
+			DateTime to,
+			CancellationToken ct);
 
-	}
+    }
 }
