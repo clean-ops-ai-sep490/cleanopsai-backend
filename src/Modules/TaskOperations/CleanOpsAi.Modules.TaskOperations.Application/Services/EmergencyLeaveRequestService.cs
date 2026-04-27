@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
@@ -139,24 +140,67 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         {
             var entity = _mapper.Map<EmergencyLeaveRequest>(dto);
 
-            DateTime leaveDateFrom = default;
-            DateTime leaveDateTo = default;
+            DateTime leaveDateFrom;
+            DateTime leaveDateTo;
 
             if (dto.TaskAssignmentId.HasValue)
             {
-                entity.TaskAssignmentId = dto.TaskAssignmentId.Value;
+                var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId.Value, ct);
+
+                if (task == null)
+                    throw new ArgumentException("TaskAssignment không tồn tại.");
+
+                entity.TaskAssignmentId = task.Id;
+
+                // LẤY DATE TỪ TASK
+                leaveDateFrom = task.ScheduledStartAt;
+                leaveDateTo = task.ScheduledEndAt;
+
+                // BLOCK TASK
+                if (task.Status != TaskAssignmentStatus.Completed &&
+                    task.Status != TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.Block;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    var updated = await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                    if (!updated)
+                        throw new Exception("Failed to update TaskAssignment.");
+                }
+                else
+                {
+                    throw new BadRequestException("Task đã completed hoặc đã bị block.");
+                }
             }
             else
             {
                 if (!dto.LeaveDateFrom.HasValue || !dto.LeaveDateTo.HasValue)
-                    throw new ArgumentException("Phai truyen LeaveDateFrom va LeaveDateTo khi khong co TaskAssignmentId.");
+                    throw new ArgumentException("Phải truyền LeaveDateFrom và LeaveDateTo.");
 
                 leaveDateFrom = dto.LeaveDateFrom.Value;
                 leaveDateTo = dto.LeaveDateTo.Value;
-            }
 
-            if (leaveDateFrom > leaveDateTo)
-                throw new ArgumentException("LeaveDateFrom phai nho hon hoac bang LeaveDateTo.");
+                if (leaveDateFrom > leaveDateTo)
+                    throw new ArgumentException("LeaveDateFrom phải <= LeaveDateTo.");
+
+                // BLOCK ALL TASK TRONG RANGE
+                var tasks = await _taskAssignmentRepository
+                    .GetTasksByWorkerAndDateRange(dto.WorkerId, leaveDateFrom, leaveDateTo, ct);
+
+                foreach (var task in tasks)
+                {
+                    if (task.Status != TaskAssignmentStatus.Completed &&
+                        task.Status != TaskAssignmentStatus.Block)
+                    {
+                        task.Status = TaskAssignmentStatus.Block;
+                        task.LastModified = _dateTimeProvider.UtcNow;
+                        task.LastModifiedBy = _userContext.UserId.ToString();
+
+                        await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                    }
+                }
+            }
 
             entity.LeaveDateFrom = leaveDateFrom;
             entity.LeaveDateTo = leaveDateTo;
@@ -164,10 +208,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
+            // AUDIO
             if (dto.AudioStream != null && !string.IsNullOrEmpty(dto.AudioFileName))
             {
-                var fileName = $"{AudioFolder}/{dto.AudioFileName}";
-                entity.AudioUrl = await _fileStorageService.UploadFileAsync(dto.AudioStream, fileName, ContainerName);
+                var fileName = $"audios/{dto.AudioFileName}";
+                entity.AudioUrl = await _fileStorageService.UploadFileAsync(dto.AudioStream, fileName, "contracts");
             }
 
             if (!string.IsNullOrEmpty(dto.Transcription))
@@ -175,19 +220,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await _emergencyLeaveRequestRepository.AddAsync(entity, ct);
 
-            // publish event sau khi tich hop RabbitMQ
-            // 
-            // await _publishEndpoint.Publish(new EmergencyLeaveRequestCreatedEvent
-            // {
-            //     RequestId        = entity.Id,
-            //     WorkerId         = entity.WorkerId,
-            //     TaskAssignmentId = entity.TaskAssignmentId,
-            //     LeaveDateFrom    = entity.LeaveDateFrom,
-            //     LeaveDateTo      = entity.LeaveDateTo,
-            //     AudioUrl         = entity.AudioUrl,
-            //     Transcription    = entity.Transcription,
-            //     CreatedAt        = entity.Created
-            // }, ct);
+            // ================= PUBLISH EVENT =================
+            //await _publishEndpoint.Publish(new EmergencyLeaveRequestCreatedEvent
+            //{
+            //    RequestId = entity.Id,
+            //    WorkerId = entity.WorkerId,
+            //    TaskAssignmentId = entity.TaskAssignmentId,
+            //    LeaveDateFrom = entity.LeaveDateFrom,
+            //    LeaveDateTo = entity.LeaveDateTo,
+            //    AudioUrl = entity.AudioUrl,
+            //    Transcription = entity.Transcription,
+            //    CreatedAt = entity.Created
+            //}, ct);
+            // =================================================
 
             var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
@@ -256,15 +301,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var reviewByUserName = _userContext.FullName;
 
+            // Lấy đúng task
+            List<TaskAssignment> tasks;
+            if (entity.TaskAssignmentId.HasValue)
+            {
+                var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
+                tasks = task != null ? new List<TaskAssignment> { task } : new List<TaskAssignment>();
+            }
+            else
+            {
+                tasks = await _taskAssignmentRepository
+                    .GetTasksByWorkerAndDateRange(entity.WorkerId, entity.LeaveDateFrom, entity.LeaveDateTo, ct);
+            }
+
+            // APPROVED
             if (dto.Status == RequestStatus.Approved)
             {
-                var tasks = await _taskAssignmentRepository
-                    .GetTasksByWorkerAndDateRange(
-                        entity.WorkerId,
-                        entity.LeaveDateFrom,
-                        entity.LeaveDateTo,
-                        ct);
-
                 foreach (var task in tasks)
                 {
                     if (task.Status == TaskAssignmentStatus.NotStarted ||
@@ -273,28 +325,55 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                         task.Status = TaskAssignmentStatus.Block;
                         task.LastModified = _dateTimeProvider.UtcNow;
                         task.LastModifiedBy = _userContext.UserId.ToString();
+
+                        await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
                     }
                 }
-
-                await _taskAssignmentRepository.SaveChangesAsync(ct);
             }
 
+            // REJECTED
+            if (dto.Status == RequestStatus.Rejected)
+            {
+                foreach (var task in tasks)
+                {
+                    if (task.Status == TaskAssignmentStatus.Block)
+                    {
+                        task.Status = TaskAssignmentStatus.InProgress;
+                        task.LastModified = _dateTimeProvider.UtcNow;
+                        task.LastModifiedBy = _userContext.UserId.ToString();
+
+                        await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                    }
+                }
+            }
+
+            // đảm bảo persist task changes
+            await _taskAssignmentRepository.SaveChangesAsync(ct);
+
+            // persist request
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
 
-            // notifi to Target - gui mail thong bao ket qua review cho worker
-            // var message = new EmergencyLeaveRequestReviewedEvent
-            // {
-            //     RequestId        = entity.Id,
-            //     WorkerId         = entity.WorkerId,
-            //     TaskAssignmentId = entity.TaskAssignmentId,
-            //     Status           = entity.Status,           // Approved | Rejected
-            //     ReviewedByUserId = entity.ReviewedByUserId,
-            //     ApprovedAt       = entity.ApprovedAt,
-            //     ReviewedAt       = entity.LastModified
-            // };
-            // string routingKey = entity.Status == RequestStatus.Approved
-            //     ? "emergency-leave-request.approved"
-            //     : "emergency-leave-request.rejected";
+            // ================= PUBLISH EVENT =================
+            //var message = new EmergencyLeaveRequestReviewedEvent
+            //{
+            //    RequestId = entity.Id,
+            //    WorkerId = entity.WorkerId,
+            //    TaskAssignmentId = entity.TaskAssignmentId,
+            //    Status = entity.Status,
+            //    ReviewedByUserId = entity.ReviewedByUserId,
+            //    ApprovedAt = entity.ApprovedAt,
+            //    ReviewedAt = entity.LastModified
+            //};
+
+            //var routingKey = entity.Status == RequestStatus.Approved
+            //    ? "emergency-leave-request.approved"
+            //    : "emergency-leave-request.rejected";
+
+            //await _publishEndpoint.Publish(message, context =>
+            //{
+            //    context.SetRoutingKey(routingKey);
+            //}, ct);
+            // =================================================
 
             var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);

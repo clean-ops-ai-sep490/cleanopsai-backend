@@ -51,6 +51,12 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return workers;
         }
 
+        public async Task<int> CountAllActiveAsync()
+        {
+            return await _dbContext.Set<Worker>()
+                .CountAsync(x => x.IsDeleted == false);
+        }
+
         public async Task<(List<Worker> Items, int TotalCount)> GetAllPaginationAsync(
             int pageNumber,
             int pageSize)
@@ -421,5 +427,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 			// Chỉ cần kiểm tra tồn tại
 			return await query.AnyAsync(ct);
 		}
+
+
 	}
 }

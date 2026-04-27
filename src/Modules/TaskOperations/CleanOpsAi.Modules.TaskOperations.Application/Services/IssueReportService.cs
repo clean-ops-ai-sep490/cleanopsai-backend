@@ -180,6 +180,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var resolverName = _userContext.FullName;
 
+            var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                // Nếu reject -> mở block lại
+                if (dto.Status == IssueStatus.Rejected &&
+                    task.Status == TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.InProgress;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                }
+            }
+
             await _issueReportRepository.UpdateAsync(entity, ct);
 
             var result = _mapper.Map<IssueReportDto>(entity);
