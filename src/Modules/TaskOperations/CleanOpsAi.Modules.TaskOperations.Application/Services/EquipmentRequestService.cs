@@ -157,12 +157,32 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? _dateTimeProvider.UtcNow
                 : null;
 
+            var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                if (dto.Status == EquipmentRequestStatus.Rejected &&
+                    task.Status == TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.InProgress;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    var updated = await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                    if (!updated)
+                    {
+                        throw new Exception("Failed to update TaskAssignment status.");
+                    }
+                }
+            }
+
             await _repo.UpdateAsync(entity, ct);
 
             var result = await MapResult(entity);
             result.ReviewedByUserName = _userContext.FullName;
 
             await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
+
             return result;
         }
 

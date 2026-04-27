@@ -2,6 +2,7 @@
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data; 
@@ -225,6 +226,44 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                     x.ScheduledEndAt > from // overlap
                 )
                 .ToListAsync(ct);
+        }
+
+        public async Task<int> CountAllAsync()
+        {
+            return await _context.TaskAssignments.CountAsync(x => !x.IsDeleted);
+        }
+
+        public async Task<int> CountByStatusAsync(TaskAssignmentStatus status)
+        {
+            return await _context.TaskAssignments
+                .CountAsync(x => !x.IsDeleted && x.Status == status);
+        }
+
+        public async Task<List<WorkerTaskStatsDto>> GetTopWorkersByMonthAsync(
+            DateTime from,
+            DateTime to,
+            bool descending,
+            int take = 5)
+        {
+            var query = _context.TaskAssignments
+                .Where(x =>
+                    !x.IsDeleted &&
+                    x.Status == TaskAssignmentStatus.Completed &&
+                    x.ScheduledStartAt >= from &&
+                    x.ScheduledStartAt <= to)
+                .GroupBy(x => new { x.AssigneeId, x.AssigneeName })
+                .Select(g => new WorkerTaskStatsDto
+                {
+                    WorkerId = g.Key.AssigneeId,
+                    WorkerName = g.Key.AssigneeName,
+                    TotalTasks = g.Count()
+                });
+
+            query = descending
+                ? query.OrderByDescending(x => x.TotalTasks).ThenBy(x => x.WorkerName)
+                : query.OrderBy(x => x.TotalTasks).ThenBy(x => x.WorkerName);
+
+            return await query.Take(take).ToListAsync();
         }
 
     }
