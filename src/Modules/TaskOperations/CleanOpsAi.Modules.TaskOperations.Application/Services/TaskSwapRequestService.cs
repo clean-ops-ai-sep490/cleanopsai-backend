@@ -163,7 +163,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				}),
 				Priority = NotificationPriority.Normal,
 				SenderType = SenderTypeEnum.Worker,
-				SenderId = dto.RequesterId,
+				SenderId = _userContext.UserId,
 				Recipients = new List<NotificationRecipientEvent>
 				{
 					new NotificationRecipientEvent
@@ -264,7 +264,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 						requesterTaskAssignmentId = swapRequest.TaskAssignmentId,
 						targetTaskAssignmentId = swapRequest.TargetTaskAssignmentId
 					}),
-					SenderId = dto.ResponderId,
+					SenderId = _userContext.UserId,
 					Recipients = new List<NotificationRecipientEvent>
 					{
 						new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId }
