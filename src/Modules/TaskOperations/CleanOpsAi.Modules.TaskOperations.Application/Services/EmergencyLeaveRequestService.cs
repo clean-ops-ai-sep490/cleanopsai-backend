@@ -25,9 +25,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IWorkerQueryService _workerQueryService;
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
 
-		private const string ContainerName = "contracts";
+        private const string ContainerName = "contracts";
         private const string AudioFolder = "audios";
 
         public EmergencyLeaveRequestService(
@@ -38,7 +39,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
             ITaskAssignmentRepository taskAssignmentRepository,
-            INotificationPublisher notificationPublisher)
+            INotificationPublisher notificationPublisher,
+            IIdGenerator idGenerator)
         {
             _emergencyLeaveRequestRepository = emergencyLeaveRequestRepository;
             _fileStorageService = fileStorageService;
@@ -48,7 +50,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _workerQueryService = workerQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
             _notificationPublisher = notificationPublisher;
-		}
+            _idGenerator = idGenerator;
+        }
 
         public async Task<EmergencyLeaveRequestDto?> GetById(Guid id, CancellationToken ct = default)
         {
@@ -141,6 +144,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         public async Task<EmergencyLeaveRequestDto?> Create(CreateEmergencyLeaveRequestDto dto, CancellationToken ct = default)
         {
             var entity = _mapper.Map<EmergencyLeaveRequest>(dto);
+            entity.Id = _idGenerator.Generate();
 
             DateTime leaveDateFrom;
             DateTime leaveDateTo;
