@@ -16,7 +16,7 @@
 	</PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
 	<PackageReference Include="dotenv.net" Version="4.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+	 <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 	<PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
 	
   </ItemGroup>
@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\Modules\ServicePlanning\CleanOpsAi.Modules.ServicePlanning.Infrastructure\CleanOpsAi.Modules.ServicePlanning.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\TaskOperations\CleanOpsAi.Modules.TaskOperations.Infrastructure\CleanOpsAi.Modules.TaskOperations.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\UserAccess\CleanOpsAi.Modules.UserAccess.Infrastructure\CleanOpsAi.Modules.UserAccess.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\WorkareaCheckin\CleanOpsAi.Modules.WorkareaCheckin.Infrastructure\CleanOpsAi.Modules.WorkareaCheckin.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Workforce\CleanOpsAi.Modules.Workforce.Infrastructure\CleanOpsAi.Modules.Workforce.Infrastructure.csproj" />
   </ItemGroup>
 

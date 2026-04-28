@@ -23,6 +23,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 		private readonly ISupervisorManagedWorkerQueryService _managedWorkerQueryService;
 		private readonly IWorkerLookupQueryService _workerLookupQueryService;
 		private readonly IScoringAnnotationArtifactService _annotationArtifactService;
+		private readonly IScoringRetrainRequestHandler _retrainRequestHandler;
 		private readonly ILogger<ScoringJobService> _logger;
 		private readonly ScoringJobService _service;
 
@@ -35,6 +36,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			_managedWorkerQueryService = Substitute.For<ISupervisorManagedWorkerQueryService>();
 			_workerLookupQueryService = Substitute.For<IWorkerLookupQueryService>();
 			_annotationArtifactService = Substitute.For<IScoringAnnotationArtifactService>();
+			_retrainRequestHandler = Substitute.For<IScoringRetrainRequestHandler>();
 			_logger = Substitute.For<ILogger<ScoringJobService>>();
 
 			_service = new ScoringJobService(
@@ -45,6 +47,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 				_managedWorkerQueryService,
 				_workerLookupQueryService,
 				_annotationArtifactService,
+				_retrainRequestHandler,
 				_logger);
 		}
 

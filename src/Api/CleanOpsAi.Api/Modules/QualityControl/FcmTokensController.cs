@@ -23,16 +23,32 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[HttpPost("register")]
 		[SwaggerOperation(
 			Summary = "Register FCM Token",
-			Description = "Creates or updates an FCM token for the current user's device. If the device already has an active token, it will be updated. If the token is used by another device, that device will be deactivated. Supports both User and Worker",
+			Description = "Register FCM token after login. Requires full device info including WorkerId if applicable.",
 			Tags = new[] { "FcmToken" }
 		)]
 		[ProducesResponseType(typeof(FcmTokenDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-		public async Task<IActionResult> Register([FromBody] FcmTokenCreateDto dto, CancellationToken ct = default)
+		public async Task<IActionResult> Register([FromBody] FcmTokenRegisterDto dto, CancellationToken ct = default)
 		{
-			var result = await _tokenService.CreateOrUpdateAsync(dto, ct);
+			var result = await _tokenService.RegisterAsync(dto, ct);
 			return Ok(result);
+		}
+
+		[Authorize]
+		[HttpPatch("refresh-token")]
+		[SwaggerOperation(
+			Summary = "Refresh FCM Token",
+			Description = "Called when Firebase refreshes the FCM token. Only updates the token value and last used timestamp. All other device info remains unchanged.",
+			Tags = new[] { "FcmToken" }
+		)]
+		[ProducesResponseType(StatusCodes.Status204NoContent)]
+		[ProducesResponseType(StatusCodes.Status400BadRequest)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		public async Task<IActionResult> RefreshToken([FromBody] FcmTokenRefreshDto dto, CancellationToken ct = default)
+		{
+			await _tokenService.RefreshTokenAsync(dto, ct);
+			return NoContent();
 		}
 
 		[Authorize]

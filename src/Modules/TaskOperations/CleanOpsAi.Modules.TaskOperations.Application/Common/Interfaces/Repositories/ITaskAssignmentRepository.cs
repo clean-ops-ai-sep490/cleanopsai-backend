@@ -1,6 +1,8 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories
 {
@@ -53,6 +55,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 			DateTime start,
 			DateTime end,
 			CancellationToken ct = default);
+
+        Task<List<TaskAssignment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default);
+
+		Task<bool> HasOverlapAsync(
+			Guid assigneeId,
+			DateTime newStart,
+			DateTime newEnd,
+			Guid? excludeTaskId = null,
+			CancellationToken ct = default);
+
+        Task<List<TaskAssignment>> GetTasksByWorkerAndDateRange(
+			Guid workerId,
+			DateTime from,
+			DateTime to,
+			CancellationToken ct);
+
+        Task<int> CountAllAsync();
+
+        Task<int> CountByStatusAsync(TaskAssignmentStatus status);
+
+        Task<List<WorkerTaskStatsDto>> GetTopWorkersByMonthAsync(
+            DateTime from,
+            DateTime to,
+            bool descending,
+            int take = 5);
 
     }
 }

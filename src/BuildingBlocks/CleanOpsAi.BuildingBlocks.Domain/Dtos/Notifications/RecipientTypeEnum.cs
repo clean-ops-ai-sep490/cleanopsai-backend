@@ -2,7 +2,10 @@
 {
 	public enum RecipientTypeEnum
 	{
-		Worker = 1, 
-		Supervisor = 4
+		Admin = 0,
+		Manager = 1,
+		Supervisor = 2,
+		Supporter = 3,
+		Worker = 4
 	}
 }

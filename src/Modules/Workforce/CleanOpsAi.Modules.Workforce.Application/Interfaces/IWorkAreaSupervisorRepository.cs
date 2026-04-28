@@ -6,12 +6,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
     {
         Task<WorkAreaSupervisor?> GetByIdAsync(Guid id);
         Task<List<WorkAreaSupervisor>> GetByUserIdAsync(Guid userId);
-        Task<WorkAreaSupervisor?> GetByWorkerIdAsync(Guid workerId);
+        Task<(List<WorkAreaSupervisor> Items, int TotalCount)> GetByWorkerIdPaginationAsync(Guid workerId, int pageNumber, int pageSize);
         Task<List<WorkAreaSupervisor>> GetAllAsync();
         Task<(List<WorkAreaSupervisor> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize);
         Task<List<WorkAreaSupervisor>> GetByWorkAreaIdAsync(Guid workAreaId);
         Task<int> DeleteAsync(Guid id);
-        Task<List<WorkerGps>> GetWorkersLatestGpsByWorkAreaIdAsync(Guid workAreaId);
+        Task<List<WorkerGps>> GetLatestGpsByWorkAreaAsync(Guid workAreaId);
         Task<bool> ExistsAsync(Guid workAreaId, Guid userId, Guid workerId);
         Task<int> CreateRangeAsync(List<WorkAreaSupervisor> entities);
         Task<WorkAreaSupervisor?> GetByWorkAreaUserWorkerAsync(Guid workAreaId, Guid userId, Guid workerId);
@@ -19,5 +19,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<WorkAreaSupervisor?> GetByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
         Task<List<Guid>> GetSupervisorIdsAsync(Guid workAreaId, Guid workerId, CancellationToken ct = default);
         Task<List<WorkAreaSupervisor>> GetWorkersBySupervisorIdAsync(Guid supervisorId);
-	} 
+        Task<(List<WorkAreaSupervisor> Items, int TotalCount)> GetWorkersByWorkAreaPagingAsync(Guid workAreaId, int pageNumber, int pageSize);
+
+    } 
 }

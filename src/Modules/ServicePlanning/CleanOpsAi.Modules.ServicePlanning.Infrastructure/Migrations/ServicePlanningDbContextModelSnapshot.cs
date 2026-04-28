@@ -335,6 +335,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<DateOnly?>("LastGeneratedToDate")
+                        .HasColumnType("date")
+                        .HasColumnName("last_generated_to_date");
+
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified");

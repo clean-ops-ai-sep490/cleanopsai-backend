@@ -11,6 +11,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 
         Task<List<Worker>> GetAllAsync();
 
+        Task<int> CountAllActiveAsync();
+
         Task<(List<Worker> Items, int TotalCount)> GetAllPaginationAsync(
             int pageNumber,
             int pageSize);
@@ -22,6 +24,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<int> DeleteAsync(Guid id);
 
         Task<List<Worker>> FilterAsync(WorkerFilterRequest request);
+
+        Task<List<Worker>> FilterStrictAsync(WorkerFilterRequest request);
 
         Task<List<Worker>> GetWorkersByIds(List<Guid> ids);
 
@@ -44,5 +48,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 			List<Guid> requiredSkillIds,
 			List<Guid> requiredCertificationIds,
 			CancellationToken ct = default);
-	}
+
+        
+    }
 }

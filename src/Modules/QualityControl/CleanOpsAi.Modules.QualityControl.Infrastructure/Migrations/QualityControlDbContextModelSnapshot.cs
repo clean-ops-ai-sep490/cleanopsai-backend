@@ -285,7 +285,7 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("notification_id");
 
-                    b.Property<Guid>("RecipientId")
+                    b.Property<Guid?>("RecipientId")
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_id");
 
@@ -299,7 +299,7 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Migrations
                     b.HasIndex("NotificationId", "RecipientId")
                         .IsUnique()
                         .HasDatabaseName("ix_notification_recipients_notification_id_recipient_id")
-                        .HasFilter("is_deleted = false");
+                        .HasFilter("is_deleted = false AND recipient_id IS NOT NULL");
 
                     b.ToTable("notification_recipients", "quality_control");
                 });

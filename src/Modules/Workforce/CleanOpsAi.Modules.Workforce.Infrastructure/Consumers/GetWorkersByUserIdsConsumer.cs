@@ -19,12 +19,14 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Consumers
 
 			await context.RespondAsync(new GetWorkersByUserIdsResponse
 			{
-				Workers = workers.Select(x => new WorkerSummaryByUserIdDto
-				{
-					UserId = x.UserId,
-					WorkerId = x.WorkerId,
-					FullName = x.FullName
-				}).ToList()
+				Workers = workers
+					.Select(x => new WorkerSummaryByUserIdDto
+					{
+						UserId = x.UserId,
+						WorkerId = x.WorkerId,
+						FullName = x.FullName
+					})
+					.ToList()
 			});
 		}
 	}

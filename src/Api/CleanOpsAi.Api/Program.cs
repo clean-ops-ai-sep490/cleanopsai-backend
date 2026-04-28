@@ -1,3 +1,4 @@
+using CleanOpsAi.Api.Hubs;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using CleanOpsAi.Api.Middlewares; 
@@ -11,6 +12,7 @@ builder.InfrastructureClientManagementModule();
 builder.InfrastructureServicePlanningModule();
 builder.InfrastructureTaskOperationsModule(); 
 builder.InfrastructureQualityControlModule();
+builder.InfrastructureWorkAreaCheckinModule();
 builder.InfrastructureScoringModule();
 
 builder.AddWebAPIServices();  
@@ -40,5 +42,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ComplianceHub>("/hubs/compliance");
 
 app.Run();

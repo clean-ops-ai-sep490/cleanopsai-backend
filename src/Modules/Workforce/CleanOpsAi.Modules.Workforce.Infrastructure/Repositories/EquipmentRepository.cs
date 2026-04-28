@@ -105,6 +105,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return (items, totalCount);
         }
 
+        public async Task<List<Equipment>> GetByIdsAsync(List<Guid> ids)
+        {
+            return await _dbContext.Set<Equipment>()
+                .Where(x => ids.Contains(x.Id) && !x.IsDeleted)
+                .ToListAsync();
+        }
+
         private static string RemoveDiacritics(string text)
         {
             if (string.IsNullOrWhiteSpace(text))

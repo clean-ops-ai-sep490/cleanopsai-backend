@@ -21,7 +21,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateProvider;
 		private readonly IIdGenerator _idGenerator;
-		private readonly IUserContext _userContext;
+		private readonly IUserContext _userContext;  
 
 		public SopService(ISopRepository sopRepository, 
 			IStepRepository stepRepository,
@@ -120,6 +120,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		public async Task<SopDto?> GetSopByIdAsync(Guid id, CancellationToken ct = default)
 		{
 			var sop = await _sopRepository.GetByIdAsync(id, ct);
+			if(sop==null) throw new NotFoundException(nameof(Sop), id);
 			return _mapper.Map<SopDto>(sop);
 		}
 
@@ -287,15 +288,15 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(sop);
 		}
 
-		public async Task<PaginatedResult<SopDto>> Gets(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default)
+		public async Task<PaginatedResult<SopListDto>> Gets(GetsSopQueryFilter query, PaginationRequest request, CancellationToken ct = default)
 		{
 			var result = await _sopRepository.GetsPaging(query, request, ct);
 
-			return new PaginatedResult<SopDto>(
+			return new PaginatedResult<SopListDto>(
 				result.PageNumber,
 				result.PageSize,
 				result.TotalElements,
-				_mapper.Map<List<SopDto>>(result.Content));
+				_mapper.Map<List<SopListDto>>(result.Content));
 		}
 
 		public async Task<Sop?> GetSopWithDetail(Guid id, CancellationToken ct = default)

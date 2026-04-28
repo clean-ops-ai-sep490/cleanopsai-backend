@@ -76,5 +76,22 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
                 taskStepExecutionId, imageType, request, ct);
             return Ok(result);
         }
+
+        [HttpDelete("step/{taskStepExecutionId:guid}")]
+        [SwaggerOperation(
+            Summary = "Delete all images of a step execution",
+            Description = "Soft delete all images belonging to a specific taskStepExecutionId.",
+            Tags = new[] { "TaskStepExecutionImage" }
+        )]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteByStep(
+            Guid taskStepExecutionId,
+            CancellationToken ct)
+        {
+            await _service.DeleteImagesByStepExecutionIdAsync(taskStepExecutionId, ct);
+            return Ok(new { message = "All images deleted successfully" });
+        }
     }
 }

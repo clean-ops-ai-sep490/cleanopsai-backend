@@ -33,6 +33,9 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 
 		public JsonElement RecurrenceConfig { get; set; }
 
-		public bool IsActive { get; set; }  
+		public bool IsActive { get; set; }
+
+		public DateOnly? LastGeneratedToDate { get; set; }
+
 	}
 }

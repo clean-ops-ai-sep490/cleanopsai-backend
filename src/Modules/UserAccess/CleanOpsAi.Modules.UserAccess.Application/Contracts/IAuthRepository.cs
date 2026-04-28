@@ -1,3 +1,4 @@
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.UserAccess.Application.Users.LoginUser;
 using CleanOpsAi.Modules.UserAccess.Application.Users.RegisterUserWithEmail;
 using CleanOpsAi.Modules.UserAccess.Domain;
@@ -9,7 +10,12 @@ namespace CleanOpsAi.Modules.UserAccess.Application.Contracts
         Task<RegisterUserResult> Register(string email, string password, string fullName, UserRole role);
 		Task<AuthTokenResult> Login(string email, string password);
 		Task<AuthTokenResult> RefreshToken(string refreshToken);
-		
-
+		Task<PaginatedResult<ApplicationUser>> GetSupervisorsPagingAsync(string? keyword, PaginationRequest request, CancellationToken ct = default);
+        Task<PaginatedResult<ApplicationUser>> GetUsersPagingAsync(string? keyword, UserRole? role, PaginationRequest request, CancellationToken ct = default);
+		Task<ApplicationUser> GetUserByIdAsync(Guid userId);
+        Task UpdateUserAsync(Guid userId, string fullName, UserRole role);
+		Task DeleteUserAsync(Guid userId);
+		Task LockUserAsync(Guid userId, int days);
+		Task UnlockUserAsync(Guid userId);
     }
 }

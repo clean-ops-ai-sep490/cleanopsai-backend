@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -98,9 +99,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			var id = Guid.NewGuid();
 			_sopRepository.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns((Sop?)null);
 
-			var result = await _service.GetSopByIdAsync(id);
-
-			Assert.Null(result);
+			await Assert.ThrowsAsync<NotFoundException>(() => _service.GetSopByIdAsync(id));
 		}
 
 		[Fact]
@@ -148,7 +147,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			var query = new GetsSopQueryFilter(); 
 
 			var sops = new List<Sop> { new Sop(), new Sop() };
-			var sopDtos = new List<SopDto> { new SopDto(), new SopDto() };
+			var sopDtos = new List<SopListDto> { new SopListDto(), new SopListDto() };
 
 			var pagedResult = new PaginatedResult<Sop>(1, 10, 2, sops);
 
@@ -157,7 +156,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 				.Returns(pagedResult);
 
 			_mapper
-				.Map<List<SopDto>>(Arg.Any<List<Sop>>())
+				.Map<List<SopListDto>>(Arg.Any<List<Sop>>())
 				.Returns(sopDtos);
 
 			var result = await _service.Gets(query, request); 

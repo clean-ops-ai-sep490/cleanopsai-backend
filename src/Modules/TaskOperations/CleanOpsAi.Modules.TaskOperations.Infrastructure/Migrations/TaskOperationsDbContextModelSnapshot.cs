@@ -108,6 +108,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AIResultRaw")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("ai_result_raw");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
@@ -115,6 +119,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
                         .HasColumnName("created_by");
+
+                    b.Property<int>("FailedImageCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_image_count");
 
                     b.Property<string>("Feedback")
                         .HasMaxLength(1000)
@@ -133,9 +143,21 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
+                    b.Property<double>("MinScore")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("min_score");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("SupervisorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supervisor_id");
 
                     b.Property<Guid>("TaskStepExecutionId")
                         .HasColumnType("uuid")
@@ -246,10 +268,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
-                    b.Property<Guid>("EquipmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("equipment_id");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -261,10 +279,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantity");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(1000)
@@ -297,6 +311,41 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasDatabaseName("ix_equipment_requests_worker_id");
 
                     b.ToTable("equipment_requests", "task_operations");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequestItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EquipmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_id");
+
+                    b.Property<Guid>("EquipmentRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("equipment_request_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_request_items");
+
+                    b.HasIndex("EquipmentId")
+                        .HasDatabaseName("ix_equipment_request_items_equipment_id");
+
+                    b.HasIndex("EquipmentRequestId")
+                        .HasDatabaseName("ix_equipment_request_items_equipment_request_id");
+
+                    b.HasIndex("EquipmentRequestId", "EquipmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_equipment_request_items_equipment_request_id_equipment_id");
+
+                    b.ToTable("equipment_request_items", "task_operations");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
@@ -436,6 +485,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<string>("TaskName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("task_name");
 
                     b.Property<Guid>("TaskScheduleId")
                         .HasColumnType("uuid")
@@ -633,9 +687,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
 
+                    b.Property<double?>("QualityScore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("double precision")
+                        .HasColumnName("quality_score");
+
                     b.Property<Guid>("TaskStepExecutionId")
                         .HasColumnType("uuid")
                         .HasColumnName("task_step_execution_id");
+
+                    b.Property<string>("Verdict")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("verdict");
 
                     b.HasKey("Id")
                         .HasName("pk_task_step_execution_images");
@@ -782,6 +846,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                         .HasConstraintName("fk_equipment_requests_task_assignments_task_assignment_id");
                 });
 
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequestItem", b =>
+                {
+                    b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", "EquipmentRequest")
+                        .WithMany("Items")
+                        .HasForeignKey("EquipmentRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_equipment_request_items_equipment_requests_equipment_reques");
+
+                    b.Navigation("EquipmentRequest");
+                });
+
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.IssueReport", b =>
                 {
                     b.HasOne("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", "TaskAssignment")
@@ -849,6 +925,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Migrations
                     b.Navigation("TargetTaskAssignment");
 
                     b.Navigation("TaskAssignment");
+                });
+
+            modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.EquipmentRequest", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("CleanOpsAi.Modules.TaskOperations.Domain.Entities.TaskAssignment", b =>

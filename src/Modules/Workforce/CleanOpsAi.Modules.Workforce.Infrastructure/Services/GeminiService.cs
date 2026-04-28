@@ -16,104 +16,90 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
         {
             _httpClient = httpClient;
             _apiKey = config["Gemini:ApiKey"]!;
+
+            // timeout ngắn để tránh treo request
+            _httpClient.Timeout = TimeSpan.FromSeconds(2);
         }
 
+        private string BuildUrl()
+        {
+            return $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
+        }
+
+        // ========================= CHAT =========================
         public async Task<string> ChatAsync(string message)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
-
             var body = new
             {
                 contents = new[]
                 {
                     new
                     {
-                        parts = new[] { new { text = message } }
+                        role = "user",
+                        parts = new[] { new { text = message?.Trim() ?? "" } }
                     }
                 }
             };
 
-            var content = new StringContent(
-                JsonSerializer.Serialize(body),
-                Encoding.UTF8,
-                "application/json"
-            );
-
-            var response = await _httpClient.PostAsync(url, content);
-            var json = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                throw new BadRequestException($"Gemini API lỗi: {response.StatusCode}. Vui lòng thử lại.");
-
-            using var doc = JsonDocument.Parse(json);
-
-            if (!doc.RootElement.TryGetProperty("candidates", out var candidates)
-                || candidates.GetArrayLength() == 0)
-                throw new BadRequestException("Gemini không trả về kết quả, vui lòng thử lại.");
-
-            var result = candidates[0]
-                .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
-                .GetString();
-
-            return result ?? "No response";
+            var json = await Send(body);
+            return ExtractText(json);
         }
 
+        // ========================= NLP =========================
         public async Task<WorkerFilterNlpResult> ParseWorkerFilterAsync(string query)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
+            query = query?.Trim() ?? "";
 
-            var now = DateTime.UtcNow;
-            var nowStr = now.ToString("yyyy-MM-ddTHH:mm:ss");
-            var todayStr = now.ToString("yyyy-MM-dd");
-            var tomorrowStr = now.AddDays(1).ToString("yyyy-MM-dd");
+            // 🔥 LOCAL FIRST (luôn chạy nhanh)
+            var local = LocalParse(query);
 
-            var jsonStructure = """
-                {
-                    "address": "extracted address or null",
-                    "skillCategories": ["skill1", "skill2"] or [],
-                    "certificateCategories": ["cert1", "cert2"] or [],
-                    "startAt": "ISO 8601 datetime or null",
-                    "endAt": "ISO 8601 datetime or null"
-                }
-                """;
-
-            var example1 = $$$"""{"address": "District 1", "skillCategories": ["glass cleaning"], "certificateCategories": [], "startAt": "{todayStr}T08:00:00", "endAt": "{todayStr}T10:00:00"}""";
-            var example2 = $$$"""{"address": "Quan 3", "skillCategories": ["cleaning"], "certificateCategories": [], "startAt": "{tomorrowStr}T13:00:00", "endAt": null}""";
-            var example3 = """{"address": "Ho Chi Minh City", "skillCategories": [], "certificateCategories": ["fire safety"], "startAt": null, "endAt": null}""";
-
-            var prompt = $"""
-                Extract worker search parameters from this query and return ONLY a JSON object, no explanation, no markdown.
-                Current datetime (UTC): {nowStr}
-                Query: "{query}"
-
-                Return JSON with this exact structure:
-                {jsonStructure}
-
-                Rules for startAt/endAt:
-                - If query mentions time range, extract it. Example: "from 8am to 10am today" → startAt: today 08:00, endAt: today 10:00
-                - If only start time mentioned without end, set endAt null
-                - If no time mentioned, both null
-                - Always use ISO 8601 format: "yyyy-MM-ddTHH:mm:ss"
-                - Use current datetime as reference for relative times like "today", "tomorrow", "this afternoon"
-                - "this morning" = 08:00, "this afternoon" = 13:00, "this evening" = 18:00
-                - Support Vietnamese time expressions: "sáng" = 08:00, "chiều" = 13:00, "tối" = 18:00
-                - Support Vietnamese relative times: "hôm nay" = today, "ngày mai" = tomorrow
-
-                Examples:
-                - "Find workers with glass cleaning in District 1 from 8am to 10am today" → {example1}
-                - "Available cleaners in Quan 3 tomorrow afternoon" → {example2}
-                - "Workers with fire safety certificate near HCMC" → {example3}
-                """;
-
-            var body = new
+            try
             {
-                contents = new[]
+                var prompt = BuildPrompt(query);
+
+                var body = new
                 {
-                    new { parts = new[] { new { text = prompt } } }
+                    contents = new[]
+                    {
+                new
+                {
+                    role = "user",
+                    parts = new[] { new { text = prompt } }
                 }
-            };
+            }
+                };
+
+                var json = await Send(body);
+                var raw = ExtractText(json);
+                var cleaned = CleanJson(raw);
+
+                var result = JsonSerializer.Deserialize<WorkerFilterNlpResult>(
+                    cleaned,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }
+                );
+
+                if (result == null)
+                    return local;
+
+                Normalize(result);
+
+                return IsEmpty(result) ? local : result;
+            }
+            catch (Exception ex)
+            {
+                // 🔥 QUAN TRỌNG: FAIL FAST → KHÔNG THROW RA PIPELINE
+                Console.WriteLine($"Gemini fail: {ex.Message}");
+                return local;
+            }
+        }
+
+        // ========================= GEMINI HTTP (NO RETRY) =========================
+        private async Task<string> Send(object body)
+        {
+            var url = BuildUrl();
 
             var requestContent = new StringContent(
                 JsonSerializer.Serialize(body),
@@ -121,61 +107,134 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                 "application/json"
             );
 
-            // Retry tối đa 3 lần khi 503
-            HttpResponseMessage response = null!;
-            string json = string.Empty;
-            int maxRetry = 3;
+            var response = await _httpClient.PostAsync(url, requestContent);
+            var json = await response.Content.ReadAsStringAsync();
 
-            for (int i = 0; i < maxRetry; i++)
+            if (response.IsSuccessStatusCode)
+                return json;
+
+            // ❌ KHÔNG retry để tránh treo system
+            if ((int)response.StatusCode == 429)
+                throw new BadRequestException("Gemini rate limit (429)");
+
+            throw new BadRequestException($"Gemini error: {(int)response.StatusCode} - {json}");
+        }
+
+        // ========================= LOCAL PARSE =========================
+        private WorkerFilterNlpResult LocalParse(string query)
+        {
+            var result = new WorkerFilterNlpResult
             {
-                response = await _httpClient.PostAsync(url, requestContent);
-                json = await response.Content.ReadAsStringAsync();
+                Address = null,
+                SkillCategories = new List<string>(),
+                CertificateCategories = new List<string>()
+            };
 
-                if (response.IsSuccessStatusCode)
-                    break;
+            if (string.IsNullOrWhiteSpace(query))
+                return result;
 
-                if ((int)response.StatusCode == 503)
-                {
-                    if (i < maxRetry - 1)
-                        await Task.Delay(1000 * (i + 1)); // 1s, 2s, 3s
-                    continue;
-                }
+            var lower = query.ToLower();
 
-                // Lỗi khác thì throw luôn
-                throw new BadRequestException($"Gemini API lỗi: {response.StatusCode}. Vui lòng thử lại.");
+            // skill
+            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
+            if (skill.Success)
+                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
+
+            // cert
+            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
+            if (cert.Success)
+                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
+
+            // address fix
+            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
+            if (addr.Success)
+            {
+                var value = addr.Groups[2].Value.Trim();
+
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"skill.*", "").Trim();
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"certificate.*", "").Trim();
+                value = System.Text.RegularExpressions.Regex.Replace(value, @"\s+", " ").Trim();
+
+                if (value.Length > 2)
+                    result.Address = value;
             }
 
-            if (!response.IsSuccessStatusCode)
-                throw new BadRequestException("Gemini API hiện không khả dụng, vui lòng thử lại sau.");
+            return result;
+        }
 
-            try
-            {
-                using var doc = JsonDocument.Parse(json);
+        // ========================= NORMALIZE =========================
+        private void Normalize(WorkerFilterNlpResult r)
+        {
+            r.SkillCategories = r.SkillCategories?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim().ToLower())
+                .Distinct()
+                .ToList() ?? new();
 
-                if (!doc.RootElement.TryGetProperty("candidates", out var candidates)
-                    || candidates.GetArrayLength() == 0)
-                    throw new BadRequestException("Gemini không trả về kết quả, vui lòng thử lại.");
+            r.CertificateCategories = r.CertificateCategories?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim().ToLower())
+                .Distinct()
+                .ToList() ?? new();
 
-                var rawText = candidates[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
-                    .GetString() ?? "{}";
+            if (!string.IsNullOrWhiteSpace(r.Address))
+                r.Address = r.Address.Trim();
+        }
 
-                var cleaned = rawText
-                    .Replace("```json", "")
-                    .Replace("```", "")
-                    .Trim();
+        private bool IsEmpty(WorkerFilterNlpResult r)
+        {
+            return string.IsNullOrWhiteSpace(r.Address)
+                && !r.SkillCategories.Any()
+                && !r.CertificateCategories.Any();
+        }
 
-                return JsonSerializer.Deserialize<WorkerFilterNlpResult>(cleaned, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                }) ?? new WorkerFilterNlpResult();
-            }
-            catch (JsonException)
-            {
-                throw new BadRequestException("Không thể parse kết quả từ Gemini, vui lòng thử lại.");
-            }
+        // ========================= PROMPT =========================
+        private string BuildPrompt(string query)
+        {
+            return $@"
+Extract worker search filters.
+
+INPUT:
+{query}
+
+OUTPUT JSON ONLY:
+{{
+  ""address"": """",
+  ""skillCategories"": [],
+  ""certificateCategories"": []
+}}";
+        }
+
+        // ========================= EXTRACT =========================
+        private string ExtractText(string json)
+        {
+            using var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("candidates", out var c) || c.GetArrayLength() == 0)
+                throw new Exception("Invalid Gemini response");
+
+            return c[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString() ?? "";
+        }
+
+        // ========================= CLEAN JSON =========================
+        private string CleanJson(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "{}";
+
+            var cleaned = raw.Replace("```json", "").Replace("```", "").Trim();
+
+            var start = cleaned.IndexOf('{');
+            var end = cleaned.LastIndexOf('}');
+
+            if (start >= 0 && end > start)
+                return cleaned.Substring(start, end - start + 1);
+
+            return "{}";
         }
     }
 }

@@ -15,6 +15,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 		{
 			return await _context.SopSteps
 				.Where(s => s.SopId == id)
+				.OrderBy(s => s.StepOrder)
 				.ToListAsync(cancellationToken);
 		}
 	}

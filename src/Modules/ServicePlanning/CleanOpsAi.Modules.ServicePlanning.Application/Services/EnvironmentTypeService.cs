@@ -37,6 +37,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		    var entity = _mapper.Map<EnvironmentType>(dto);
 			entity.Id = _idGenerator.Generate();
 			entity.Created = _dateTimeProvider.UtcNow;
+			entity.CreatedBy = _userContext.UserId.ToString();
 
 			await _environmentTypeRepository.InsertAsync(entity);
 			await _environmentTypeRepository.SaveChangesAsync();
@@ -86,6 +87,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 			_mapper.Map(dto, environmentType);
 			environmentType.LastModified = _dateTimeProvider.UtcNow;
+			environmentType.LastModifiedBy = _userContext.UserId.ToString();
 
 			await _environmentTypeRepository.SaveChangesAsync(ct);
 			return _mapper.Map<EnvironmentTypeDto>(environmentType);

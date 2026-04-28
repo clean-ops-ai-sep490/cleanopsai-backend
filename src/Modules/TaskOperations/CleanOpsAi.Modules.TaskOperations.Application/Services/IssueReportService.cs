@@ -1,56 +1,70 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
     public class IssueReportService : IIssueReportService
     {
         private readonly IIssueReportRepository _issueReportRepository;
+        private readonly ITaskAssignmentRepository _taskAssignmentRepository;
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
+		private readonly INotificationPublisher _notificationPublisher;
 
-        public IssueReportService(
+
+		public IssueReportService(
             IIssueReportRepository issueReportRepository,
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
-            IWorkerQueryService workerQueryService)
+            IWorkerQueryService workerQueryService,
+            ITaskAssignmentRepository taskAssignmentRepository,
+            INotificationPublisher notificationPublisher    )
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
-        }
+            _taskAssignmentRepository = taskAssignmentRepository;
+            _notificationPublisher = notificationPublisher;
+		}
 
+        // ================= GET BY ID =================
         public async Task<IssueReportDto?> GetById(Guid id, CancellationToken ct = default)
         {
             var entity = await _issueReportRepository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
 
             var dto = _mapper.Map<IssueReportDto>(entity);
-            dto.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+
+            await EnrichSingleAsync(dto, ct);
 
             return dto;
         }
 
+        // ================= GET LIST =================
         public async Task<PaginatedResult<IssueReportDto>> Gets(PaginationRequest request, CancellationToken ct = default)
         {
             var result = await _issueReportRepository.GetsPagingAsync(request, ct);
 
             var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
 
-            await EnrichWorkerNamesAsync(dtos);
+            await EnrichAsync(dtos);
 
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
@@ -65,7 +79,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
 
-            await EnrichWorkerNamesAsync(dtos);
+            await EnrichAsync(dtos);
 
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
@@ -80,7 +94,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
 
-            await EnrichWorkerNamesAsync(dtos);
+            await EnrichAsync(dtos);
 
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
@@ -95,7 +109,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var dtos = _mapper.Map<List<IssueReportDto>>(result.Content);
 
-            await EnrichWorkerNamesAsync(dtos);
+            await EnrichAsync(dtos);
 
             return new PaginatedResult<IssueReportDto>(
                 result.PageNumber,
@@ -104,58 +118,85 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 dtos);
         }
 
+        // ================= CREATE =================
         public async Task<IssueReportDto?> Create(CreateIssueReportDto dto, CancellationToken ct = default)
         {
+            var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                if (task.Status != TaskAssignmentStatus.Completed &&
+                    task.Status != TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.Block;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.SaveChangesAsync(ct);
+                }
+                else{
+                    throw new BadRequestException("Cannot report issue for a completed or already blocked task.");
+                }
+            }
             var entity = _mapper.Map<IssueReport>(dto);
-            entity.Status = IssueStatus.Pending; // default status when create new report
+
+            entity.Status = IssueStatus.Pending;
             entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.AddAsync(entity, ct);
 
-            // notifi to Target - thong bao cho manager/supervisor co issue report moi can xu ly
-            // var message = new IssueReportCreatedEvent
-            // {
-            //     ReportId            = entity.Id,
-            //     TaskAssignmentId    = entity.TaskAssignmentId,
-            //     ReportedByWorkerId  = entity.ReportedByWorkerId,
-            //     Description         = entity.Description,
-            //     CreatedAt           = entity.Created
-            // };
+            var result = _mapper.Map<IssueReportDto>(entity);
 
-            var dtoResult = _mapper.Map<IssueReportDto>(entity);
-            dtoResult.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+            await EnrichSingleAsync(result, ct);
 
-            return dtoResult;
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Báo cáo sự cố mới",
+				Body = $"{result.ReportedByWorkerName} đã báo lỗi task tại {result.DisplayLocation}",
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "ISSUE",
+					action = "CREATED",
+					issueId = entity.Id,
+					taskAssignmentId = dto.TaskAssignmentId
+				}),
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+	{
+		        new()
+		        {
+			        RecipientType = RecipientTypeEnum.Manager,
+			        RecipientId = null
+		        }
+	        }
+			}, ct);
+
+			return result;
         }
 
+        // ================= UPDATE =================
         public async Task<IssueReportDto?> Update(Guid id, UpdateIssueReportDto dto, CancellationToken ct = default)
         {
             var entity = await _issueReportRepository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
 
             _mapper.Map(dto, entity);
+
             entity.LastModified = _dateTimeProvider.UtcNow;
             entity.LastModifiedBy = _userContext.UserId.ToString();
 
             await _issueReportRepository.UpdateAsync(entity, ct);
 
-            // notifi to Target - thong bao cho manager/supervisor co issue report moi can xu ly
-            // var message = new IssueReportCreatedEvent
-            // {
-            //     ReportId            = entity.Id,
-            //     TaskAssignmentId    = entity.TaskAssignmentId,
-            //     ReportedByWorkerId  = entity.ReportedByWorkerId,
-            //     Description         = entity.Description,
-            //     CreatedAt           = entity.Created
-            // };
+            var result = _mapper.Map<IssueReportDto>(entity);
 
-            var dtoResult = _mapper.Map<IssueReportDto>(entity);
-            dtoResult.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
+            await EnrichSingleAsync(result, ct);
 
-            return dtoResult;
+            return result;
         }
 
+        // ================= RESOLVE =================
         public async Task<IssueReportDto?> Resolve(Guid id, ResolveIssueReportDto dto, CancellationToken ct = default)
         {
             var entity = await _issueReportRepository.GetByIdExistAsync(id, ct);
@@ -167,31 +208,36 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? _dateTimeProvider.UtcNow
                 : null;
 
-            var resolverUserName = _userContext.FullName;
+            var resolverName = _userContext.FullName;
+
+            var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                // Nếu reject -> mở block lại
+                if (dto.Status == IssueStatus.Rejected &&
+                    task.Status == TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.InProgress;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                }
+            }
 
             await _issueReportRepository.UpdateAsync(entity, ct);
 
-            // notifi to Target - gui mail thong bao ket qua resolve cho worker
-            // var message = new IssueReportResolvedEvent
-            // {
-            //     ReportId            = entity.Id,
-            //     TaskAssignmentId    = entity.TaskAssignmentId,
-            //     ReportedByWorkerId  = entity.ReportedByWorkerId,
-            //     ResolvedByUserId    = entity.ResolvedByUserId,
-            //     Status              = entity.Status,           // Approved | Rejected
-            //     ResolvedAt          = entity.ResolvedAt
-            // };
-            // string routingKey = entity.Status == IssueStatus.Approved
-            //     ? "issue-report.approved"
-            //     : "issue-report.rejected";
+            var result = _mapper.Map<IssueReportDto>(entity);
 
-            var dtoResult = _mapper.Map<IssueReportDto>(entity);
-            dtoResult.ReportedByWorkerName = await GetWorkerNameAsync(entity.ReportedByWorkerId);
-            dtoResult.ResolvedByUserName = resolverUserName;
+            result.ResolvedByUserName = resolverName;
 
-            return dtoResult;
+            await EnrichSingleAsync(result, ct);
+
+            return result;
         }
 
+        // ================= DELETE =================
         public async Task<bool> Delete(Guid id, CancellationToken ct = default)
         {
             var entity = await _issueReportRepository.GetByIdExistAsync(id, ct);
@@ -201,26 +247,44 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             return true;
         }
 
-        private async Task<string?> GetWorkerNameAsync(Guid workerId)
+        // ================= ENRICH SINGLE =================
+        private async Task EnrichSingleAsync(IssueReportDto dto, CancellationToken ct)
         {
-            var dict = await _workerQueryService.GetUserNames(new List<Guid> { workerId });
-            return dict.GetValueOrDefault(workerId);
+            var workerDict = await _workerQueryService.GetUserNames(
+                new List<Guid> { dto.ReportedByWorkerId });
+
+            dto.ReportedByWorkerName =
+                workerDict.GetValueOrDefault(dto.ReportedByWorkerId);
+
+            var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
+            dto.DisplayLocation = task?.DisplayLocation;
         }
 
-        private async Task EnrichWorkerNamesAsync(List<IssueReportDto> dtos)
+        // ================= ENRICH LIST =================
+        private async Task EnrichAsync(List<IssueReportDto> dtos)
         {
-            var workerIds = dtos
-                .Select(x => x.ReportedByWorkerId)
-                .Distinct()
-                .ToList();
+            if (!dtos.Any()) return;
 
-            if (!workerIds.Any()) return;
+            var workerIds = dtos.Select(x => x.ReportedByWorkerId).Distinct().ToList();
+            var taskIds = dtos.Select(x => x.TaskAssignmentId).Distinct().ToList();
 
-            var dict = await _workerQueryService.GetUserNames(workerIds);
+            var workerTask = _workerQueryService.GetUserNames(workerIds);
+            var taskTask = _taskAssignmentRepository.GetByIdsAsync(taskIds, CancellationToken.None);
+
+            await Task.WhenAll(workerTask, taskTask);
+
+            var workerDict = workerTask.Result;
+            var tasks = taskTask.Result;
+
+            var taskDict = tasks.ToDictionary(x => x.Id, x => x.DisplayLocation);
 
             foreach (var dto in dtos)
             {
-                dto.ReportedByWorkerName = dict.GetValueOrDefault(dto.ReportedByWorkerId);
+                dto.ReportedByWorkerName =
+                    workerDict.GetValueOrDefault(dto.ReportedByWorkerId);
+
+                dto.DisplayLocation =
+                    taskDict.GetValueOrDefault(dto.TaskAssignmentId);
             }
         }
     }
