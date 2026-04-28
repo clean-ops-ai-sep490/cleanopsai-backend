@@ -163,7 +163,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				}),
 				Priority = NotificationPriority.Normal,
 				SenderType = SenderTypeEnum.Worker,
-				SenderId = dto.RequesterId,
+				SenderId = _userContext.UserId,
 				Recipients = new List<NotificationRecipientEvent>
 				{
 					new NotificationRecipientEvent
@@ -264,7 +264,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 						requesterTaskAssignmentId = swapRequest.TaskAssignmentId,
 						targetTaskAssignmentId = swapRequest.TargetTaskAssignmentId
 					}),
-					SenderId = dto.ResponderId,
+					SenderId = _userContext.UserId,
 					Recipients = new List<NotificationRecipientEvent>
 					{
 						new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId }
@@ -292,7 +292,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				Title = "Yêu cầu đổi ca cần phê duyệt",
 				Body = $"{swapRequest.RequesterName} và {swapRequest.TargetWorkerName} muốn đổi ca, cần bạn phê duyệt.",
 				SenderType = SenderTypeEnum.Worker,
-				SenderId = dto.ResponderId,
+				SenderId = _userContext.UserId,
 				Recipients = new List<NotificationRecipientEvent>
 				{
 					new() { RecipientType = RecipientTypeEnum.Supervisor, RecipientId = supervisorResp.SupervisorUserId.Value }
@@ -304,7 +304,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				Title = "Yêu cầu đổi ca đã được chấp nhận",
 				Body = $"{swapRequest.TargetWorkerName} đã đồng ý đổi ca, đang chờ supervisor phê duyệt.",
 				SenderType = SenderTypeEnum.Worker,
-				SenderId = dto.ResponderId,
+				SenderId = _userContext.UserId,
 				Recipients = new List<NotificationRecipientEvent>
 				{
 					new() { RecipientType = RecipientTypeEnum.Worker, RecipientId = swapRequest.RequesterId }
