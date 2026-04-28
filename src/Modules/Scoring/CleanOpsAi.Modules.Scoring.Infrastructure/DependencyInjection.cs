@@ -1,6 +1,7 @@
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Application.Services;
+using CleanOpsAi.Modules.Scoring.Infrastructure.Consumers;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Data;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Jobs;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Options;
@@ -68,6 +69,8 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IScoringJobRepository, ScoringJobRepository>();
 		builder.Services.AddScoped<ISupervisorManagedWorkerQueryService, SupervisorManagedWorkerQueryService>();
 		builder.Services.AddScoped<IWorkerLookupQueryService, WorkerLookupQueryService>();
+		builder.Services.AddScoped<IScoringAnnotationArtifactService, ScoringAnnotationArtifactService>();
+		builder.Services.AddScoped<IScoringRetrainRequestHandler, ScoringRetrainRequestedConsumer>();
 		builder.Services.AddScoped<IScoringJobService, ScoringJobService>();
 	}
 }

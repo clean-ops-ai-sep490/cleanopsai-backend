@@ -1,4 +1,4 @@
-﻿namespace CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request
+namespace CleanOpsAi.BuildingBlocks.Infrastructure.Events.Request
 {
 	public record ScoringCompletedEvent
 	{
