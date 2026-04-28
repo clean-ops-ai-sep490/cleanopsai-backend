@@ -3,17 +3,15 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -26,8 +24,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
+		private readonly INotificationPublisher _notificationPublisher;
 
-        private const string ContainerName = "contracts";
+
+		private const string ContainerName = "contracts";
         private const string AudioFolder = "audios";
 
         public EmergencyLeaveRequestService(
@@ -37,7 +37,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
-            ITaskAssignmentRepository taskAssignmentRepository)
+            ITaskAssignmentRepository taskAssignmentRepository,
+            INotificationPublisher notificationPublisher)
         {
             _emergencyLeaveRequestRepository = emergencyLeaveRequestRepository;
             _fileStorageService = fileStorageService;
@@ -46,7 +47,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
-        }
+            _notificationPublisher = notificationPublisher;
+		}
 
         public async Task<EmergencyLeaveRequestDto?> GetById(Guid id, CancellationToken ct = default)
         {
@@ -218,26 +220,38 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (!string.IsNullOrEmpty(dto.Transcription))
                 entity.Transcription = dto.Transcription;
 
-            await _emergencyLeaveRequestRepository.AddAsync(entity, ct);
+            await _emergencyLeaveRequestRepository.AddAsync(entity, ct); 
 
-            // ================= PUBLISH EVENT =================
-            //await _publishEndpoint.Publish(new EmergencyLeaveRequestCreatedEvent
-            //{
-            //    RequestId = entity.Id,
-            //    WorkerId = entity.WorkerId,
-            //    TaskAssignmentId = entity.TaskAssignmentId,
-            //    LeaveDateFrom = entity.LeaveDateFrom,
-            //    LeaveDateTo = entity.LeaveDateTo,
-            //    AudioUrl = entity.AudioUrl,
-            //    Transcription = entity.Transcription,
-            //    CreatedAt = entity.Created
-            //}, ct);
-            // =================================================
-
-            var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
+			var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
 
-            return dtoResult;
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Yêu cầu nghỉ khẩn cấp mới",
+				Body = $"{dtoResult.WorkerName ?? "Một nhân viên"} đã gửi yêu cầu nghỉ khẩn cấp.",
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "EMERGENCY_LEAVE",
+					action = "CREATED",
+					requestId = entity.Id,
+					workerId = entity.WorkerId,
+					taskAssignmentId = entity.TaskAssignmentId,
+					leaveDateFrom = entity.LeaveDateFrom,
+					leaveDateTo = entity.LeaveDateTo
+				}),
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+				{
+					new()
+					{
+						RecipientType = RecipientTypeEnum.Manager,
+						RecipientId = null // broadcast cho manager
+                    }
+				}
+			}, ct);
+
+			return dtoResult;
         }
 
         public async Task<EmergencyLeaveRequestDto?> Update(Guid id, UpdateEmergencyLeaveRequestDto dto, CancellationToken ct = default)

@@ -73,7 +73,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 					t.ScheduledStartAt < weekEnd &&
 					!t.TaskSwapRequests.Any(s =>
 						s.Status == SwapRequestStatus.PendingTargetApproval ||
-						s.Status == SwapRequestStatus.PendingManagerApproval)
+						s.Status == SwapRequestStatus.PendingSupervisorApproval)
 				);
 
 			if (qualifiedWorkerIds != null && qualifiedWorkerIds.Any())

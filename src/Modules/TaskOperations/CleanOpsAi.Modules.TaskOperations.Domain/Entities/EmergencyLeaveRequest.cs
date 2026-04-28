@@ -8,7 +8,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 	{ 
 		public Guid WorkerId { get; set; }
 
-        public Guid? TaskAssignmentId { get; set; }   // nullable, khong FK cung
+        public Guid? TaskAssignmentId { get; set; } 
 
         public DateTime LeaveDateFrom { get; set; }
 

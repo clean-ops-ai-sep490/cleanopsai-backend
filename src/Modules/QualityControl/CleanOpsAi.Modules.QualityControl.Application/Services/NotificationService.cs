@@ -99,37 +99,37 @@
 				return _mapper.Map<NotificationDto?>(notification);
 			}
 
-			public async Task HandleAsync(SendNotificationEvent message)
-			{
-				var notification = new AppNotification
-				{
-					Title = message.Title,
-					Body = message.Body,
-					Payload = message.Payload,
-					Priority = message.Priority,
-					SenderType = message.SenderType,
-					SenderId = message.SenderId,
-				};
+			//public async Task HandleAsync(SendNotificationEvent message)
+			//{
+			//	var notification = new AppNotification
+			//	{
+			//		Title = message.Title,
+			//		Body = message.Body,
+			//		Payload = message.Payload,
+			//		Priority = message.Priority,
+			//		SenderType = message.SenderType,
+			//		SenderId = message.SenderId,
+			//	};
 
-				notification.NotificationRecipients = message.Recipients
-				.Select(r => new NotificationRecipient
-				{
-					RecipientType = r.RecipientType,
-					RecipientId = r.RecipientId
-				}).ToList();
+			//	notification.NotificationRecipients = message.Recipients
+			//	.Select(r => new NotificationRecipient
+			//	{
+			//		RecipientType = r.RecipientType,
+			//		RecipientId = r.RecipientId
+			//	}).ToList();
 
-				await _notificationRepository.InsertAsync(notification);
-				await _notificationRepository.SaveChangesAsync();
+			//	await _notificationRepository.InsertAsync(notification);
+			//	await _notificationRepository.SaveChangesAsync();
 
-				var recipientIds = message.Recipients.Select(r => r.RecipientId).ToList();
+			//	var recipientIds = message.Recipients.Select(r => r.RecipientId).ToList();
 
-				var activeTokens = await _fcmTokenRepository.GetActiveTokensByUserIdsAsync(recipientIds);
+			//	var activeTokens = await _fcmTokenRepository.GetActiveTokensByUserIdsAsync(recipientIds);
 
-				if (!activeTokens.Any()) return;
+			//	if (!activeTokens.Any()) return;
 
-				await _firebaseMessagingService.SendMulticastAsync(
-				tokens: activeTokens.Select(t => t.Token).ToList(), title: message.Title, body: message.Body, payload: message.Payload);
-			}
+			//	await _firebaseMessagingService.SendMulticastAsync(
+			//	tokens: activeTokens.Select(t => t.Token).ToList(), title: message.Title, body: message.Body, payload: message.Payload);
+			//}
 
 			public async Task HandleSendNotificationAsync(SendNotificationEvent message, CancellationToken ct = default)
 			{

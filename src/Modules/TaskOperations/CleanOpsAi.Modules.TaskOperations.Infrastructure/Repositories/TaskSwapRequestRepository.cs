@@ -67,7 +67,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 				(x.TaskAssignmentId == taskAssignmentId ||
 				 x.TargetTaskAssignmentId == taskAssignmentId) &&
 				(x.Status == SwapRequestStatus.PendingTargetApproval ||
-				 x.Status == SwapRequestStatus.PendingManagerApproval));
+				 x.Status == SwapRequestStatus.PendingSupervisorApproval));
 		}
 	}
 }

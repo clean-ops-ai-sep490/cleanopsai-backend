@@ -8,12 +8,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Application.Services;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using NSubstitute; 
 
 namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 {
@@ -24,9 +19,12 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly IMapper _mapper;
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTime;
-        private readonly IWorkerQueryService _workerService;
+        private readonly IWorkerQueryService _workerService; 
+        private readonly ITaskAssignmentRepository _taskAssignmentRepo;
+		private readonly INotificationPublisher _notificationPublisher;
 
-        private readonly EmergencyLeaveRequestService _service;
+
+		private readonly EmergencyLeaveRequestService _service;
 
         public EmergencyLeaveRequestServiceTests()
         {
@@ -35,16 +33,20 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _mapper = Substitute.For<IMapper>();
             _userContext = Substitute.For<IUserContext>();
             _dateTime = Substitute.For<IDateTimeProvider>();
-            _workerService = Substitute.For<IWorkerQueryService>();
+            _workerService = Substitute.For<IWorkerQueryService>(); 
+            _taskAssignmentRepo = Substitute.For<ITaskAssignmentRepository>();
+            _notificationPublisher = Substitute.For<INotificationPublisher>();
 
-            _service = new EmergencyLeaveRequestService(
+			_service = new EmergencyLeaveRequestService(
                 _repo,
                 _fileStorage,
                 _mapper,
                 _userContext,
                 _dateTime,
-                _workerService
-            );
+                _workerService,
+                _taskAssignmentRepo,
+				_notificationPublisher
+			);
         }
 
         // =========================
