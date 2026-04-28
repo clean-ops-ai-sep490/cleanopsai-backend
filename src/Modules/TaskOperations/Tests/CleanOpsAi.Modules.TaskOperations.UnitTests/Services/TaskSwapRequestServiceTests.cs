@@ -747,7 +747,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 			});
 
 			Assert.True(result.Succeeded);
-			Assert.Equal(SwapRequestStatus.PendingManagerApproval, swapRequest.Status);
+			Assert.Equal(SwapRequestStatus.PendingSupervisorApproval, swapRequest.Status);
 			Assert.Equal(supervisorUserId, swapRequest.ReviewedByUserId);
 			await _swapRequestRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
 		}
@@ -872,7 +872,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 				Id = swapRequestId,
 				TargetWorkerId = responderId,
 				// Already moved out of PendingTargetApproval
-				Status = SwapRequestStatus.PendingManagerApproval,
+				Status = SwapRequestStatus.PendingSupervisorApproval,
 				ExpiredAt = DateTime.UtcNow.AddHours(2)
 			};
 
@@ -910,7 +910,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 			var swapRequest = new TaskSwapRequest
 			{
 				Id = swapRequestId,
-				Status = SwapRequestStatus.PendingManagerApproval,
+				Status = SwapRequestStatus.PendingSupervisorApproval,
 				RequesterId = requesterAssigneeId,
 				TargetWorkerId = targetAssigneeId,
 				RequesterName = "Worker A",
@@ -952,7 +952,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 			var swapRequest = new TaskSwapRequest
 			{
 				Id = swapRequestId,
-				Status = SwapRequestStatus.PendingManagerApproval,
+				Status = SwapRequestStatus.PendingSupervisorApproval,
 				RequesterId = Guid.NewGuid(),
 				TargetWorkerId = Guid.NewGuid(),
 				TaskAssignment = new TaskAssignment { Id = Guid.NewGuid() },
@@ -973,7 +973,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 			});
 
 			Assert.True(result.Succeeded);
-			Assert.Equal(SwapRequestStatus.RejectedByManager, swapRequest.Status);
+			Assert.Equal(SwapRequestStatus.RejectedBySupervisor, swapRequest.Status);
 			await _swapRequestRepo.Received(1).SaveChangesAsync();
 		}
 

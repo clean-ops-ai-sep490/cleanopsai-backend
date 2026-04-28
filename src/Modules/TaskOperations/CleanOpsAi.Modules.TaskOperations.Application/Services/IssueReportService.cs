@@ -3,12 +3,15 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -20,14 +23,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
+		private readonly INotificationPublisher _notificationPublisher;
 
-        public IssueReportService(
+
+		public IssueReportService(
             IIssueReportRepository issueReportRepository,
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
-            ITaskAssignmentRepository taskAssignmentRepository)
+            ITaskAssignmentRepository taskAssignmentRepository,
+            INotificationPublisher notificationPublisher    )
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
@@ -35,7 +41,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
-        }
+            _notificationPublisher = notificationPublisher;
+		}
 
         // ================= GET BY ID =================
         public async Task<IssueReportDto?> GetById(Guid id, CancellationToken ct = default)
@@ -143,7 +150,30 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await EnrichSingleAsync(result, ct);
 
-            return result;
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Báo cáo sự cố mới",
+				Body = $"{result.ReportedByWorkerName} đã báo lỗi task tại {result.DisplayLocation}",
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "ISSUE",
+					action = "CREATED",
+					issueId = entity.Id,
+					taskAssignmentId = dto.TaskAssignmentId
+				}),
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+	{
+		        new()
+		        {
+			        RecipientType = RecipientTypeEnum.Manager,
+			        RecipientId = null
+		        }
+	        }
+			}, ct);
+
+			return result;
         }
 
         // ================= UPDATE =================

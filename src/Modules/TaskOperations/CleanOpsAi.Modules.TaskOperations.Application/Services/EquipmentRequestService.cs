@@ -3,17 +3,15 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -26,15 +24,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IWorkerQueryService _workerQueryService;
         private readonly IEquipmentQueryService _equipmentQueryService;
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
+		private readonly INotificationPublisher _notificationPublisher;
 
-        public EquipmentRequestService(
+
+		public EquipmentRequestService(
             IEquipmentRequestRepository repo,
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
             IEquipmentQueryService equipmentQueryService,
-            ITaskAssignmentRepository taskAssignmentRepository)
+            ITaskAssignmentRepository taskAssignmentRepository,
+            INotificationPublisher notificationPublisher)
         {
             _repo = repo;
             _mapper = mapper;
@@ -43,6 +44,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _workerQueryService = workerQueryService;
             _equipmentQueryService = equipmentQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
+			_notificationPublisher = notificationPublisher;
         }
 
         public async Task<EquipmentRequestDto> CreateBatch(
@@ -96,7 +98,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = await MapResult(entity);
             await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
-            return result;
+
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Yêu cầu thiết bị mới",
+				Body = $"{result.WorkerName ?? "Một nhân viên"} đã gửi yêu cầu thiết bị.",
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "EQUIPMENT_REQUEST",
+					action = "CREATED",
+					requestId = entity.Id,
+					taskAssignmentId = entity.TaskAssignmentId,
+					workerId = entity.WorkerId
+				}),
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+				{
+					new()
+					{
+						RecipientType = RecipientTypeEnum.Supporter,
+						RecipientId = null
+					}
+				}
+			}, ct);
+			return result;
         }
 
         public async Task<EquipmentRequestDto?> Update(

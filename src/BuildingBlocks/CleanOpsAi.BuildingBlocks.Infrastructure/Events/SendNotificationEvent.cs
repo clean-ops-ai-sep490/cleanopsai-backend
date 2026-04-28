@@ -18,6 +18,6 @@ namespace CleanOpsAi.BuildingBlocks.Infrastructure.Events
 	public record NotificationRecipientEvent
 	{
 		public RecipientTypeEnum RecipientType { get; init; }
-		public Guid RecipientId { get; init; } // UserId / WorkerId / ...
+		public Guid? RecipientId { get; init; }  
 	}
 }
