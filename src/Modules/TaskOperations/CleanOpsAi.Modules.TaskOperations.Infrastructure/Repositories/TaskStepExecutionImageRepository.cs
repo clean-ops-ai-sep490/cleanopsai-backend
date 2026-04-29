@@ -20,7 +20,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
         {
             return await _context.TaskStepExecutionImages
                 .Where(x => x.TaskStepExecutionId == executionId
-                    && x.ImageType == imageType)
+                    && x.ImageType == imageType).OrderByDescending(x => x.Created)
                 .ToListAsync(ct);
         }
 
@@ -51,6 +51,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
                 .Where(x => x.TaskStepExecutionId == taskStepExecutionId
                          && !x.IsDeleted)
                 .ToListAsync(ct);
+        }
+
+        public async Task<TaskStepExecutionImage?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutionImages
+                .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
         }
 
     }
