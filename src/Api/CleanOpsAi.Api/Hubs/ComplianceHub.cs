@@ -34,5 +34,28 @@ namespace CleanOpsAi.Api.Hubs
         /// <summary>Consistent group key: lower-case stringified Guid.</summary>
         public static string GroupName(Guid taskStepExecutionId) =>
             $"compliance:{taskStepExecutionId:D}";
-    }
+
+
+         
+		public async Task JoinPpeCheck(Guid taskStepExecutionId)
+		{
+			var groupName = PpeGroupName(taskStepExecutionId);
+			await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+			_logger.LogDebug(
+				"Connection {ConnectionId} joined ppe group {Group}",
+				Context.ConnectionId, groupName);
+		}
+
+		public async Task LeavePpeCheck(Guid taskStepExecutionId)
+		{
+			var groupName = PpeGroupName(taskStepExecutionId);
+			await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+			_logger.LogDebug(
+				"Connection {ConnectionId} left ppe group {Group}",
+				Context.ConnectionId, groupName);
+		}
+
+		public static string PpeGroupName(Guid taskStepExecutionId) =>
+			$"ppe:{taskStepExecutionId:D}";
+	}
 }

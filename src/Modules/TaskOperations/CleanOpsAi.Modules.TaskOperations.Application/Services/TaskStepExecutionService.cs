@@ -2,16 +2,14 @@
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
-using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
-using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events; 
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using CleanOpsAi.Modules.TaskOperations.IntegrationEvents;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
 using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
@@ -29,22 +27,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
 		private readonly ITaskStepExecutionRepository _repository;
 		private readonly IDateTimeProvider _dateTimeProvider;
-		private readonly IMapper _mapper;
-		private readonly IScoringInferenceClient _inferenceClient;
+		private readonly IMapper _mapper; 
 		private readonly IEventBus _eventBus;
+		private readonly IPpeCheckNotifier _notifier;
 
 		public TaskStepExecutionService(
 			ITaskStepExecutionRepository taskStepExecutionRepository,
 			IDateTimeProvider dateTimeProvider,
 			IMapper mapper,
-			IScoringInferenceClient inferenceClient,
-			IEventBus eventBus)
+			IEventBus eventBus,
+			IPpeCheckNotifier notifier)
 		{
 			_repository = taskStepExecutionRepository;
 			_dateTimeProvider = dateTimeProvider;
 			_mapper = mapper;
-			_inferenceClient = inferenceClient;
 			_eventBus = eventBus;
+			_notifier = notifier;
 		}
 
 		public async Task<TaskStepExecutionDto> CompleteStepAsync(Guid id, SubmitStepExecutionDto dto, CancellationToken ct = default)
@@ -98,134 +96,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return stepDto;
 		}
 
-		public async Task<TaskStepExecutionPpeCheckResponse> EvaluatePpeAsync(Guid id, CancellationToken ct = default)
-		{
-			var (step, requiredItems, imageUrls) = await LoadAndValidatePpeContextAsync(id, ct);
-
-			TaskStepExecutionPpeCheckResponse response;
-			try
-			{
-				var evaluation = await _inferenceClient.EvaluatePpeAsync(
-					imageUrls,
-					requiredItems.Select(x => x.ActionKey).ToList(),
-					DefaultPpeMinConfidence,
-					ct);
-
-				response = BuildPpeCheckResponse(step, requiredItems, imageUrls, evaluation);
-			}
-			catch (Exception ex)
-			{
-				response = BuildPpeCheckErrorResponse(step, requiredItems, imageUrls, ex.Message);
-			}
-
-			step.ResultData = JsonSerializer.Serialize(response, JsonOptions);
-			await _repository.SaveChangesAsync(ct);
-
-			return response;
-		}
-
-		public async Task<TaskStepExecutionPpeCheckJobResponse> EnqueuePpeCheckAsync(Guid id, CancellationToken ct = default)
-		{
-			var (step, requiredItems, imageUrls) = await LoadAndValidatePpeContextAsync(id, ct);
-			var queued = BuildPpeCheckPendingResponse(step, requiredItems, imageUrls);
-
-			step.ResultData = JsonSerializer.Serialize(queued, JsonOptions);
-			await _repository.SaveChangesAsync(ct);
-
-			try
-			{
-				await _eventBus.PublishAsync(new PpeCheckRequestedEvent
-				{
-					TaskStepExecutionId = step.Id,
-					RequestedAtUtc = _dateTimeProvider.UtcNow,
-				}, ct);
-			}
-			catch (Exception ex)
-			{
-				var failed = BuildPpeCheckErrorResponse(step, requiredItems, imageUrls, ex.Message);
-				step.ResultData = JsonSerializer.Serialize(failed, JsonOptions);
-				await _repository.SaveChangesAsync(ct);
-				return BuildPpeCheckJobResponse(step.Id, failed);
-			}
-
-			return BuildPpeCheckJobResponse(step.Id, queued);
-		}
-
-		public async Task<TaskStepExecutionPpeCheckJobResponse> GetPpeCheckJobStatusAsync(Guid id, CancellationToken ct = default)
-		{
-			var step = await _repository.GetByIdAsync(id, ct)
-				?? throw new NotFoundException(nameof(TaskStepExecution), id);
-
-			var response = TryParsePpeCheckResponse(step.ResultData);
-			if (response is null)
-			{
-				return new TaskStepExecutionPpeCheckJobResponse
-				{
-					JobId = step.Id,
-					TaskStepExecutionId = step.Id,
-					Status = "NOT_STARTED",
-					Message = "PPE check job has not been submitted.",
-					UpdatedAt = _dateTimeProvider.UtcNow,
-					Result = null,
-				};
-			}
-
-			return BuildPpeCheckJobResponse(step.Id, response);
-		}
-
-		public async Task ProcessQueuedPpeCheckAsync(Guid id, CancellationToken ct = default)
-		{
-			try
-			{
-				await EvaluatePpeAsync(id, ct);
-			}
-			catch (Exception ex)
-			{
-				await TryStoreQueuedPpeErrorAsync(id, ex.Message, ct);
-			}
-		}
-
+		
 		public async Task<TaskStepExecutionDetailDto> GetStepDetailAsync(Guid id, CancellationToken ct = default)
 		{
 			var step = await _repository.GetByIdAsync(id, ct)
 				?? throw new NotFoundException(nameof(TaskStepExecution), id);
 
 			return _mapper.Map<TaskStepExecutionDetailDto>(step);
-		}
-
-		private void EnsureStoredPpeCheckCanComplete(string resultData)
-		{
-			if (string.IsNullOrWhiteSpace(resultData))
-			{
-				throw new BadRequestException("AI PPE check step must be checked before completion.");
-			}
-
-			try
-			{
-				using var document = JsonDocument.Parse(resultData);
-				var root = document.RootElement;
-				var type = root.TryGetProperty("type", out var typeElement)
-					? typeElement.GetString()
-					: null;
-				var status = root.TryGetProperty("status", out var statusElement)
-					? statusElement.GetString()
-					: null;
-
-				if (!string.Equals(type, AiPpeCheckBehavior, StringComparison.OrdinalIgnoreCase))
-				{
-					throw new BadRequestException("AI PPE check step must be checked before completion.");
-				}
-
-				if (!string.Equals(status, "PASS", StringComparison.OrdinalIgnoreCase) &&
-					!string.Equals(status, "FAIL", StringComparison.OrdinalIgnoreCase))
-				{
-					throw new BadRequestException("AI PPE check step must have a valid PASS or FAIL result before completion.");
-				}
-			}
-			catch (JsonException)
-			{
-				throw new BadRequestException("AI PPE check step must be checked before completion.");
-			}
 		}
 
 		private static bool IsAiPpeCheckStep(string configSnapshot)
@@ -256,6 +133,47 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			}
 		}
 
+		private void EnsureStoredPpeCheckCanComplete(string resultData)
+		{
+			if (string.IsNullOrWhiteSpace(resultData))
+			{
+				throw new BadRequestException("AI PPE check step must be checked before completion.");
+			}
+
+			try
+			{
+				using var document = JsonDocument.Parse(resultData);
+				var root = document.RootElement;
+				var type = root.TryGetProperty("type", out var typeElement)
+					? typeElement.GetString()
+					: null;
+				var status = root.TryGetProperty("status", out var statusElement)
+					? statusElement.GetString()
+					: null;
+
+				//if (!string.Equals(type, AiPpeCheckBehavior, StringComparison.OrdinalIgnoreCase))
+				//{
+				//	throw new BadRequestException("AI PPE check step must be checked before completion.");
+				//}
+
+				//if (!string.Equals(status, "PASS", StringComparison.OrdinalIgnoreCase) &&
+				//	!string.Equals(status, "FAIL", StringComparison.OrdinalIgnoreCase))
+				//{
+				//	throw new BadRequestException("AI PPE check step must have a valid PASS or FAIL result before completion.");
+				//}
+
+				if (!string.Equals(type, AiPpeCheckBehavior, StringComparison.OrdinalIgnoreCase))
+					throw new BadRequestException("AI PPE check step must be checked before completion.");
+				 
+				if (!string.Equals(status, "PASS", StringComparison.OrdinalIgnoreCase))
+					throw new BadRequestException("PPE check did not pass. Please retake photos and check again.");
+			}
+			catch (JsonException)
+			{
+				throw new BadRequestException("AI PPE check step must be checked before completion.");
+			}
+		}
+		 
 		private static List<TaskStepExecutionPpeRequiredItemResponse> ParseRequiredPpe(string configSnapshot)
 		{
 			try
@@ -309,6 +227,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				throw new BadRequestException("AI PPE check step has invalid JSON configuration.");
 			}
 		}
+		private static string NormalizeStatus(string? status)
+		{
+			if (string.IsNullOrWhiteSpace(status))
+			{
+				return "ERROR";
+			}
+
+			return status.Trim().ToUpperInvariant();
+		}
+		 
+		private static string NormalizeLabel(string? label)
+		{
+			return string.IsNullOrWhiteSpace(label)
+				? string.Empty
+				: label.Trim().ToLowerInvariant();
+		}
 
 		private async Task<(TaskStepExecution step, List<TaskStepExecutionPpeRequiredItemResponse> requiredItems, List<string> imageUrls)> LoadAndValidatePpeContextAsync(Guid id, CancellationToken ct)
 		{
@@ -346,64 +280,24 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			return (step, requiredItems, imageUrls);
 		}
 
-		private TaskStepExecutionPpeCheckResponse BuildPpeCheckResponse(
+		private TaskStepExecutionPpeCheckResponse BuildPpeCheckPendingResponse(
 			TaskStepExecution step,
 			List<TaskStepExecutionPpeRequiredItemResponse> requiredItems,
-			List<string> imageUrls,
-			PpeEvaluationResponse evaluation)
+			List<string> imageUrls)
 		{
-			var normalizedStatus = NormalizeStatus(evaluation.Status);
-			var requiredByActionKey = requiredItems.ToDictionary(x => x.ActionKey, StringComparer.OrdinalIgnoreCase);
-			var missingKeys = (evaluation.MissingItems ?? new List<string>())
-				.Select(NormalizeLabel)
-				.Where(x => !string.IsNullOrWhiteSpace(x))
-				.Distinct(StringComparer.OrdinalIgnoreCase)
-				.ToList();
-
 			return new TaskStepExecutionPpeCheckResponse
 			{
 				TaskStepExecutionId = step.Id,
 				SopStepId = step.SopStepId,
 				StepOrder = step.StepOrder,
 				CheckedAt = _dateTimeProvider.UtcNow,
-				Status = normalizedStatus,
-				Message = string.IsNullOrWhiteSpace(evaluation.Message)
-					? (normalizedStatus == "PASS" ? "Meets requirements." : "Missing required PPE items.")
-					: evaluation.Message.Trim(),
+				Status = "PENDING",
+				Message = "PPE check job has been queued.",
 				RequiredPpe = requiredItems,
 				ImageUrls = imageUrls,
-				DetectedItems = (evaluation.DetectedItems ?? new List<PpeDetectedItemResponse>())
-					.Where(x => !string.IsNullOrWhiteSpace(x.Name))
-					.Select(x =>
-					{
-						var actionKey = NormalizeLabel(x.Name);
-						requiredByActionKey.TryGetValue(actionKey, out var requiredItem);
-						return new TaskStepExecutionPpeDetectedItemResponse
-						{
-							ActionKey = actionKey,
-							Name = requiredItem?.Name ?? actionKey,
-							Confidence = x.Confidence,
-							ImageIndex = x.ImageIndex,
-						};
-					})
-					.ToList(),
-				MissingItems = missingKeys.Select(actionKey =>
-				{
-					requiredByActionKey.TryGetValue(actionKey, out var requiredItem);
-					return new TaskStepExecutionPpeRequiredItemResponse
-					{
-						ActionKey = actionKey,
-						Name = requiredItem?.Name ?? actionKey,
-					};
-				}).ToList(),
-				FailedImages = (evaluation.FailedImages ?? new List<PpeFailedImageResponse>())
-					.Select(x => new TaskStepExecutionPpeFailedImageResponse
-					{
-						ImageUrl = x.ImageUrl ?? string.Empty,
-						ImageIndex = x.ImageIndex,
-						Error = x.Error ?? string.Empty,
-					})
-					.ToList(),
+				DetectedItems = new List<TaskStepExecutionPpeDetectedItemResponse>(),
+				MissingItems = new List<TaskStepExecutionPpeRequiredItemResponse>(),
+				FailedImages = new List<TaskStepExecutionPpeFailedImageResponse>(),
 			};
 		}
 
@@ -434,63 +328,19 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 					Error = string.IsNullOrWhiteSpace(errorMessage) ? "AI PPE check failed." : errorMessage,
 				}).ToList(),
 			};
-		}
+		} 
 
-		private TaskStepExecutionPpeCheckResponse BuildPpeCheckPendingResponse(
-			TaskStepExecution step,
-			List<TaskStepExecutionPpeRequiredItemResponse> requiredItems,
-			List<string> imageUrls)
+		private static bool IsResultPending(string? resultData)
 		{
-			return new TaskStepExecutionPpeCheckResponse
+			if (string.IsNullOrWhiteSpace(resultData)) return false;
+			try
 			{
-				TaskStepExecutionId = step.Id,
-				SopStepId = step.SopStepId,
-				StepOrder = step.StepOrder,
-				CheckedAt = _dateTimeProvider.UtcNow,
-				Status = "PENDING",
-				Message = "PPE check job has been queued.",
-				RequiredPpe = requiredItems,
-				ImageUrls = imageUrls,
-				DetectedItems = new List<TaskStepExecutionPpeDetectedItemResponse>(),
-				MissingItems = new List<TaskStepExecutionPpeRequiredItemResponse>(),
-				FailedImages = new List<TaskStepExecutionPpeFailedImageResponse>(),
-			};
-		}
-
-		private TaskStepExecutionPpeCheckJobResponse BuildPpeCheckJobResponse(Guid jobId, TaskStepExecutionPpeCheckResponse response)
-		{
-			return new TaskStepExecutionPpeCheckJobResponse
-			{
-				JobId = jobId,
-				TaskStepExecutionId = response.TaskStepExecutionId,
-				Status = NormalizeJobStatus(response.Status),
-				Message = response.Message,
-				UpdatedAt = response.CheckedAt,
-				Result = response,
-			};
-		}
-
-		private async Task TryStoreQueuedPpeErrorAsync(Guid id, string errorMessage, CancellationToken ct)
-		{
-			var step = await _repository.GetByIdDetail(id, ct);
-			if (step is null || step.Status != TaskStepExecutionStatus.InProgress || !IsAiPpeCheckStep(step.ConfigSnapshot))
-			{
-				return;
+				using var doc = JsonDocument.Parse(resultData);
+				return doc.RootElement.TryGetProperty("status", out var s)
+					&& string.Equals(s.GetString(), "PENDING", StringComparison.OrdinalIgnoreCase);
 			}
-
-			var requiredItems = TryParseRequiredPpe(step.ConfigSnapshot);
-			var imageUrls = step.TaskStepExecutionImages
-				.Where(x => !x.IsDeleted && x.ImageType == ImageType.Ppe && !string.IsNullOrWhiteSpace(x.ImageUrl))
-				.OrderBy(x => x.Created)
-				.Select(x => x.ImageUrl)
-				.Distinct(StringComparer.OrdinalIgnoreCase)
-				.ToList();
-
-			var response = BuildPpeCheckErrorResponse(step, requiredItems, imageUrls, errorMessage);
-			step.ResultData = JsonSerializer.Serialize(response, JsonOptions);
-			await _repository.SaveChangesAsync(ct);
+			catch { return false; }
 		}
-
 		private static List<TaskStepExecutionPpeRequiredItemResponse> TryParseRequiredPpe(string configSnapshot)
 		{
 			try
@@ -501,59 +351,105 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			{
 				return new List<TaskStepExecutionPpeRequiredItemResponse>();
 			}
-		}
+		} 
 
-		private static TaskStepExecutionPpeCheckResponse? TryParsePpeCheckResponse(string? resultData)
+		public async Task<TaskStepExecutionPpeCheckResponse> RequestPpeCheckAsync(Guid id, CancellationToken ct = default)
 		{
-			if (string.IsNullOrWhiteSpace(resultData))
-			{
-				return null;
-			}
+			var (step, requiredItems, imageUrls) = await LoadAndValidatePpeContextAsync(id, ct);
+			if (IsResultPending(step.ResultData))
+				throw new BadRequestException("PPE check is already in progress.");
+
+			var queued = BuildPpeCheckPendingResponse(step, requiredItems, imageUrls);
+			step.ResultData = JsonSerializer.Serialize(queued, JsonOptions);
+			await _repository.SaveChangesAsync(ct);
 
 			try
 			{
-				var response = JsonSerializer.Deserialize<TaskStepExecutionPpeCheckResponse>(resultData, JsonOptions);
-				if (!string.Equals(response?.Type, AiPpeCheckBehavior, StringComparison.OrdinalIgnoreCase))
+				await _eventBus.PublishAsync(new PpeCheckRequestedEvent
 				{
-					return null;
-				}
-
-				return response;
+					TaskStepExecutionId = step.Id,
+					ImageUrls = imageUrls,
+					RequiredObjects = requiredItems.Select(x => x.ActionKey).ToList(),
+					MinConfidence = DefaultPpeMinConfidence,
+				}, ct);
 			}
-			catch
+			catch (Exception ex)
 			{
-				return null;
+				var failed = BuildPpeCheckErrorResponse(step, requiredItems, imageUrls, ex.Message);
+				step.ResultData = JsonSerializer.Serialize(failed, JsonOptions);
+				await _repository.SaveChangesAsync(ct);
+				return failed;
 			}
+
+			return queued;
 		}
 
-		private static string NormalizeJobStatus(string? status)
+
+		public async Task ApplyPpeCheckResultAsync(PpeCheckCompletedEvent evt, CancellationToken ct = default)
 		{
-			var normalized = NormalizeStatus(status);
-			return normalized switch
+			var step = await _repository.GetByIdAsync(evt.TaskStepExecutionId, ct)
+				?? throw new NotFoundException(nameof(TaskStepExecution), evt.TaskStepExecutionId);
+
+			if (step.Status != TaskStepExecutionStatus.InProgress)
+				return;
+			 
+			var requiredItems = TryParseRequiredPpe(step.ConfigSnapshot);
+			var nameByActionKey = requiredItems.ToDictionary(
+				x => x.ActionKey,
+				x => x.Name,
+				StringComparer.OrdinalIgnoreCase);
+
+			var response = new TaskStepExecutionPpeCheckResponse
 			{
-				"PASS" => "SUCCEEDED",
-				"FAIL" => "SUCCEEDED",
-				"PENDING" => "PENDING",
-				"ERROR" => "FAILED",
-				_ => "PROCESSING",
+				TaskStepExecutionId = evt.TaskStepExecutionId,
+				SopStepId = step.SopStepId,
+				StepOrder = step.StepOrder,
+				CheckedAt = _dateTimeProvider.UtcNow,
+				Status = NormalizeStatus(evt.Status),
+				Message = evt.Message ?? (evt.Status == "PASS" ? "Meets requirements." : "Missing required PPE items."),
+				ImageUrls = evt.ImageUrls,
+				RequiredPpe = requiredItems,
+				DetectedItems = evt.DetectedItems.Select(x =>
+				{
+					var actionKey = NormalizeLabel(x.Name);
+					// "helmet" → "Nón bảo hộ"
+					nameByActionKey.TryGetValue(actionKey, out var displayName);
+					return new TaskStepExecutionPpeDetectedItemResponse
+					{
+						ActionKey = actionKey,
+						Name = displayName ?? actionKey,  
+						Confidence = x.Confidence,
+						ImageIndex = x.ImageIndex,
+					};
+				}).ToList(),
+				MissingItems = evt.MissingItems.Select(actionKey =>
+				{
+					nameByActionKey.TryGetValue(actionKey, out var displayName);
+					return new TaskStepExecutionPpeRequiredItemResponse
+					{
+						ActionKey = actionKey,
+						Name = displayName ?? actionKey,  // ← "gloves" → "Găng tay"
+					};
+				}).ToList(),
+				FailedImages = evt.FailedImages.Select(x => new TaskStepExecutionPpeFailedImageResponse
+				{
+					ImageUrl = x.ImageUrl ?? string.Empty,
+					ImageIndex = x.ImageIndex,
+					Error = x.Error ?? string.Empty,
+				}).ToList(),
 			};
-		}
 
-		private static string NormalizeStatus(string? status)
-		{
-			if (string.IsNullOrWhiteSpace(status))
+			step.ResultData = JsonSerializer.Serialize(response, JsonOptions);
+			await _repository.SaveChangesAsync(ct);
+
+			await _notifier.NotifyAsync(new PpeCheckNotification
 			{
-				return "ERROR";
-			}
-
-			return status.Trim().ToUpperInvariant();
-		}
-
-		private static string NormalizeLabel(string? label)
-		{
-			return string.IsNullOrWhiteSpace(label)
-				? string.Empty
-				: label.Trim().ToLowerInvariant();
+				TaskStepExecutionId = step.Id,
+				Status = response.Status,
+				Message = response.Message,
+				MissingItems = evt.MissingItems,
+				At = _dateTimeProvider.UtcNow,
+			}, ct);
 		}
 	}
 }
