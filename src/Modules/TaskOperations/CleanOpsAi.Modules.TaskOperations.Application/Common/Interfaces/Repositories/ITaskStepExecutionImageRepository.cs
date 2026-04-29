@@ -27,5 +27,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
             Guid taskStepExecutionId,
             CancellationToken ct = default);
 
+        Task<TaskStepExecutionImage?> GetByIdAsync(Guid id, CancellationToken ct = default);
+
     }
 }
