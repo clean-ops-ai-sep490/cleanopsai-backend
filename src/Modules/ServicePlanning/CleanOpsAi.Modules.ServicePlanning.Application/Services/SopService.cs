@@ -18,6 +18,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 		private readonly IStepRepository _stepRepository;
 		private readonly ISopRequiredSkillRepository _sopRequiredSkillRepository;
 		private readonly ISopRequiredCertificationRepository _sopRequiredCertificationRepository;
+		private readonly ISopStepRepository _sopStepRepository;
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateProvider;
 		private readonly IIdGenerator _idGenerator;
@@ -27,6 +28,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			IStepRepository stepRepository,
 			ISopRequiredSkillRepository skillRequiredRepository,
 			ISopRequiredCertificationRepository certificationRequiredRepository,
+			ISopStepRepository sopStepRepository,
 			IMapper mapper, IDateTimeProvider dateTimeProvider, IIdGenerator idGenerator,
 			IUserContext userContext)
 		{
@@ -34,6 +36,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			_stepRepository = stepRepository;
 			_sopRequiredSkillRepository = skillRequiredRepository;
 			_sopRequiredCertificationRepository = certificationRequiredRepository;
+			_sopStepRepository = sopStepRepository;
 			_mapper = mapper;
 			_dateProvider = dateTimeProvider;
 			_idGenerator = idGenerator;
@@ -124,6 +127,67 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return _mapper.Map<SopDto>(sop);
 		}
 
+		//public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default)
+		//{
+		//	var sop = await _sopRepository.GetByIdWithStepsAsync(id, true);
+		//	if (sop == null) return null;
+
+		//	if (dto.Steps != null)
+		//	{
+		//		if (dto.Steps.Count == 0)
+		//			throw new BadRequestException("SOP must have at least one step");
+
+		//		var orders = dto.Steps.Select(s => s.StepOrder).ToList();
+
+		//		if (orders.Distinct().Count() != orders.Count)
+		//			throw new BadRequestException("StepOrder must be unique");
+
+		//		if (orders.Min() != 1 || orders.Max() != orders.Count)
+		//			throw new BadRequestException("StepOrder must be sequential starting from 1");
+
+		//		var stepIds = dto.Steps.Select(x => x.StepId).Distinct().ToList();
+		//		var steps = await _stepRepository.GetByIdsAsync(stepIds);
+
+		//		if (steps.Count != stepIds.Count)
+		//		{
+		//			var missingIds = stepIds.Except(steps.Select(s => s.Id));
+		//			throw new BadRequestException($"Steps not found: {string.Join(", ", missingIds)}");
+		//		}
+
+		//		var stepDict = steps.ToDictionary(x => x.Id);
+
+		//		foreach (var sopStep in dto.Steps)
+		//		{
+		//			var step = stepDict[sopStep.StepId];
+		//			ValidateConfigDetail(sopStep.ConfigDetail, step.ConfigSchema, step.Name);
+		//		}
+		//	}
+
+		//	_mapper.Map(dto, sop); // map field thường
+
+		//	if (dto.Steps != null)
+		//		MergeSopSteps(sop, dto.Steps, _userContext.UserId.ToString());
+
+		//	sop.Version++;
+		//	sop.LastModified = _dateProvider.UtcNow;
+		//	sop.LastModifiedBy = _userContext.UserId.ToString();
+
+		//	if(dto.RequiredSkillIds != null)
+		//	{
+		//		await _sopRequiredSkillRepository.MergeAsync(sop.Id, dto.RequiredSkillIds.ToHashSet());
+		//	}
+
+		//	if(dto.RequiredCertificationIds != null)
+		//	{
+		//		await _sopRequiredCertificationRepository.MergeAsync(sop.Id, dto.RequiredCertificationIds.ToHashSet(), cancellationToken);
+		//	}
+
+		//	await _sopRepository.SaveChangesAsync(cancellationToken);
+
+		//	var updated = await _sopRepository.GetByIdWithStepsAsync(sop.Id);
+		//	return _mapper.Map<SopDto>(updated);
+		//}
+
 		public async Task<SopDto?> UpdateSopAsync(Guid id, SopUpdateDto dto, CancellationToken cancellationToken = default)
 		{
 			var sop = await _sopRepository.GetByIdWithStepsAsync(id, true);
@@ -135,7 +199,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 					throw new BadRequestException("SOP must have at least one step");
 
 				var orders = dto.Steps.Select(s => s.StepOrder).ToList();
-
 				if (orders.Distinct().Count() != orders.Count)
 					throw new BadRequestException("StepOrder must be unique");
 
@@ -144,7 +207,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 				var stepIds = dto.Steps.Select(x => x.StepId).Distinct().ToList();
 				var steps = await _stepRepository.GetByIdsAsync(stepIds);
-
 				if (steps.Count != stepIds.Count)
 				{
 					var missingIds = stepIds.Except(steps.Select(s => s.Id));
@@ -152,7 +214,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				}
 
 				var stepDict = steps.ToDictionary(x => x.Id);
-
 				foreach (var sopStep in dto.Steps)
 				{
 					var step = stepDict[sopStep.StepId];
@@ -160,24 +221,40 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 				}
 			}
 
-			_mapper.Map(dto, sop); // map field thường
+			_mapper.Map(dto, sop);
 
 			if (dto.Steps != null)
-				MergeSopSteps(sop, dto.Steps, _userContext.UserId.ToString());
+			{
+				foreach (var step in sop.SopSteps.Where(s => !s.IsDeleted))
+				{
+					step.IsDeleted = true;
+					step.LastModified = _dateProvider.UtcNow;
+					step.LastModifiedBy = _userContext.UserId.ToString();
+				}
+
+				var newSopSteps = dto.Steps.Select(newStep => new SopStep
+				{
+					Id = _idGenerator.Generate(),
+					SopId = sop.Id,
+					StepId = newStep.StepId,
+					StepOrder = newStep.StepOrder,
+					ConfigDetail = newStep.ConfigDetail.GetRawText(),
+					CreatedBy = _userContext.UserId.ToString(),
+					Created = _dateProvider.UtcNow
+				}).ToList();
+
+				await _sopStepRepository.AddRangeAsync(newSopSteps, cancellationToken);
+			}
 
 			sop.Version++;
 			sop.LastModified = _dateProvider.UtcNow;
 			sop.LastModifiedBy = _userContext.UserId.ToString();
 
-			if(dto.RequiredSkillIds != null)
-			{
+			if (dto.RequiredSkillIds != null)
 				await _sopRequiredSkillRepository.MergeAsync(sop.Id, dto.RequiredSkillIds.ToHashSet());
-			}
 
-			if(dto.RequiredCertificationIds != null)
-			{
+			if (dto.RequiredCertificationIds != null)
 				await _sopRequiredCertificationRepository.MergeAsync(sop.Id, dto.RequiredCertificationIds.ToHashSet(), cancellationToken);
-			}
 
 			await _sopRepository.SaveChangesAsync(cancellationToken);
 
@@ -208,60 +285,79 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 			return true;
 		}
 
-		private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps, string userId)
-		{
-			var now = DateTime.UtcNow;
-			var allSteps = sop.SopSteps.ToList(); 
-			var activeSteps = allSteps.Where(s => !s.IsDeleted).ToList();
-			var newStepIds = newSteps.Select(s => s.StepId).ToHashSet();
-			var activeStepIds = activeSteps.Select(s => s.StepId).ToHashSet();
+		//private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps, string userId)
+		//{
+		//	var now = DateTime.UtcNow;
+		//	var allSteps = sop.SopSteps.ToList();
+		//	var activeSteps = allSteps.Where(s => !s.IsDeleted).ToList();
+		//	var newStepIds = newSteps.Select(s => s.StepId).ToHashSet();
+		//	var activeStepIds = activeSteps.Select(s => s.StepId).ToHashSet();
 
-			// 1. Soft delete step không còn trong danh sách mới
-			foreach (var step in activeSteps.Where(s => !newStepIds.Contains(s.StepId)))
+		//	foreach (var step in activeSteps.Where(s => !newStepIds.Contains(s.StepId)))
+		//	{
+		//		step.IsDeleted = true;
+		//		step.LastModified = _dateProvider.UtcNow;
+		//		step.LastModifiedBy = userId;
+		//	}
+
+		//	foreach (var existing in activeSteps.Where(s => newStepIds.Contains(s.StepId)))
+		//	{
+		//		var newStep = newSteps.First(s => s.StepId == existing.StepId);
+		//		existing.StepOrder = newStep.StepOrder;
+		//		existing.ConfigDetail = newStep.ConfigDetail.GetRawText();
+		//		existing.LastModified = _dateProvider.UtcNow;
+		//		existing.LastModifiedBy = userId;
+		//	}
+
+		//	foreach (var newStep in newSteps.Where(s => !activeStepIds.Contains(s.StepId)))
+		//	{
+		//		var deletedStep = allSteps.FirstOrDefault(s => s.StepId == newStep.StepId && s.IsDeleted);
+		//		if (deletedStep != null)
+		//		{
+		//			deletedStep.IsDeleted = false;
+		//			deletedStep.StepOrder = newStep.StepOrder;
+		//			deletedStep.ConfigDetail = newStep.ConfigDetail.GetRawText();
+		//			deletedStep.LastModified = _dateProvider.UtcNow;
+		//			deletedStep.LastModifiedBy = userId;
+		//		}
+		//		else
+		//		{
+		//			sop.SopSteps.Add(new SopStep
+		//			{
+		//				SopId = sop.Id,
+		//				StepId = newStep.StepId,
+		//				StepOrder = newStep.StepOrder,
+		//				ConfigDetail = newStep.ConfigDetail.GetRawText(),
+		//				CreatedBy = userId,
+		//				Created = _dateProvider.UtcNow
+		//			});
+		//		}
+		//	}
+		//}
+
+		private void MergeSopSteps(Sop sop, List<SopStepUpdateDto> newSteps, string userId)
+		{ 
+			foreach (var step in sop.SopSteps.Where(s => !s.IsDeleted))
 			{
 				step.IsDeleted = true;
 				step.LastModified = _dateProvider.UtcNow;
-				step.LastModifiedBy = userId.ToString();
+				step.LastModifiedBy = userId;
 			}
 
-			// 2. Update step còn tồn tại
-			foreach (var existing in activeSteps.Where(s => newStepIds.Contains(s.StepId)))
+			// Insert lại toàn bộ từ request
+			foreach (var newStep in newSteps)
 			{
-				var newStep = newSteps.First(s => s.StepId == existing.StepId);
-				existing.StepOrder = newStep.StepOrder;
-				existing.ConfigDetail = newStep.ConfigDetail.GetRawText();
-				existing.LastModified = _dateProvider.UtcNow;
-				existing.LastModifiedBy = userId;
-			}
-			 
-			foreach (var newStep in newSteps.Where(s => !activeStepIds.Contains(s.StepId)))
-			{
-				var deletedStep = allSteps
-					.FirstOrDefault(s => s.StepId == newStep.StepId && s.IsDeleted);
-
-				if (deletedStep != null)
+				sop.SopSteps.Add(new SopStep
 				{
-					// Restore với configDetail mới
-					deletedStep.IsDeleted = false;
-					deletedStep.StepOrder = newStep.StepOrder;
-					deletedStep.ConfigDetail = newStep.ConfigDetail.GetRawText();
-					deletedStep.LastModified = _dateProvider.UtcNow;
-					deletedStep.LastModifiedBy = userId;
-				}
-				else
-				{
-					sop.SopSteps.Add(new SopStep
-					{ 
-						SopId = sop.Id,
-						StepId = newStep.StepId,
-						StepOrder = newStep.StepOrder,
-						ConfigDetail = newStep.ConfigDetail.GetRawText(),
-						CreatedBy = userId,
-						Created = _dateProvider.UtcNow
-					});
-				}
+					SopId = sop.Id,
+					StepId = newStep.StepId,
+					StepOrder = newStep.StepOrder,
+					ConfigDetail = newStep.ConfigDetail.GetRawText(),
+					CreatedBy = userId,
+					Created = _dateProvider.UtcNow
+				});
 			}
-		} 
+		}
 
 		private void ValidateConfigDetail(JsonElement configDetail, string configSchema, string stepName)
 		{

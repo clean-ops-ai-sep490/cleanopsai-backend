@@ -18,5 +18,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 				.OrderBy(s => s.StepOrder)
 				.ToListAsync(cancellationToken);
 		}
+
+		public async Task AddRangeAsync(List<SopStep> steps, CancellationToken cancellationToken = default)
+		{
+			await _context.SopSteps.AddRangeAsync(steps, cancellationToken);
+		}
 	}
 }
