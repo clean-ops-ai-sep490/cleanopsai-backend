@@ -93,5 +93,7 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             await _service.DeleteImagesByStepExecutionIdAsync(taskStepExecutionId, ct);
             return Ok(new { message = "All images deleted successfully" });
         }
+
+
     }
 }

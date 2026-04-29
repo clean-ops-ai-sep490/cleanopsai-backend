@@ -25,11 +25,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Data.Configurations
 			builder.HasOne(x => x.Step)
 				.WithMany(x => x.SopSteps)
 				.HasForeignKey(x => x.StepId)
-				.OnDelete(DeleteBehavior.Restrict);
-
-			builder.HasIndex(x => new { x.SopId, x.StepOrder })
-				.IsUnique().HasFilter("is_deleted = false");
-
+				.OnDelete(DeleteBehavior.Restrict); 
 			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}

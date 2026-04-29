@@ -86,16 +86,14 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
         [Authorize(Roles = "Supervisor,Worker")]
         [SwaggerOperation(
             Summary = "Initiate AI compliance check",
-            Description =
-                "Creates a pending ComplianceCheck and submits After images to the Scoring Module. " +
-                "Result is delivered asynchronously via SignalR (compliance-check-updated). " +
-                "Use GET to poll if SignalR is unavailable.",
+			Description = "Creates a pending ComplianceCheck and submits After images to the Scoring Module. " +
+	            "Result is delivered asynchronously via SignalR event `compliance-check-updated` on hub `/hubs/compliance`. ",
             Tags = new[] { "ComplianceChecks" }
         )]
         [ProducesResponseType(typeof(InitiateAiCheckResult), StatusCodes.Status202Accepted)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> InitiateAiCheck(
-		InitiateAiCheckRequest request,
+		[FromBody] InitiateAiCheckRequest request,
         CancellationToken ct = default)
         {
             if (request.TaskStepExecutionId == Guid.Empty)
