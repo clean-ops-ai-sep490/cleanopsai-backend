@@ -25,9 +25,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IEquipmentQueryService _equipmentQueryService;
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
-
-		public EquipmentRequestService(
+        public EquipmentRequestService(
             IEquipmentRequestRepository repo,
             IMapper mapper,
             IUserContext userContext,
@@ -35,7 +35,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IWorkerQueryService workerQueryService,
             IEquipmentQueryService equipmentQueryService,
             ITaskAssignmentRepository taskAssignmentRepository,
-            INotificationPublisher notificationPublisher)
+            INotificationPublisher notificationPublisher,
+            IIdGenerator idGenerator)
         {
             _repo = repo;
             _mapper = mapper;
@@ -45,6 +46,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _equipmentQueryService = equipmentQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
 			_notificationPublisher = notificationPublisher;
+            _idGenerator = idGenerator;
         }
 
         public async Task<EquipmentRequestDto> CreateBatch(
@@ -80,6 +82,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var entity = new EquipmentRequest
             {
+                Id = _idGenerator.Generate(),
                 TaskAssignmentId = dto.TaskAssignmentId,
                 WorkerId = dto.WorkerId,
                 Reason = dto.Reason,

@@ -33,13 +33,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Mappings
 
             // IssueReport mappings
             CreateMap<IssueReport, IssueReportDto>();
-            CreateMap<CreateIssueReportDto, IssueReport>();
+            CreateMap<CreateIssueReportDto, IssueReport>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore());
             CreateMap<UpdateIssueReportDto, IssueReport>()
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
             // EmergencyLeaveRequest mappings
             CreateMap<EmergencyLeaveRequest, EmergencyLeaveRequestDto>();
             CreateMap<CreateEmergencyLeaveRequestDto, EmergencyLeaveRequest>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.AudioUrl, opt => opt.Ignore())
                 .ForMember(dest => dest.Transcription, opt => opt.Ignore())
                 .ForSourceMember(src => src.AudioStream, opt => opt.DoNotValidate())

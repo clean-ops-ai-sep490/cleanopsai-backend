@@ -24,16 +24,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
 		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
-
-		public IssueReportService(
+        public IssueReportService(
             IIssueReportRepository issueReportRepository,
             IMapper mapper,
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
             ITaskAssignmentRepository taskAssignmentRepository,
-            INotificationPublisher notificationPublisher    )
+            INotificationPublisher notificationPublisher,
+            IIdGenerator idGenerator)
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
@@ -42,6 +43,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _workerQueryService = workerQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
             _notificationPublisher = notificationPublisher;
+            _idGenerator = idGenerator;
 		}
 
         // ================= GET BY ID =================
@@ -140,6 +142,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             }
             var entity = _mapper.Map<IssueReport>(dto);
 
+            entity.Id = _idGenerator.Generate();
             entity.Status = IssueStatus.Pending;
             entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
