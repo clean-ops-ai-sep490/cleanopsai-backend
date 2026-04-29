@@ -81,7 +81,9 @@ public static class DependencyInjection
 			typeof(TaskScheduleUpdateConsumer).Assembly,
             typeof(WorkAreaConsumer).Assembly,
             typeof(ScoringCompletedConsumer).Assembly,
-			typeof(AiScoringRequestedConsumer).Assembly 
+			typeof(AiScoringRequestedConsumer).Assembly,
+			typeof(PpeCheckRequestedConsumer).Assembly,
+			typeof(PpeCheckCompletedConsumer).Assembly
 		);
 
 		builder.Services.AddCors(options =>
@@ -111,6 +113,7 @@ public static class DependencyInjection
 		});
 
 		builder.Services.AddScoped<IComplianceNotifier, SignalRComplianceNotifier>();
+		builder.Services.AddScoped<IPpeCheckNotifier, SignalRPpeCheckNotifier>();
 
 		builder.Services.AddHttpContextAccessor();
 		builder.Services.AddMemoryCache();

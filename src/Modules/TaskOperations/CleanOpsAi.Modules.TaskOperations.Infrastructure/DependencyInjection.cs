@@ -69,5 +69,6 @@ public static class DependencyInjection
 
 		builder.Services.AddScoped<INotificationPublisher, NotificationPublisher>();
 
+
 	}
 }

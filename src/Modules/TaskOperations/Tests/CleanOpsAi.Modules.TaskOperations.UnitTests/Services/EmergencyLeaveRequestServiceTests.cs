@@ -22,6 +22,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly IWorkerQueryService _workerService; 
         private readonly ITaskAssignmentRepository _taskAssignmentRepo;
 		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
 
 		private readonly EmergencyLeaveRequestService _service;
@@ -36,6 +37,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _workerService = Substitute.For<IWorkerQueryService>(); 
             _taskAssignmentRepo = Substitute.For<ITaskAssignmentRepository>();
             _notificationPublisher = Substitute.For<INotificationPublisher>();
+            _idGenerator = Substitute.For<IIdGenerator>();
 
 			_service = new EmergencyLeaveRequestService(
                 _repo,
@@ -45,7 +47,8 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
                 _dateTime,
                 _workerService,
                 _taskAssignmentRepo,
-				_notificationPublisher
+				_notificationPublisher,
+				_idGenerator
 			);
         }
 
