@@ -29,6 +29,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
         {
             return await _context.TaskStepExecutionImages
                 .Where(x => x.TaskStepExecutionId == executionId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync(ct);
         }
 
@@ -50,6 +51,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.TaskStepExecutionImages
                 .Where(x => x.TaskStepExecutionId == taskStepExecutionId
                          && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync(ct);
         }
 
