@@ -31,7 +31,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             return await _dbContext.Set<WorkArea>()
                 .Include(w => w.Zone)
                 .Where(w => w.IsDeleted == false)
-                .OrderByDescending(w => w.Id)
+                .OrderByDescending(w => w.Created)
                 .ToListAsync();
         }
 
@@ -40,7 +40,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             var query = _dbContext.Set<WorkArea>()
                 .Include(w => w.Zone)
                 .Where(w => w.IsDeleted == false)
-                .OrderByDescending(w => w.Id)
+                .OrderByDescending(w => w.Created)
                 .AsQueryable();
 
             var totalCount = await query.CountAsync();
@@ -58,7 +58,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             var query = _dbContext.Set<WorkArea>()
                 .Include(w => w.Zone)
                 .Where(w => w.ZoneId == zoneId && w.IsDeleted == false)
-                .OrderByDescending(w => w.Id)
+                .OrderByDescending(w => w.Created)
                 .AsQueryable();
 
             var totalCount = await query.CountAsync();

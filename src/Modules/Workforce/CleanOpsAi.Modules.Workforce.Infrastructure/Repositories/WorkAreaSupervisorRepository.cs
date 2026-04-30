@@ -55,7 +55,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -66,7 +66,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             var query = _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -83,7 +83,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
                 .Where(x => x.WorkAreaId == workAreaId && x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 

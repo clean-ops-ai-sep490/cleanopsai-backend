@@ -31,7 +31,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             return await _dbContext.Set<SlaTask>()
                 .Include(x => x.Sla)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -40,7 +40,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             var query = _dbContext.Set<SlaTask>()
                 .Include(x => x.Sla)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -57,6 +57,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             return await _dbContext.Set<SlaTask>()
                 .Include(x => x.Sla)
                 .Where(x => x.SlaId == slaId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 

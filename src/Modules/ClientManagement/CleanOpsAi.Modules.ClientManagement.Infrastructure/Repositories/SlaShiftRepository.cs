@@ -44,7 +44,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             var total = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
