@@ -9,7 +9,6 @@ namespace CleanOpsAi.Api.Modules.Scoring
 {
 	[Route("api/scoring/reviews")]
 	[ApiController]
-	[Authorize(Roles = "Supervisor,Admin")]
 	public class ScoringReviewsController : ControllerBase
 	{
 		private readonly IScoringJobService _scoringJobService;
@@ -20,6 +19,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpGet("pending")]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
 			Summary = "List pending scoring results for supervisor review",
 			Description = "Returns a capped list of scoring results whose AI verdict is PENDING.",
@@ -34,6 +34,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPut("results/{resultId:guid}")]
+		[Authorize(Roles = "Supervisor,Admin,4,2")]
 		[SwaggerOperation(
 			Summary = "Review a pending scoring result",
 			Description = "Updates a PENDING verdict to PASS or FAIL and stores review metadata in payload history.",

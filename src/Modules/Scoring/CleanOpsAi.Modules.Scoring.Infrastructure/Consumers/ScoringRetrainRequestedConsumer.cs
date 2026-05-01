@@ -745,7 +745,17 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 						$"Remote trainer job {createResponse.JobId} failed. {statusResponse?.Message}");
 				}
 
-				await Task.Delay(TimeSpan.FromSeconds(pollInterval), linkedCts.Token);
+				try
+				{
+					await Task.Delay(TimeSpan.FromSeconds(pollInterval), linkedCts.Token);
+				}
+				catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+				{
+					return new CommandExecutionResult(
+						-1,
+						string.Empty,
+						$"Remote trainer polling timed out after {timeoutSeconds} seconds.");
+				}
 			}
 		}
 

@@ -236,6 +236,71 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 		}
 
 		[Fact]
+		public async Task GetAnnotationCandidatesAsync_ShouldFilterByManagedWorkers_WhenUserIsSupervisor()
+		{
+			var supervisorId = Guid.NewGuid();
+			var managedWorkerUserId = Guid.NewGuid();
+			var candidate = BuildAnnotationCandidateForSubmittedUser(managedWorkerUserId);
+
+			_userContext.Role.Returns("Supervisor");
+			_userContext.UserId.Returns(supervisorId);
+			_managedWorkerQueryService
+				.GetManagedWorkerUserIdsAsync(supervisorId, Arg.Any<CancellationToken>())
+				.Returns(new[] { managedWorkerUserId });
+			_repository
+				.GetAnnotationCandidatesAsync(
+					null,
+					null,
+					null,
+					null,
+					30,
+					Arg.Any<IReadOnlyCollection<Guid>>(),
+					Arg.Any<CancellationToken>())
+				.Returns(new[] { candidate });
+
+			var result = await _service.GetAnnotationCandidatesAsync(take: 30);
+
+			Assert.Single(result);
+			Assert.Equal(candidate.Id, result.First().CandidateId);
+			await _repository.Received(1).GetAnnotationCandidatesAsync(
+				null,
+				null,
+				null,
+				null,
+				30,
+				Arg.Is<IReadOnlyCollection<Guid>>(x => x.Count == 1 && x.Contains(managedWorkerUserId)),
+				Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
+		public async Task GetAnnotationCandidateByIdAsync_ShouldThrowForbidden_WhenSupervisorDoesNotManageWorker()
+		{
+			var supervisorId = Guid.NewGuid();
+			var managedWorkerUserId = Guid.NewGuid();
+			var candidate = BuildAnnotationCandidateForSubmittedUser(Guid.NewGuid());
+
+			_userContext.Role.Returns("Supervisor");
+			_userContext.UserId.Returns(supervisorId);
+			_managedWorkerQueryService
+				.GetManagedWorkerUserIdsAsync(supervisorId, Arg.Any<CancellationToken>())
+				.Returns(new[] { managedWorkerUserId });
+			_repository.GetAnnotationCandidateByIdAsync(candidate.Id, Arg.Any<CancellationToken>()).Returns(candidate);
+
+			await Assert.ThrowsAsync<ForbiddenException>(() => _service.GetAnnotationCandidateByIdAsync(candidate.Id));
+		}
+
+		[Fact]
+		public async Task ApproveAnnotationCandidateAsync_ShouldThrowForbidden_WhenUserIsManager()
+		{
+			var candidateId = Guid.NewGuid();
+
+			_userContext.Role.Returns("Manager");
+
+			await Assert.ThrowsAsync<ForbiddenException>(() => _service.ApproveAnnotationCandidateAsync(candidateId, null));
+			await _repository.DidNotReceive().GetAnnotationCandidateByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
 		public async Task ProcessQueuedJobAsync_ShouldPersistVisualizationResponseAsSingleSourceOfTruth()
 		{
 			var jobId = Guid.NewGuid();
@@ -379,7 +444,7 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 				}
 			};
 
-			_userContext.Role.Returns("Manager");
+			_userContext.Role.Returns("Admin");
 			_userContext.UserId.Returns(Guid.NewGuid());
 			_repository.GetAnnotationCandidateByIdAsync(candidateId, Arg.Any<CancellationToken>()).Returns(candidate);
 
@@ -616,6 +681,61 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					Created = now,
 					LastModified = now,
 				}
+			};
+		}
+
+		private static ScoringAnnotationCandidate BuildAnnotationCandidateForSubmittedUser(Guid submittedByUserId)
+		{
+			var now = DateTime.UtcNow;
+			var resultId = Guid.NewGuid();
+			var jobId = Guid.NewGuid();
+
+			return new ScoringAnnotationCandidate
+			{
+				Id = Guid.NewGuid(),
+				ResultId = resultId,
+				JobId = jobId,
+				RequestId = "req-scoped-candidate",
+				EnvironmentKey = "LOBBY_CORRIDOR",
+				ImageUrl = "https://example.com/scoped.jpg",
+				OriginalVerdict = "PENDING",
+				ReviewedVerdict = "FAIL",
+				SourceType = "reviewed-fail-from-pending",
+				CandidateStatus = ScoringAnnotationCandidateStatus.Submitted,
+				CreatedAtUtc = now,
+				Created = now,
+				LastModified = now,
+				Annotation = new ScoringAnnotation
+				{
+					Id = Guid.NewGuid(),
+					CandidateId = Guid.NewGuid(),
+					LabelsJson = "[]",
+					Version = 1,
+					Created = now,
+					LastModified = now,
+				},
+				Result = new ScoringJobResult
+				{
+					Id = resultId,
+					ScoringJobId = jobId,
+					SourceType = "url",
+					Source = "https://example.com/scoped.jpg",
+					Verdict = "FAIL",
+					QualityScore = 60,
+					PayloadJson = "{}",
+					Created = now,
+					LastModified = now,
+					ScoringJob = new ScoringJob
+					{
+						Id = jobId,
+						RequestId = "req-scoped-candidate",
+						EnvironmentKey = "LOBBY_CORRIDOR",
+						Status = ScoringJobStatus.Succeeded,
+						SubmittedByUserId = submittedByUserId,
+						Created = now,
+						LastModified = now,
+					},
+				},
 			};
 		}
 	}

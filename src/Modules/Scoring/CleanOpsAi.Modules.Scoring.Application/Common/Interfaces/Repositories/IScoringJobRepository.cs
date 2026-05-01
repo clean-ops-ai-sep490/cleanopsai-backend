@@ -18,6 +18,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories
 			Guid? assignedToUserId,
 			DateTime? createdFromUtc,
 			int take,
+			IReadOnlyCollection<Guid>? submittedByUserIds = null,
 			CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetAnnotatedCandidatesForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetApprovedAnnotationCandidatesForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default);

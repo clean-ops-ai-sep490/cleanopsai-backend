@@ -202,7 +202,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			int take = 50,
 			CancellationToken ct = default)
 		{
-			EnsureAnnotationManagerOrAdmin();
+			EnsureAnnotationParticipant();
 
 			ScoringAnnotationCandidateStatus? parsedStatus = null;
 			if (!string.IsNullOrWhiteSpace(status))
@@ -215,12 +215,19 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				parsedStatus = parsed;
 			}
 
+			var managedWorkerUserIds = await GetScopedManagedWorkerUserIdsAsync(ct);
+			if (IsSupervisor() && (managedWorkerUserIds?.Count ?? 0) == 0)
+			{
+				return Array.Empty<ScoringAnnotationCandidateListItemResponse>();
+			}
+
 			var candidates = await _repository.GetAnnotationCandidatesAsync(
 				parsedStatus,
 				environmentKey,
 				assignedToUserId,
 				createdFromUtc,
 				take,
+				managedWorkerUserIds,
 				ct);
 
 			return candidates.Select(MapAnnotationCandidateListItem).ToList();
@@ -228,7 +235,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 		public async Task<ScoringAnnotationCandidateDetailResponse?> GetAnnotationCandidateByIdAsync(Guid candidateId, CancellationToken ct = default)
 		{
-			EnsureAnnotationManagerOrAdmin();
+			EnsureAnnotationParticipant();
 
 			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
 			if (candidate is null)
@@ -236,13 +243,13 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				return null;
 			}
 
-			EnsureCanManageCandidate(candidate);
+			await EnsureCanReadCandidateAsync(candidate, ct);
 			return MapAnnotationCandidateDetail(candidate);
 		}
 
 		public async Task<ScoringAnnotationCandidateDetailResponse?> ClaimAnnotationCandidateAsync(Guid candidateId, CancellationToken ct = default)
 		{
-			EnsureAnnotationManagerOrAdmin();
+			EnsureAnnotationSupervisorOrAdmin();
 
 			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
 			if (candidate is null)
@@ -250,7 +257,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				return null;
 			}
 
-			EnsureCanManageCandidate(candidate);
+			await EnsureCanManageCandidateAsync(candidate, ct);
 			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
 			{
 				throw new InvalidOperationException("Approved annotation candidates cannot be claimed.");
@@ -274,7 +281,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			UpsertScoringAnnotationRequest request,
 			CancellationToken ct = default)
 		{
-			EnsureAnnotationManagerOrAdmin();
+			EnsureAnnotationSupervisorOrAdmin();
 			if (request is null)
 			{
 				throw new ArgumentException("Annotation payload cannot be null.", nameof(request));
@@ -291,7 +298,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				return null;
 			}
 
-			EnsureCanManageCandidate(candidate);
+			await EnsureCanManageCandidateAsync(candidate, ct);
 			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
 			{
 				throw new InvalidOperationException("Approved annotation candidates cannot be edited.");
@@ -352,7 +359,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			ApproveScoringAnnotationCandidateRequest? request,
 			CancellationToken ct = default)
 		{
-			EnsureAnnotationManagerOrAdmin();
+			EnsureAnnotationSupervisorOrAdmin();
 
 			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
 			if (candidate is null)
@@ -360,7 +367,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				return null;
 			}
 
-			EnsureCanManageCandidate(candidate);
+			await EnsureCanManageCandidateAsync(candidate, ct);
 			if (candidate.Annotation is null)
 			{
 				throw new InvalidOperationException("Annotation candidate must have annotation data before approval.");
@@ -420,7 +427,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			RejectScoringAnnotationCandidateRequest? request,
 			CancellationToken ct = default)
 		{
-			EnsureAnnotationManagerOrAdmin();
+			EnsureAnnotationSupervisorOrAdmin();
 
 			var candidate = await _repository.GetAnnotationCandidateByIdAsync(candidateId, ct);
 			if (candidate is null)
@@ -428,7 +435,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				return null;
 			}
 
-			EnsureCanManageCandidate(candidate);
+			await EnsureCanManageCandidateAsync(candidate, ct);
 			if (candidate.CandidateStatus == ScoringAnnotationCandidateStatus.Approved)
 			{
 				throw new InvalidOperationException("Approved annotation candidates cannot be rejected.");
@@ -699,7 +706,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 		private bool IsSupervisor()
 		{
-			return string.Equals(_userContext.Role, "Supervisor", StringComparison.OrdinalIgnoreCase);
+			return RoleEquals("Supervisor", "4");
 		}
 
 		public async Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default)
@@ -1043,25 +1050,44 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			return batch is null ? null : MapRetrainBatch(batch);
 		}
 
-		private void EnsureAnnotationManagerOrAdmin()
+		private void EnsureAnnotationParticipant()
 		{
-			if (IsAdmin())
+			if (IsAdmin() || IsManager() || IsSupervisor())
 			{
 				return;
 			}
 
-			if (!string.Equals(_userContext.Role, "Manager", StringComparison.OrdinalIgnoreCase))
-			{
-				throw new ForbiddenException("Only Manager or Admin can access scoring annotations.");
-			}
+			throw new ForbiddenException("Only Supervisor, Manager or Admin can access scoring annotations.");
 		}
 
-		private void EnsureCanManageCandidate(ScoringAnnotationCandidate candidate)
+		private void EnsureAnnotationSupervisorOrAdmin()
+		{
+			if (IsAdmin() || IsSupervisor())
+			{
+				return;
+			}
+
+			throw new ForbiddenException("Only Supervisor or Admin can manage scoring annotations.");
+		}
+
+		private async Task EnsureCanReadCandidateAsync(ScoringAnnotationCandidate candidate, CancellationToken ct)
+		{
+			if (!IsSupervisor())
+			{
+				return;
+			}
+
+			await EnsureSupervisorCandidateScopeAsync(candidate, ct);
+		}
+
+		private async Task EnsureCanManageCandidateAsync(ScoringAnnotationCandidate candidate, CancellationToken ct)
 		{
 			if (IsAdmin())
 			{
 				return;
 			}
+
+			await EnsureSupervisorCandidateScopeAsync(candidate, ct);
 
 			if (_userContext.UserId == Guid.Empty)
 			{
@@ -1071,6 +1097,17 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			if (candidate.AssignedToUserId.HasValue && candidate.AssignedToUserId.Value != _userContext.UserId)
 			{
 				throw new ForbiddenException("This annotation candidate is already assigned to another reviewer.");
+			}
+		}
+
+		private async Task EnsureSupervisorCandidateScopeAsync(ScoringAnnotationCandidate candidate, CancellationToken ct)
+		{
+			var managedWorkerUserIds = await GetScopedManagedWorkerUserIdsAsync(ct) ?? Array.Empty<Guid>();
+			var submittedByUserId = candidate.Result?.ScoringJob?.SubmittedByUserId;
+
+			if (!submittedByUserId.HasValue || !managedWorkerUserIds.Contains(submittedByUserId.Value))
+			{
+				throw new ForbiddenException("You are not allowed to access annotation candidates outside your managed workers.");
 			}
 		}
 
@@ -1398,7 +1435,18 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 		private bool IsAdmin()
 		{
-			return string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+			return RoleEquals("Admin", "2");
+		}
+
+		private bool IsManager()
+		{
+			return RoleEquals("Manager", "3");
+		}
+
+		private bool RoleEquals(string roleName, string roleValue)
+		{
+			return string.Equals(_userContext.Role, roleName, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(_userContext.Role, roleValue, StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }
