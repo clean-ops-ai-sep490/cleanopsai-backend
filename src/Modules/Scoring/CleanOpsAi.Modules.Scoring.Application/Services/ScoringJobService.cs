@@ -845,7 +845,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				_logger.LogInformation(
 					"Executing scoring retrain inline for batch {BatchId} because inline local mode is enabled.",
 					batch.Id);
-				await _scoringRetrainRequestHandler.HandleAsync(retrainRequestedEvent, ct);
+				// The retrain job can outlive the HTTP request. Do not let a client timeout
+				// cancel the batch and leave it stuck in RUNNING after the trainer completes.
+				await _scoringRetrainRequestHandler.HandleAsync(retrainRequestedEvent, CancellationToken.None);
 			}
 			else
 			{
