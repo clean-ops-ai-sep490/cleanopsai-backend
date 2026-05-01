@@ -46,15 +46,18 @@ namespace CleanOpsAi.Api.Modules.QualityControl
 		[HttpGet("{notificationId:guid}")]
 		[SwaggerOperation(
 			Summary = "Get Notification Detail",
-			Description = "Retrieves detailed information of a specific notification for the current user. Returns null if the notification does not exist or does not belong to the user.",
+			Description = "Retrieves detailed information of a specific notification for the current user.",
 			Tags = new[] { "NotificationRecipient" }
 		)]
 		[ProducesResponseType(typeof(NotificationDetailDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
-		public async Task<IActionResult> GetDetail(Guid notificationId, CancellationToken ct = default)
+		public async Task<IActionResult> GetDetail(
+		Guid notificationId,
+		[FromQuery] Guid? workerId,
+		CancellationToken ct = default)
 		{
-			var result = await _service.GetDetailAsync(notificationId, ct);
+			var result = await _service.GetDetailAsync(notificationId, workerId, ct);
 			return Ok(result);
 		}
 

@@ -41,25 +41,26 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		// Helpers
 		// ---------------------------------------------------------------
 
-		private void StubGetDetail(Guid notificationId, Guid recipientId, NotificationRecipient? returnValue)
+		private void StubGetDetail(Guid notificationId, Guid? recipientId, RecipientTypeEnum recipientType, NotificationRecipient? returnValue)
 		{
 			_repo.GetDetailAsync(
 					notificationId,
 					recipientId,
-					Arg.Any<RecipientTypeEnum>(),
+					recipientType,
 					Arg.Any<CancellationToken>())
 				.Returns(returnValue);
 		}
 
 		private void StubGetPaged(
 			Guid recipientId,
+			RecipientTypeEnum recipientType,
 			bool? isRead,
 			PaginatedResult<NotificationRecipient> page,
 			int unreadCount)
 		{
 			_repo.GetPagedByRecipientAsync(
 					recipientId,
-					Arg.Any<RecipientTypeEnum>(),
+					recipientType,
 					Arg.Any<PaginationRequest>(),
 					isRead,
 					Arg.Any<CancellationToken>())
@@ -75,23 +76,24 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		{
 			var notificationId = Guid.NewGuid();
 			var userId = Guid.NewGuid();
+			var workerId = Guid.NewGuid();
 			var recipient = new NotificationRecipient { NotificationId = notificationId };
 			var expectedDto = new NotificationDetailDto { NotificationId = notificationId };
 
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			StubGetDetail(notificationId, userId, recipient);
+			StubGetDetail(notificationId, workerId, RecipientTypeEnum.Worker, recipient);
 			_mapper.Map<NotificationDetailDto>(recipient).Returns(expectedDto);
 
-			var result = await _service.GetDetailAsync(notificationId);
+			var result = await _service.GetDetailAsync(notificationId, workerId);
 
 			Assert.NotNull(result);
 			Assert.Equal(expectedDto.NotificationId, result.NotificationId);
 		}
 
 		[Fact]
-		public async Task GetDetailAsync_WhenNotificationExists_WithManagerRole_ReturnsMappedDto()
+		public async Task GetDetailAsync_WhenNotificationExists_WithSupervisorRole_ReturnsMappedDto()
 		{
 			var notificationId = Guid.NewGuid();
 			var userId = Guid.NewGuid();
@@ -99,12 +101,12 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			var expectedDto = new NotificationDetailDto { NotificationId = notificationId };
 
 			_userContext.UserId.Returns(userId);
-			_userContext.Role.Returns("Manager");
+			_userContext.Role.Returns("Supervisor");
 
-			StubGetDetail(notificationId, userId, recipient);
+			StubGetDetail(notificationId, userId, RecipientTypeEnum.Supervisor, recipient);
 			_mapper.Map<NotificationDetailDto>(recipient).Returns(expectedDto);
 
-			var result = await _service.GetDetailAsync(notificationId);
+			var result = await _service.GetDetailAsync(notificationId, workerId: null);
 
 			Assert.NotNull(result);
 			Assert.Equal(expectedDto.NotificationId, result.NotificationId);
@@ -115,19 +117,30 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		{
 			var notificationId = Guid.NewGuid();
 			var userId = Guid.NewGuid();
+			var workerId = Guid.NewGuid();
 
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			StubGetDetail(notificationId, userId, null);
+			StubGetDetail(notificationId, workerId, RecipientTypeEnum.Worker, null);
 
-			await Assert.ThrowsAsync<NotFoundException>(() => _service.GetDetailAsync(notificationId));
+			await Assert.ThrowsAsync<NotFoundException>(() => _service.GetDetailAsync(notificationId, workerId));
 		}
 
 		[Fact]
 		public async Task GetDetailAsync_WhenNotificationIdIsEmpty_ThrowsBadRequestException()
 		{
-			await Assert.ThrowsAsync<BadRequestException>(() => _service.GetDetailAsync(Guid.Empty));
+			await Assert.ThrowsAsync<BadRequestException>(() => _service.GetDetailAsync(Guid.Empty, workerId: null));
+		}
+
+		[Fact]
+		public async Task GetDetailAsync_WithWorkerRole_NoWorkerId_ThrowsBadRequestException()
+		{
+			_userContext.UserId.Returns(Guid.NewGuid());
+			_userContext.Role.Returns("Worker");
+
+			await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.GetDetailAsync(Guid.NewGuid(), workerId: null));
 		}
 
 		// ===============================================================
@@ -150,7 +163,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			StubGetPaged(workerId, isRead: null, page, unreadCount: 1);
+			StubGetPaged(workerId, RecipientTypeEnum.Worker, isRead: null, page, unreadCount: 1);
 			_mapper.Map<List<NotificationListItemDto>>(Arg.Any<List<NotificationRecipient>>())
 				.Returns(new List<NotificationListItemDto> { new(), new() });
 
@@ -175,7 +188,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		}
 
 		[Fact]
-		public async Task GetPagedByRecipientAsync_WithManagerRole_UsesUserIdAsRecipient()
+		public async Task GetPagedByRecipientAsync_WithSupervisorRole_UsesUserIdAsRecipient()
 		{
 			var userId = Guid.NewGuid();
 			var request = new PaginationRequest { PageNumber = 1, PageSize = 10 };
@@ -183,10 +196,9 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 				new List<NotificationRecipient> { new NotificationRecipient() });
 
 			_userContext.UserId.Returns(userId);
-			_userContext.Role.Returns("Manager");
+			_userContext.Role.Returns("Supervisor");
 
-			// Manager role → service uses userId, ignores workerId param
-			StubGetPaged(userId, isRead: null, page, unreadCount: 0);
+			StubGetPaged(userId, RecipientTypeEnum.Supervisor, isRead: null, page, unreadCount: 0);
 			_mapper.Map<List<NotificationListItemDto>>(Arg.Any<List<NotificationRecipient>>())
 				.Returns(new List<NotificationListItemDto> { new() });
 
@@ -208,7 +220,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			StubGetPaged(workerId, isRead: true, page, unreadCount: 0);
+			StubGetPaged(workerId, RecipientTypeEnum.Worker, isRead: true, page, unreadCount: 0);
 			_mapper.Map<List<NotificationListItemDto>>(Arg.Any<List<NotificationRecipient>>())
 				.Returns(new List<NotificationListItemDto> { new() });
 
@@ -229,7 +241,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			StubGetPaged(workerId, isRead: null, emptyPage, unreadCount: 0);
+			StubGetPaged(workerId, RecipientTypeEnum.Worker, isRead: null, emptyPage, unreadCount: 0);
 			_mapper.Map<List<NotificationListItemDto>>(Arg.Any<List<NotificationRecipient>>())
 				.Returns(new List<NotificationListItemDto>());
 
@@ -254,7 +266,8 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			_repo.MarkAsReadAsync(notificationId, workerId, Arg.Any<CancellationToken>()).Returns(true);
+			_repo.MarkAsReadAsync(notificationId, workerId, RecipientTypeEnum.Worker, Arg.Any<CancellationToken>())
+				.Returns(true);
 
 			var result = await _service.MarkAsReadAsync(notificationId, workerId);
 
@@ -262,15 +275,16 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		}
 
 		[Fact]
-		public async Task MarkAsReadAsync_WithManagerRole_UsesUserIdAsRecipient()
+		public async Task MarkAsReadAsync_WithSupervisorRole_UsesUserIdAsRecipient()
 		{
 			var notificationId = Guid.NewGuid();
 			var userId = Guid.NewGuid();
 
 			_userContext.UserId.Returns(userId);
-			_userContext.Role.Returns("Manager");
+			_userContext.Role.Returns("Supervisor");
 
-			_repo.MarkAsReadAsync(notificationId, userId, Arg.Any<CancellationToken>()).Returns(true);
+			_repo.MarkAsReadAsync(notificationId, userId, RecipientTypeEnum.Supervisor, Arg.Any<CancellationToken>())
+				.Returns(true);
 
 			var result = await _service.MarkAsReadAsync(notificationId, workerId: null);
 
@@ -297,7 +311,8 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			_repo.MarkAsReadAsync(notificationId, workerId, Arg.Any<CancellationToken>()).Returns(false);
+			_repo.MarkAsReadAsync(notificationId, workerId, RecipientTypeEnum.Worker, Arg.Any<CancellationToken>())
+				.Returns(false);
 
 			var result = await _service.MarkAsReadAsync(notificationId, workerId);
 
@@ -317,7 +332,8 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			_repo.MarkAllAsReadAsync(workerId, Arg.Any<CancellationToken>()).Returns(5);
+			_repo.MarkAllAsReadAsync(workerId, RecipientTypeEnum.Worker, Arg.Any<CancellationToken>())
+				.Returns(5);
 
 			var result = await _service.MarkAllAsReadAsync(workerId);
 
@@ -325,14 +341,15 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		}
 
 		[Fact]
-		public async Task MarkAllAsReadAsync_WithManagerRole_UsesUserIdAsRecipient()
+		public async Task MarkAllAsReadAsync_WithSupervisorRole_UsesUserIdAsRecipient()
 		{
 			var userId = Guid.NewGuid();
 
 			_userContext.UserId.Returns(userId);
-			_userContext.Role.Returns("Manager");
+			_userContext.Role.Returns("Supervisor");
 
-			_repo.MarkAllAsReadAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
+			_repo.MarkAllAsReadAsync(userId, RecipientTypeEnum.Supervisor, Arg.Any<CancellationToken>())
+				.Returns(3);
 
 			var result = await _service.MarkAllAsReadAsync(workerId: null);
 
@@ -358,7 +375,8 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Worker");
 
-			_repo.MarkAllAsReadAsync(workerId, Arg.Any<CancellationToken>()).Returns(0);
+			_repo.MarkAllAsReadAsync(workerId, RecipientTypeEnum.Worker, Arg.Any<CancellationToken>())
+				.Returns(0);
 
 			var result = await _service.MarkAllAsReadAsync(workerId);
 
