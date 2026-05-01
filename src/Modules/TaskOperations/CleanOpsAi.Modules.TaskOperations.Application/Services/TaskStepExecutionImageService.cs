@@ -1,4 +1,7 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+﻿using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
@@ -16,6 +19,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly ITaskStepExecutionRepository _stepRepo;
         private readonly ITaskStepExecutionImageRepository _imageRepo;
         private readonly IFileStorageService _storageService;
+        private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
         private const string CONTAINER = "contracts";
         private const string BEFORE_FOLDER = "before";
@@ -33,12 +39,18 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             ITaskAssignmentRepository assignmentRepo,
             ITaskStepExecutionRepository stepRepo,
             ITaskStepExecutionImageRepository imageRepo,
-            IFileStorageService storageService)
+            IFileStorageService storageService,
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvide,
+            IIdGenerator idGenerator)
         {
             _assignmentRepo = assignmentRepo;
             _stepRepo = stepRepo;
             _imageRepo = imageRepo;
             _storageService = storageService;
+            _userContext = userContext;
+            _dateTimeProvider = dateTimeProvide;
+            _idGenerator = idGenerator;
         }
 
         public async Task<UploadStepImagesResponse> UploadImagesAsync(
@@ -92,7 +104,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 taskStepExecutionId, imageType, ct);
 
             foreach (var img in existingImages)
+            {
                 img.IsDeleted = true;
+                img.LastModified = _dateTimeProvider.UtcNow;
+                img.LastModifiedBy = _userContext.UserId.ToString();
+            }
 
             // Upload ảnh mới
             var newImages = await UploadFilesToStorageAsync(
@@ -162,6 +178,27 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             return true;
         }
 
+        public async Task<bool> DeleteImageByIdAsync(Guid imageId, CancellationToken ct = default)
+        {
+            var image = await _imageRepo.GetByIdAsync(imageId, ct)
+                ?? throw new NotFoundException(nameof(TaskStepExecutionImage), imageId);
+
+            // lấy step để check status
+            var step = await _stepRepo.GetByIdAsync(image.TaskStepExecutionId, ct)
+                ?? throw new NotFoundException(nameof(TaskStepExecution), image.TaskStepExecutionId);
+
+            // chỉ cho xoá khi InProgress
+            EnsureStepIsInProgress(step);
+
+            image.IsDeleted = true;
+            image.LastModified = _dateTimeProvider.UtcNow;
+            image.LastModifiedBy = _userContext.UserId.ToString();
+
+            await _imageRepo.SaveChangesAsync(ct);
+
+            return true;
+        }
+
         // ---------- Helpers ----------
 
         private static void EnsureStepIsInProgress(TaskStepExecution step)
@@ -200,9 +237,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             return urls.Select(url => new TaskStepExecutionImage
             {
+                Id = _idGenerator.Generate(),
                 TaskStepExecutionId = taskStepExecutionId,
                 ImageUrl = url,
-                ImageType = imageType
+                ImageType = imageType,
+                Created = _dateTimeProvider.UtcNow,
+                CreatedBy = _userContext.UserId.ToString()
             }).ToList();
         }
 

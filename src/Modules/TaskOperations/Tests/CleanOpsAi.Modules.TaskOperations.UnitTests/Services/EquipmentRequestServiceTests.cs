@@ -24,6 +24,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
         private readonly EquipmentRequestService _service;
 		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
 
 		public EquipmentRequestServiceTests()
@@ -36,6 +37,7 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _equipmentService = Substitute.For<IEquipmentQueryService>();
             _taskAssignmentRepository = Substitute.For<ITaskAssignmentRepository>();
             _notificationPublisher = Substitute.For<INotificationPublisher>();
+            _idGenerator = Substitute.For<IIdGenerator>();
 
 			_service = new EquipmentRequestService(
                 _repo,
@@ -45,7 +47,8 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
                 _workerService,
                 _equipmentService,
                 _taskAssignmentRepository,
-				_notificationPublisher
+				_notificationPublisher,
+                _idGenerator
 			);
         }
 

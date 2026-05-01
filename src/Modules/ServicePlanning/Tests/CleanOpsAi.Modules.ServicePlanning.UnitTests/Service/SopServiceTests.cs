@@ -19,6 +19,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 		private readonly IStepRepository _stepRepository;
 		private readonly ISopRequiredSkillRepository _sopRequiredSkillRepository;
 		private readonly ISopRequiredCertificationRepository _sopRequiredCertificationRepository;
+		private readonly ISopStepRepository _sopStepRepository;
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
@@ -31,6 +32,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			_stepRepository = Substitute.For<IStepRepository>();
 			_sopRequiredSkillRepository = Substitute.For<ISopRequiredSkillRepository>();
 			_sopRequiredCertificationRepository = Substitute.For<ISopRequiredCertificationRepository>();
+			_sopStepRepository = Substitute.For<ISopStepRepository>();
 			_mapper = Substitute.For<IMapper>();
 			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
 			_idGenerator = Substitute.For<IIdGenerator>();
@@ -41,6 +43,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 				_stepRepository,
 				_sopRequiredSkillRepository,
 				_sopRequiredCertificationRepository,
+				_sopStepRepository,
 				_mapper,
 				_dateTimeProvider,
 				_idGenerator,

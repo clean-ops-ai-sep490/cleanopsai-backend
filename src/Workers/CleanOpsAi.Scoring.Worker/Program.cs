@@ -1,5 +1,4 @@
-using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
-using CleanOpsAi.Scoring.Worker.Consumers;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions; 
 using CleanOpsAi.Modules.Scoring.Infrastructure.Consumers;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -10,8 +9,8 @@ builder.InfrastructureTaskOperationsModule();
 
 builder.Services.AddMessageBroker(
 	builder.Configuration,
-	typeof(ScoringJobRequestedConsumer).Assembly,
-	typeof(PpeCheckRequestedConsumer).Assembly);
+	typeof(ScoringJobRequestedConsumer).Assembly
+);
 
 var host = builder.Build();
 await host.RunAsync();

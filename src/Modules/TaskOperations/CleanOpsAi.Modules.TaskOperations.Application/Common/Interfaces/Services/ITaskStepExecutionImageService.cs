@@ -27,5 +27,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
         Guid taskAssignmentId, CancellationToken ct = default);
 
         Task<bool> DeleteImagesByStepExecutionIdAsync(Guid taskStepExecutionId, CancellationToken ct = default);
+
+        Task<bool> DeleteImageByIdAsync(Guid imageId, CancellationToken ct = default);
     }
 }

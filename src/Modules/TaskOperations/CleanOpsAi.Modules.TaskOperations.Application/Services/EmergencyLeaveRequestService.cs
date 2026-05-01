@@ -12,6 +12,7 @@ using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -25,9 +26,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IWorkerQueryService _workerQueryService;
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
 		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
 
-		private const string ContainerName = "contracts";
+        private const string ContainerName = "contracts";
         private const string AudioFolder = "audios";
 
         public EmergencyLeaveRequestService(
@@ -38,7 +40,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
             ITaskAssignmentRepository taskAssignmentRepository,
-            INotificationPublisher notificationPublisher)
+            INotificationPublisher notificationPublisher,
+            IIdGenerator idGenerator)
         {
             _emergencyLeaveRequestRepository = emergencyLeaveRequestRepository;
             _fileStorageService = fileStorageService;
@@ -48,7 +51,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _workerQueryService = workerQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
             _notificationPublisher = notificationPublisher;
-		}
+            _idGenerator = idGenerator;
+        }
 
         public async Task<EmergencyLeaveRequestDto?> GetById(Guid id, CancellationToken ct = default)
         {
@@ -57,7 +61,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var dto = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dto.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
-
+            if (entity.TaskAssignmentId.HasValue)
+            {
+                var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
+                dto.TaskName = task?.TaskName;
+            }
             return dto;
         }
 
@@ -68,6 +76,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var dtos = _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content);
 
             await EnrichWorkerNamesAsync(dtos);
+            await EnrichTaskNamesAsync(dtos, ct);
 
             return new PaginatedResult<EmergencyLeaveRequestDto>(
                 result.PageNumber,
@@ -83,6 +92,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var dtos = _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content);
 
             await EnrichWorkerNamesAsync(dtos);
+            await EnrichTaskNamesAsync(dtos, ct);
 
             return new PaginatedResult<EmergencyLeaveRequestDto>(
                 result.PageNumber,
@@ -98,6 +108,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var dtos = _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content);
 
             await EnrichWorkerNamesAsync(dtos);
+            await EnrichTaskNamesAsync(dtos, ct);
 
             return new PaginatedResult<EmergencyLeaveRequestDto>(
                 result.PageNumber,
@@ -113,6 +124,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var dtos = _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content);
 
             await EnrichWorkerNamesAsync(dtos);
+            await EnrichTaskNamesAsync(dtos, ct);
 
             return new PaginatedResult<EmergencyLeaveRequestDto>(
                 result.PageNumber,
@@ -129,6 +141,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var dtos = _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content);
 
             await EnrichWorkerNamesAsync(dtos);
+            await EnrichTaskNamesAsync(dtos, ct);
 
             return new PaginatedResult<EmergencyLeaveRequestDto>(
                 result.PageNumber,
@@ -141,6 +154,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         public async Task<EmergencyLeaveRequestDto?> Create(CreateEmergencyLeaveRequestDto dto, CancellationToken ct = default)
         {
             var entity = _mapper.Map<EmergencyLeaveRequest>(dto);
+            entity.Id = _idGenerator.Generate();
 
             DateTime leaveDateFrom;
             DateTime leaveDateTo;
@@ -225,7 +239,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
 
-			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+            if (entity.TaskAssignmentId.HasValue)
+            {
+                var t = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
+                dtoResult.TaskName = t?.TaskName;
+            }
+
+            await _notificationPublisher.PublishAsync(new SendNotificationEvent
 			{
 				Title = "Yêu cầu nghỉ khẩn cấp mới",
 				Body = $"{dtoResult.WorkerName ?? "Một nhân viên"} đã gửi yêu cầu nghỉ khẩn cấp.",
@@ -298,6 +318,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
+            if (entity.TaskAssignmentId.HasValue)
+            {
+                var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
+                dtoResult.TaskName = task?.TaskName;
+            }
 
             return dtoResult;
         }
@@ -392,6 +417,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
             dtoResult.ReviewedByUserName = reviewByUserName;
+            if (entity.TaskAssignmentId.HasValue)
+            {
+                var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
+                dtoResult.TaskName = task?.TaskName;
+            }
 
             return dtoResult;
         }
@@ -421,6 +451,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             foreach (var dto in dtos)
             {
                 dto.WorkerName = dict.GetValueOrDefault(dto.WorkerId);
+            }
+        }
+        private async Task EnrichTaskNamesAsync(List<EmergencyLeaveRequestDto> dtos, CancellationToken ct)
+        {
+            var taskIds = dtos
+                .Where(x => x.TaskAssignmentId.HasValue)
+                .Select(x => x.TaskAssignmentId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (!taskIds.Any()) return;
+
+            var tasks = await _taskAssignmentRepository.GetByIdsAsync(taskIds, ct);
+
+            var dict = tasks.ToDictionary(x => x.Id, x => x.TaskName);
+
+            foreach (var dto in dtos)
+            {
+                if (dto.TaskAssignmentId.HasValue)
+                {
+                    dto.TaskName = dict.GetValueOrDefault(dto.TaskAssignmentId.Value);
+                }
             }
         }
     }

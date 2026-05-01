@@ -1,16 +1,7 @@
 namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services
-{
-    /// <summary>
-    /// Abstraction over the real-time notification channel (SignalR).
-    /// Defined in the Application layer so services can depend on it
-    /// without referencing ASP.NET SignalR directly.
-    /// </summary>
+{ 
     public interface IComplianceNotifier
-    {
-        /// <summary>
-        /// Pushes a compliance-check-updated message to the SignalR group
-        /// identified by <paramref name="taskStepExecutionId"/>.
-        /// </summary>
+    { 
         Task NotifyAsync(ComplianceCheckNotification notification, CancellationToken ct = default);
     }
 
@@ -30,11 +21,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 
         public double MinScore { get; init; }
         public int FailedImageCount { get; init; }
-
-        /// <summary>
-        /// Client-facing action hint: None | RetakePhotos | WaitForSupervisor.
-        /// Derived from Status so the client never needs to interpret Status itself.
-        /// </summary>
+         
         public string Action { get; init; } = null!;
 
         /// <summary>UTC timestamp when the scoring result was applied.</summary>

@@ -47,7 +47,8 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         {
             var query = _dbContext.Set<WorkAreaDetail>()
                 .Include(x => x.WorkArea)
-                .Where(x => x.WorkAreaId == workAreaId && !x.IsDeleted);
+                .Where(x => x.WorkAreaId == workAreaId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created);
 
             var total = await query.CountAsync();
 

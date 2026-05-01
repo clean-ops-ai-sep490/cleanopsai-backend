@@ -24,27 +24,26 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
     {
         private readonly ITaskStepExecutionRepository _repository;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IMapper _mapper;
-
-        private readonly TaskStepExecutionService _service;
-
-		private readonly IScoringInferenceClient _inferenceClient;
+        private readonly IMapper _mapper; 
+        private readonly TaskStepExecutionService _service;  
 		private readonly IEventBus _eventBus;
+		private readonly IPpeCheckNotifier _notifier;
+
 
 		public TaskStepExecutionServiceTests()
 		{
 			_repository = Substitute.For<ITaskStepExecutionRepository>();
 			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
-			_mapper = Substitute.For<IMapper>();
-			_inferenceClient = Substitute.For<IScoringInferenceClient>();
+			_mapper = Substitute.For<IMapper>(); 
 			_eventBus = Substitute.For<IEventBus>();
+            _notifier = Substitute.For<IPpeCheckNotifier>();
 
 			_service = new TaskStepExecutionService(
 				_repository,
 				_dateTimeProvider,
-				_mapper,
-				_inferenceClient,
-				_eventBus
+				_mapper, 
+				_eventBus,
+				_notifier
 			);
 		}
 

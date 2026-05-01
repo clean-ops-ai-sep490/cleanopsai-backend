@@ -45,7 +45,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .Include(x => x.WorkerSkills)
                 .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             return workers;
@@ -65,7 +65,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .Include(x => x.WorkerSkills)
                 .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
