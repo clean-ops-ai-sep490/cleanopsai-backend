@@ -200,6 +200,11 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 if (leaveDateFrom > leaveDateTo)
                     throw new ArgumentException("LeaveDateFrom phải <= LeaveDateTo.");
 
+                var totalDays = (leaveDateTo - leaveDateFrom).TotalDays + 1;
+
+                if (totalDays > 7)
+                    throw new BadRequestException("Thời gian nghỉ tối đa là 7 ngày.");
+
                 // BLOCK ALL TASK TRONG RANGE
                 var tasks = await _taskAssignmentRepository
                     .GetTasksByWorkerAndDateRange(dto.WorkerId, leaveDateFrom, leaveDateTo, ct);
@@ -279,12 +284,63 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var entity = await _emergencyLeaveRequestRepository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
 
-            var newFrom = dto.LeaveDateFrom ?? entity.LeaveDateFrom;
-            var newTo = dto.LeaveDateTo ?? entity.LeaveDateTo;
+            if (entity.Status == RequestStatus.Approved)
+                throw new BadRequestException("Không thể update request đã được duyệt.");
 
+            // ===== OLD RANGE =====
+            var oldFrom = entity.LeaveDateFrom;
+            var oldTo = entity.LeaveDateTo;
+
+            // ===== NEW RANGE (partial update) =====
+            var newFrom = dto.LeaveDateFrom ?? oldFrom;
+            var newTo = dto.LeaveDateTo ?? oldTo;
+
+            // ===== VALIDATE =====
             if (newFrom > newTo)
-                throw new ArgumentException("LeaveDateFrom phai nho hon hoac bang LeaveDateTo.");
+                throw new ArgumentException("LeaveDateFrom phải <= LeaveDateTo.");
 
+            var totalDays = (newTo - newFrom).TotalDays + 1;
+            if (totalDays > 7)
+                throw new BadRequestException("Thời gian nghỉ tối đa là 7 ngày.");
+
+            // ===== SYNC TASK =====
+            var oldTasks = await _taskAssignmentRepository
+                .GetTasksByWorkerAndDateRange(entity.WorkerId, oldFrom, oldTo, ct);
+
+            var newTasks = await _taskAssignmentRepository
+                .GetTasksByWorkerAndDateRange(entity.WorkerId, newFrom, newTo, ct);
+
+            var oldTaskIds = oldTasks.Select(x => x.Id).ToHashSet();
+            var newTaskIds = newTasks.Select(x => x.Id).ToHashSet();
+
+            // UNBLOCK task không còn trong range mới
+            foreach (var task in oldTasks.Where(x => !newTaskIds.Contains(x.Id)))
+            {
+                if (task.Status == TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.InProgress;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                }
+            }
+
+            // BLOCK task mới thêm vào range
+            foreach (var task in newTasks.Where(x => !oldTaskIds.Contains(x.Id)))
+            {
+                if (task.Status != TaskAssignmentStatus.Completed &&
+                    task.Status != TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.Block;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                }
+            }
+
+            // UPDATE ENTITY
             entity.LeaveDateFrom = newFrom;
             entity.LeaveDateTo = newTo;
 
@@ -302,6 +358,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
 
+            // ===== PUBLISH EVENT (đặt tại đây) =====
             // publish event sau khi tich hop RabbitMQ
             // 
             // await _publishEndpoint.Publish(new EmergencyLeaveRequestUpdatedEvent
@@ -316,8 +373,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             //     UpdatedAt     = entity.LastModified!.Value
             // }, ct);
 
+            // MAP DTO 
             var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
+
             if (entity.TaskAssignmentId.HasValue)
             {
                 var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
@@ -433,6 +492,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await _emergencyLeaveRequestRepository.DeleteAsync(entity, ct);
             return true;
+        }
+
+        public async Task<PaginatedResult<EmergencyLeaveRequestDto>> GetsByWorkerCurrentMonth(
+            Guid workerId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var now = _dateTimeProvider.UtcNow;
+
+            var result = await _emergencyLeaveRequestRepository
+                .GetsByWorkerCurrentMonthPagingAsync(workerId, now, request, ct);
+
+            var dtos = _mapper.Map<List<EmergencyLeaveRequestDto>>(result.Content);
+
+            await EnrichWorkerNamesAsync(dtos);
+            await EnrichTaskNamesAsync(dtos, ct);
+
+            return new PaginatedResult<EmergencyLeaveRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
         }
 
         private async Task<string?> GetWorkerNameAsync(Guid workerId)

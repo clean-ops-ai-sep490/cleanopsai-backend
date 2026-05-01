@@ -21,5 +21,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
         Task<EmergencyLeaveRequestDto?> Update(Guid id, UpdateEmergencyLeaveRequestDto dto, CancellationToken ct = default);
         Task<EmergencyLeaveRequestDto?> Review(Guid id, ReviewEmergencyLeaveRequestDto dto, CancellationToken ct = default);
         Task<bool> Delete(Guid id, CancellationToken ct = default);
+        Task<PaginatedResult<EmergencyLeaveRequestDto>> GetsByWorkerCurrentMonth(Guid workerId, PaginationRequest request, CancellationToken ct = default);
     }
 }
