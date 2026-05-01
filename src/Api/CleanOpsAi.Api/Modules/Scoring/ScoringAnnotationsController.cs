@@ -9,7 +9,6 @@ namespace CleanOpsAi.Api.Modules.Scoring
 {
 	[Route("api/scoring/annotations/candidates")]
 	[ApiController]
-	[Authorize(Roles = "Manager,Admin")]
 	public class ScoringAnnotationsController : ControllerBase
 	{
 		private readonly IScoringJobService _scoringJobService;
@@ -20,6 +19,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpGet]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
 			Summary = "List scoring annotation candidates",
 			Description = "Returns manager/admin annotation queue items created from reviewed FAIL decisions.",
@@ -53,6 +53,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpGet("{candidateId:guid}")]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
 			Summary = "Get scoring annotation candidate detail",
 			Description = "Returns reviewed image metadata, raw payload, and current annotation draft for a candidate.",
@@ -72,6 +73,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost("{candidateId:guid}/claim")]
+		[Authorize(Roles = "Supervisor,Admin,4,2")]
 		[SwaggerOperation(
 			Summary = "Claim scoring annotation candidate",
 			Description = "Assigns an annotation candidate to the current manager/admin and moves it into progress.",
@@ -99,6 +101,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPut("{candidateId:guid}/annotation")]
+		[Authorize(Roles = "Supervisor,Admin,4,2")]
 		[SwaggerOperation(
 			Summary = "Save or submit scoring annotation",
 			Description = "Stores annotation labels for a candidate as a draft or submitted package.",
@@ -139,6 +142,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost("{candidateId:guid}/approve")]
+		[Authorize(Roles = "Supervisor,Admin,4,2")]
 		[SwaggerOperation(
 			Summary = "Approve scoring annotation candidate",
 			Description = "Finalizes an annotation candidate and publishes approved annotation artifacts for retraining.",
@@ -169,6 +173,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost("{candidateId:guid}/reject")]
+		[Authorize(Roles = "Supervisor,Admin,4,2")]
 		[SwaggerOperation(
 			Summary = "Reject scoring annotation candidate",
 			Description = "Marks an annotation candidate as rejected while preserving its audit trail.",

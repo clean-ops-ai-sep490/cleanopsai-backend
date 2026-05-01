@@ -79,12 +79,15 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 			Guid? assignedToUserId,
 			DateTime? createdFromUtc,
 			int take,
+			IReadOnlyCollection<Guid>? submittedByUserIds = null,
 			CancellationToken ct = default)
 		{
 			var safeTake = Math.Clamp(take, 1, 500);
 
 			var query = _dbContext.ScoringAnnotationCandidates
 				.Include(x => x.Annotation)
+				.Include(x => x.Result)
+					.ThenInclude(x => x.ScoringJob)
 				.AsQueryable();
 
 			if (status.HasValue)
@@ -106,6 +109,13 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 			if (createdFromUtc.HasValue)
 			{
 				query = query.Where(x => x.CreatedAtUtc >= createdFromUtc.Value);
+			}
+
+			if (submittedByUserIds is not null)
+			{
+				query = query.Where(x =>
+					x.Result.ScoringJob.SubmittedByUserId.HasValue &&
+					submittedByUserIds.Contains(x.Result.ScoringJob.SubmittedByUserId.Value));
 			}
 
 			return await query
