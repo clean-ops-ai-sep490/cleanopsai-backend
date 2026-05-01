@@ -206,5 +206,23 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             if (!result) return NotFound();
             return Ok();
         }
+
+        [HttpGet("worker/{workerId:guid}/current-month")]
+        [SwaggerOperation(
+            Summary = "Get emergency leave requests of a worker in current month",
+            Description = "Retrieves a paginated list of emergency leave requests of a specific worker within the current month.",
+            Tags = new[] { "EmergencyLeaveRequest" }
+        )]
+        [ProducesResponseType(typeof(PaginatedResult<EmergencyLeaveRequestDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetsByWorkerCurrentMonth(
+            Guid workerId,
+            [FromQuery] PaginationRequest request,
+            CancellationToken ct)
+        {
+            var result = await _emergencyLeaveRequestService
+                .GetsByWorkerCurrentMonth(workerId, request, ct);
+
+            return Ok(result);
+        }
     }
 }
