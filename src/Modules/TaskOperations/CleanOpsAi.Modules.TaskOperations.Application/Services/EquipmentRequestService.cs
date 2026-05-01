@@ -321,6 +321,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? await _workerQueryService.GetUserNames(workerIds)
                 : new Dictionary<Guid, string>();
 
+            // TASK 
+            var taskIds = dtos
+                .Select(x => x.TaskAssignmentId)
+                .Distinct()
+                .ToList();
+
+            var taskDict = taskIds.Any()
+                ? (await _taskAssignmentRepository.GetByIdsAsync(taskIds, ct))
+                    .ToDictionary(x => x.Id, x => x.TaskName)
+                : new Dictionary<Guid, string>();
+
             // EQUIPMENT
             var equipmentIds = dtos
                 .SelectMany(x => x.Items)
@@ -336,6 +347,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             foreach (var dto in dtos)
             {
                 dto.WorkerName = workerDict.GetValueOrDefault(dto.WorkerId);
+                dto.TaskName = taskDict.GetValueOrDefault(dto.TaskAssignmentId);
 
                 foreach (var item in dto.Items)
                 {

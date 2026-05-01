@@ -13,6 +13,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
         public Guid WorkerId { get; set; }
         public string? WorkerName { get; set; }
         public Guid? TaskAssignmentId { get; set; }
+        public string? TaskName { get; set; }
         public DateTime LeaveDateFrom { get; set; }
         public DateTime LeaveDateTo { get; set; }
         public string? AudioUrl { get; set; }
