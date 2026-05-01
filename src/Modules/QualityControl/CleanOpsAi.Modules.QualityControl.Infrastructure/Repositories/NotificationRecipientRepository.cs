@@ -18,7 +18,7 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 
 		public async Task<NotificationRecipient?> GetDetailAsync(
 			Guid notificationId,
-			Guid recipientId,
+			Guid? recipientId,
 			RecipientTypeEnum recipientType,
 			CancellationToken ct = default)
 		{
@@ -27,19 +27,27 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 				.AsNoTracking()
 				.Where(r => r.NotificationId == notificationId);
 
-			query = RecipientTypeMapper.IsRoleBased(recipientType)
-				? query.Where(r => r.RecipientType == recipientType)
-				: query.Where(r => r.RecipientId == recipientId);
+			if (recipientId != null)
+			{
+				query = query.Where(r => r.RecipientId == recipientId);
+			}
+			else
+			{
+				query = query.Where(r =>
+					r.RecipientType == recipientType &&
+					r.RecipientId == null
+				);
+			} 
 
 			return await query.FirstOrDefaultAsync(ct);
 		}
 
 		public async Task<(PaginatedResult<NotificationRecipient> Page, int UnreadCount)> GetPagedByRecipientAsync(
-	Guid recipientId,
-	RecipientTypeEnum recipientType,
-	PaginationRequest paginationRequest,
-	bool? isRead,
-	CancellationToken ct = default)
+		Guid recipientId,
+		RecipientTypeEnum recipientType,
+		PaginationRequest paginationRequest,
+		bool? isRead,
+		CancellationToken ct = default)
 		{
 			IQueryable<NotificationRecipient> query;
 			 
@@ -75,27 +83,61 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Repositories
 			return (page, unreadCount);
 		}
 
-		public async Task<int> MarkAllAsReadAsync(Guid recipientId, CancellationToken ct = default)
-		=> await _context.NotificationRecipients
-			.Where(r => r.RecipientId == recipientId && !r.IsRead)
-			.ExecuteUpdateAsync(s => s
+		public async Task<int> MarkAllAsReadAsync(
+		Guid? recipientId,
+		RecipientTypeEnum recipientType,
+		CancellationToken ct = default)
+		{
+			var query = _context.NotificationRecipients
+				.Where(r => !r.IsRead);
+
+			if (recipientId != null)
+			{
+				query = query.Where(r => r.RecipientId == recipientId);
+			}
+			else
+			{
+				query = query.Where(r =>
+					r.RecipientType == recipientType &&
+					r.RecipientId == null);
+			}
+
+			return await query.ExecuteUpdateAsync(s => s
 				.SetProperty(r => r.IsRead, true)
 				.SetProperty(r => r.IsReadAt, DateTime.UtcNow), ct);
+		}
 
 
-		public async Task<bool> MarkAsReadAsync(Guid notificationId, Guid recipientId, CancellationToken ct = default)
+		public async Task<bool> MarkAsReadAsync(
+		Guid notificationId,
+		Guid? recipientId,
+		RecipientTypeEnum recipientType,
+		CancellationToken ct = default)
 		{
-			var recipient = await _context.NotificationRecipients
-			.FirstOrDefaultAsync(
-				r => r.NotificationId == notificationId
-				  && r.RecipientId == recipientId, ct);
+			var query = _context.NotificationRecipients
+				.Where(r => r.NotificationId == notificationId);
+
+			if (recipientId != null)
+			{
+				query = query.Where(r => r.RecipientId == recipientId);
+			}
+			else
+			{
+				query = query.Where(r =>
+					r.RecipientType == recipientType &&
+					r.RecipientId == null);
+			}
+
+			var recipient = await query.FirstOrDefaultAsync(ct);
 
 			if (recipient is null || recipient.IsRead) return false;
 
 			recipient.IsRead = true;
 			recipient.IsReadAt = DateTime.UtcNow;
+
 			await _context.SaveChangesAsync(ct);
 			return true;
 		}
+		 
 	}
 }

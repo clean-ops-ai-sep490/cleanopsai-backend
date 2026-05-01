@@ -28,7 +28,10 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Mappings
 				.ForMember(d => d.NotificationId, o => o.MapFrom(s => s.AppNotification.Id))
 				.ForMember(d => d.Title, o => o.MapFrom(s => s.AppNotification.Title))
 				.ForMember(d => d.Body, o => o.MapFrom(s => s.AppNotification.Body))
-				.ForMember(d => d.Payload, o => o.MapFrom(s => s.AppNotification.Payload))
+				.ForMember(
+					dest => dest.Payload,
+					opt => opt.MapFrom(s =>
+					JsonSerializer.Deserialize<JsonElement>(s.AppNotification.Payload, (JsonSerializerOptions?)null)))
 				.ForMember(d => d.Priority, o => o.MapFrom(s => s.AppNotification.Priority.ToString()))
 				.ForMember(d => d.SenderType, o => o.MapFrom(s => s.AppNotification.SenderType.ToString()))
 				.ForMember(d => d.SenderId, o => o.MapFrom(s => s.AppNotification.SenderId))

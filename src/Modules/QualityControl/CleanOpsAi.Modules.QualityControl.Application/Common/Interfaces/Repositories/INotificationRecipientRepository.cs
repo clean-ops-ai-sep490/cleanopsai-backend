@@ -15,12 +15,12 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Reposi
 
 		Task<NotificationRecipient?> GetDetailAsync(
 			Guid notificationId, 
-			Guid recipientId,
+			Guid? recipientId,
 			RecipientTypeEnum recipientType,
 			CancellationToken ct = default);
 
-		Task<bool> MarkAsReadAsync(Guid notificationId, Guid recipientId, CancellationToken ct = default);
+		Task<bool> MarkAsReadAsync(Guid notificationId, Guid? recipientId, RecipientTypeEnum recipientType, CancellationToken ct = default);
 
-		Task<int> MarkAllAsReadAsync(Guid recipientId, CancellationToken ct = default);
+		Task<int> MarkAllAsReadAsync(Guid? recipientId, RecipientTypeEnum recipientType, CancellationToken ct = default);
 	}
 }

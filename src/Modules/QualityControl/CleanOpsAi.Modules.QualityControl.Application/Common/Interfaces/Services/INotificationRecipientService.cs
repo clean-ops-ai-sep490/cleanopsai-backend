@@ -11,7 +11,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Servic
 				Guid? workerId,
 				CancellationToken ct = default);
 
-		Task<NotificationDetailDto> GetDetailAsync(Guid notificationId, CancellationToken ct = default);
+		Task<NotificationDetailDto> GetDetailAsync(Guid notificationId, Guid? workerId, CancellationToken ct = default);
 
 		Task<bool> MarkAsReadAsync(Guid notificationId, Guid? workerId, CancellationToken ct = default);
 

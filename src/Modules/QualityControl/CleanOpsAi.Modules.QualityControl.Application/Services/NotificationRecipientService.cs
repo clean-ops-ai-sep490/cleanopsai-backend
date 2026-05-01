@@ -49,13 +49,20 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 			return _mapper.Map<NotificationRecipientDto>(entity);
 		}
 
-		public async Task<NotificationDetailDto> GetDetailAsync(Guid notificationId, CancellationToken ct = default)
+		public async Task<NotificationDetailDto> GetDetailAsync(Guid notificationId, Guid? workerId, CancellationToken ct = default)
 		{
 			if (notificationId == Guid.Empty)
 				throw new BadRequestException("NotificationId cannot be empty.");
 
 			var recipientType = RecipientTypeMapper.FromRole(_userContext.Role);
-			var recipient = await _repo.GetDetailAsync(notificationId, _userContext.UserId, recipientType, ct);
+			Guid? recipientId =
+				recipientType == RecipientTypeEnum.Worker
+					? workerId ?? throw new BadRequestException("WorkerId is required")
+				: recipientType == RecipientTypeEnum.Supervisor
+					? _userContext.UserId
+				: null;
+
+			var recipient = await _repo.GetDetailAsync(notificationId, recipientId, recipientType, ct);
 
 			if (recipient is null)
 				throw new NotFoundException($"Notification with id {notificationId} not found.");
@@ -94,21 +101,27 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Services
 		public Task<int> MarkAllAsReadAsync(Guid? workerId, CancellationToken ct = default)
 		{
 			var recipientType = RecipientTypeMapper.FromRole(_userContext.Role);
-			var recipientId = recipientType == RecipientTypeEnum.Worker
-				? workerId ?? throw new BadRequestException("WorkerId is required for worker role")
-				: _userContext.UserId;
+			Guid? recipientId =
+				recipientType == RecipientTypeEnum.Worker
+					? workerId ?? throw new BadRequestException("WorkerId is required")
+				: recipientType == RecipientTypeEnum.Supervisor
+					? _userContext.UserId
+				: null;
 
-			return _repo.MarkAllAsReadAsync(recipientId, ct);
+			return _repo.MarkAllAsReadAsync(recipientId, recipientType, ct);
 		}
 
 		public Task<bool> MarkAsReadAsync(Guid notificationId, Guid? workerId, CancellationToken ct = default)
 		{
 			var recipientType = RecipientTypeMapper.FromRole(_userContext.Role);
-			var recipientId = recipientType == RecipientTypeEnum.Worker
-				? workerId ?? throw new BadRequestException("WorkerId is required for worker role")
-				: _userContext.UserId;
+			Guid? recipientId =
+			recipientType == RecipientTypeEnum.Worker
+				? workerId ?? throw new BadRequestException("WorkerId is required")
+			: recipientType == RecipientTypeEnum.Supervisor
+				? _userContext.UserId
+			: null;
 
-			return _repo.MarkAsReadAsync(notificationId, recipientId, ct);
+			return _repo.MarkAsReadAsync(notificationId, recipientId, recipientType, ct);
 		}
 	}
 }
