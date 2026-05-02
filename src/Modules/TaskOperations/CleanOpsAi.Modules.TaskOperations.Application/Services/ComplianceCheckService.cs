@@ -112,7 +112,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				ComplianceCheckId = check.Id,
 				Type = check.Type,
 				Status = check.Status,
-				Created = _dateTimeProvider.UtcNow.AddHours(7)
+				Created = _dateTimeProvider.UtcNow 
 			};
 		}
 
