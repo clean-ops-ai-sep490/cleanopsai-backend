@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(ClientManagementDbContext))]
-    [Migration("20260331160949_AddDateToContract")]
-    partial class AddDateToContract
+    [Migration("20260502032733_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

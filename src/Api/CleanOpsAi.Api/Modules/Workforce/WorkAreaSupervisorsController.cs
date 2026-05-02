@@ -17,21 +17,21 @@ namespace CleanOpsAi.Api.Modules.Workforce
             _service = service;
         }
 
-        [HttpGet("{id:guid}")]
-        [Consumes("application/json")]
-        [SwaggerOperation(
-            Summary = "Get WorkAreaSupervisor by id",
-            Description = "Get supervisor information using id.",
-            Tags = new[] { "WorkAreaSupervisors" })]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            var result = await _service.GetByIdAsync(id);
+        //[HttpGet("{id:guid}")]
+        //[Consumes("application/json")]
+        //[SwaggerOperation(
+        //    Summary = "Get WorkAreaSupervisor by id",
+        //    Description = "Get supervisor information using id.",
+        //    Tags = new[] { "WorkAreaSupervisors" })]
+        //public async Task<IActionResult> GetById(Guid id)
+        //{
+        //    var result = await _service.GetByIdAsync(id);
 
-            if (result == null)
-                return NotFound();
+        //    if (result == null)
+        //        return NotFound();
 
-            return Ok(result);
-        }
+        //    return Ok(result);
+        //}
 
         //[HttpGet("user/{userId}")]
         //[Consumes("application/json")]

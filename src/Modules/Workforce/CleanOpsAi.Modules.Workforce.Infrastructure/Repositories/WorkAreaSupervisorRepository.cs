@@ -221,5 +221,20 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return (items, totalCount);
         }
 
+        public async Task<int> UpdateSupervisorAsync(Guid workAreaId, Guid newSupervisorId)
+        {
+            var entities = await _dbContext.Set<WorkAreaSupervisor>()
+                .Where(x => x.WorkAreaId == workAreaId && x.IsDeleted == false)
+                .ToListAsync();
+
+            foreach (var entity in entities)
+            {
+                entity.UserId = newSupervisorId;
+                entity.LastModified = DateTime.UtcNow;
+            }
+
+            return await _dbContext.SaveChangesAsync();
+        }
+
     } 
 }

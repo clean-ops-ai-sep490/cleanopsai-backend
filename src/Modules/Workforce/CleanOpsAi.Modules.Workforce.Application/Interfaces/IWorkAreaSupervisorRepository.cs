@@ -20,6 +20,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
         Task<List<Guid>> GetSupervisorIdsAsync(Guid workAreaId, Guid workerId, CancellationToken ct = default);
         Task<List<WorkAreaSupervisor>> GetWorkersBySupervisorIdAsync(Guid supervisorId);
         Task<(List<WorkAreaSupervisor> Items, int TotalCount)> GetWorkersByWorkAreaPagingAsync(Guid workAreaId, int pageNumber, int pageSize);
+        Task<int> UpdateSupervisorAsync(Guid workAreaId, Guid newSupervisorId);
 
     } 
 }
