@@ -168,16 +168,21 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     sop_id = table.Column<Guid>(type: "uuid", nullable: false),
                     sla_task_id = table.Column<Guid>(type: "uuid", nullable: false),
                     sla_shift_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    work_area_id = table.Column<Guid>(type: "uuid", nullable: false),
                     work_area_detail_id = table.Column<Guid>(type: "uuid", nullable: true),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     assignee_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    assignee_name = table.Column<string>(type: "text", nullable: true),
+                    display_location = table.Column<string>(type: "text", nullable: true),
                     version = table.Column<int>(type: "integer", nullable: false),
                     metadata = table.Column<string>(type: "jsonb", nullable: false),
+                    duration_minutes = table.Column<int>(type: "integer", nullable: false),
                     recurrence_type = table.Column<int>(type: "integer", nullable: false),
                     recurrence_config = table.Column<string>(type: "jsonb", nullable: false),
                     contract_start_date = table.Column<DateOnly>(type: "date", nullable: false),
                     contract_end_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    last_generated_to_date = table.Column<DateOnly>(type: "date", nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -198,12 +203,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "ix_sop_steps_sop_id_step_order",
+                name: "ix_sop_steps_sop_id",
                 schema: "service_planning",
                 table: "sop_steps",
-                columns: new[] { "sop_id", "step_order" },
-                unique: true,
-                filter: "is_deleted = false");
+                column: "sop_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sop_steps_step_id",
