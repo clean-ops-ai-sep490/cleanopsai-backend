@@ -24,5 +24,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 		Task<PaginatedResult<TaskSchedule>> GetsPaging(GetsTaskScheduleQuery query, PaginationRequest request, CancellationToken ct = default);
 
 		Task<List<TaskSchedule>> GetListAsync(Expression<Func<TaskSchedule, bool>> predicate);
+
+		Task<PaginatedResult<TaskSchedule>> GetByWorkAreaWithAssigneeAsync(Guid workAreaId, PaginationRequest request, CancellationToken ct = default);
 	}
 }

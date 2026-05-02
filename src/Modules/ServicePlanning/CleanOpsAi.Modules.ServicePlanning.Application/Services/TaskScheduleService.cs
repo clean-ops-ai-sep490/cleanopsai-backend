@@ -498,6 +498,17 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Services
 
 			await _taskScheduleRepository.SaveChangesAsync();
 		}
+
+		public async Task<PaginatedResult<ScheduleByWorkAreaDto>> GetByWorkAreaPaged(Guid workAreaId, PaginationRequest request, CancellationToken ct = default)
+		{
+			var result = await _taskScheduleRepository.GetByWorkAreaWithAssigneeAsync(workAreaId, request, ct);
+
+			return new PaginatedResult<ScheduleByWorkAreaDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<ScheduleByWorkAreaDto>>(result.Content));
+		}
 	}
 }
 

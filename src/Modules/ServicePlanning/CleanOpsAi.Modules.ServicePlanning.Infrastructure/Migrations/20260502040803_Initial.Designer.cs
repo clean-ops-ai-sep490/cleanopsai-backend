@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
 {
     [DbContext(typeof(ServicePlanningDbContext))]
-    [Migration("20260321063104_Initial")]
+    [Migration("20260502040803_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -208,13 +208,11 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_sop_steps");
 
+                    b.HasIndex("SopId")
+                        .HasDatabaseName("ix_sop_steps_sop_id");
+
                     b.HasIndex("StepId")
                         .HasDatabaseName("ix_sop_steps_step_id");
-
-                    b.HasIndex("SopId", "StepOrder")
-                        .IsUnique()
-                        .HasDatabaseName("ix_sop_steps_sop_id_step_order")
-                        .HasFilter("is_deleted = false");
 
                     b.ToTable("sop_steps", "service_planning");
                 });
@@ -296,6 +294,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_id");
 
+                    b.Property<string>("AssigneeName")
+                        .HasColumnType("text")
+                        .HasColumnName("assignee_name");
+
                     b.Property<DateOnly?>("ContractEndDate")
                         .HasColumnType("date")
                         .HasColumnName("contract_end_date");
@@ -318,6 +320,14 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
+                    b.Property<string>("DisplayLocation")
+                        .HasColumnType("text")
+                        .HasColumnName("display_location");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_minutes");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
@@ -325,6 +335,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<DateOnly?>("LastGeneratedToDate")
+                        .HasColumnType("date")
+                        .HasColumnName("last_generated_to_date");
 
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("timestamp with time zone")
@@ -373,6 +387,10 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Migrations
                     b.Property<Guid?>("WorkAreaDetailId")
                         .HasColumnType("uuid")
                         .HasColumnName("work_area_detail_id");
+
+                    b.Property<Guid>("WorkAreaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("work_area_id");
 
                     b.HasKey("Id")
                         .HasName("pk_task_schedules");
