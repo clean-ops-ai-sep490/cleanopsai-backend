@@ -142,35 +142,28 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             }).ToList();
         }
 
-        
+
 
         public async Task<WorkAreaSupervisorAssignResponse> UpdateAsync(WorkAreaSupervisorUpdateRequest request)
         {
-            if (!request.WorkerIds.Any())
-                throw new ArgumentException("WorkerIds không được rỗng.");
+            var existing = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
 
-            // Xóa hết assignment cũ
-            await _repository.DeleteByWorkAreaAndSupervisorAsync(
-                request.WorkAreaId, request.SupervisorId);
+            if (!existing.Any())
+                throw new InvalidOperationException("WorkArea chưa có supervisor để update.");
 
-            // Tạo lại theo danh sách mới
-            var toCreate = request.WorkerIds.Select(workerId => new WorkAreaSupervisor
+            // update supervisor cho toàn bộ worker
+            await _repository.UpdateSupervisorAsync(
+                request.WorkAreaId,
+                request.SupervisorId);
+
+            var updated = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
+
+            return new WorkAreaSupervisorAssignResponse
             {
-                Id = Uuid7.NewGuid(),
                 WorkAreaId = request.WorkAreaId,
-                WorkerId = workerId,
-                UserId = request.SupervisorId,
-                Created = _dateTimeProvider.UtcNow,
-                CreatedBy = _userContext.UserId.ToString(),
-                IsDeleted = false
-            }).ToList();
-
-            await _repository.CreateRangeAsync(toCreate);
-
-            var all = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
-            var mine = all
-                .Where(x => x.UserId == request.SupervisorId)
-                .Select(x => new WorkAreaSupervisorResponse
+                SupervisorId = request.SupervisorId,
+                TotalAssigned = updated.Count,
+                Assignments = updated.Select(x => new WorkAreaSupervisorResponse
                 {
                     Id = x.Id,
                     WorkAreaId = x.WorkAreaId,
@@ -178,15 +171,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     WorkerName = x.Worker?.FullName,
                     SupervisorId = x.UserId,
                     Created = x.Created
-                })
-                .ToList();
-
-            return new WorkAreaSupervisorAssignResponse
-            {
-                WorkAreaId = request.WorkAreaId,
-                SupervisorId = request.SupervisorId,
-                TotalAssigned = mine.Count,
-                Assignments = mine
+                }).ToList()
             };
         }
 
@@ -245,30 +230,60 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             };
         }
 
-        public async Task<WorkAreaSupervisorAssignResponse> AssignWorkersAsync(WorkAreaSupervisorAssignRequest request)
+        public async Task<WorkAreaSupervisorAssignResponse> AssignWorkersAsync(
+    WorkAreaSupervisorAssignRequest request)
         {
-            if (!request.WorkerIds.Any())
-                throw new ArgumentException("WorkerIds không được rỗng.");
+            // 1. Validate supervisor unique
+            var existing = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
+
+            if (existing.Any() && existing.Any(x => x.UserId != request.SupervisorId))
+            {
+                throw new InvalidOperationException("WorkArea đã có supervisor khác.");
+            }
 
             var toCreate = new List<WorkAreaSupervisor>();
 
-            foreach (var workerId in request.WorkerIds)
+            // 2. workerIds RỖNG → vẫn phải lưu supervisor
+            if (request.WorkerIds == null || !request.WorkerIds.Any())
             {
-                var exists = await _repository.ExistsAsync(
-                    request.WorkAreaId, request.SupervisorId, workerId);
+                // check đã có record nào chưa
+                var hasAny = existing.Any();
 
-                if (!exists)
+                if (!hasAny)
                 {
                     toCreate.Add(new WorkAreaSupervisor
                     {
                         Id = Uuid7.NewGuid(),
                         WorkAreaId = request.WorkAreaId,
-                        WorkerId = workerId,
+                        WorkerId = null, // DB phải cho phép null
                         UserId = request.SupervisorId,
                         Created = _dateTimeProvider.UtcNow,
                         CreatedBy = _userContext.UserId.ToString(),
                         IsDeleted = false
                     });
+                }
+            }
+            else
+            {
+                // 3. CASE: có worker → add bình thường
+                foreach (var workerId in request.WorkerIds)
+                {
+                    var exists = await _repository.ExistsAsync(
+                        request.WorkAreaId, request.SupervisorId, workerId);
+
+                    if (!exists)
+                    {
+                        toCreate.Add(new WorkAreaSupervisor
+                        {
+                            Id = Uuid7.NewGuid(),
+                            WorkAreaId = request.WorkAreaId,
+                            WorkerId = workerId,
+                            UserId = request.SupervisorId,
+                            Created = _dateTimeProvider.UtcNow,
+                            CreatedBy = _userContext.UserId.ToString(),
+                            IsDeleted = false
+                        });
+                    }
                 }
             }
 
@@ -277,25 +292,22 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             var all = await _repository.GetByWorkAreaIdAsync(request.WorkAreaId);
 
-            var mine = all
-                .Where(x => x.UserId == request.SupervisorId)
-                .Select(x => new WorkAreaSupervisorResponse
-                {
-                    Id = x.Id,
-                    WorkAreaId = x.WorkAreaId,
-                    WorkerId = x.WorkerId,
-                    WorkerName = x.Worker?.FullName,
-                    SupervisorId = x.UserId,
-                    Created = x.Created
-                })
-                .ToList();
-
             return new WorkAreaSupervisorAssignResponse
             {
                 WorkAreaId = request.WorkAreaId,
                 SupervisorId = request.SupervisorId,
-                TotalAssigned = mine.Count,
-                Assignments = mine
+                TotalAssigned = all.Count(x => x.WorkerId != null), // chỉ đếm worker thật
+                Assignments = all
+                    .Where(x => x.WorkerId != null) // bỏ record null ra response
+                    .Select(x => new WorkAreaSupervisorResponse
+                    {
+                        Id = x.Id,
+                        WorkAreaId = x.WorkAreaId,
+                        WorkerId = x.WorkerId,
+                        WorkerName = x.Worker?.FullName,
+                        SupervisorId = x.UserId,
+                        Created = x.Created
+                    }).ToList()
             };
         }
 
