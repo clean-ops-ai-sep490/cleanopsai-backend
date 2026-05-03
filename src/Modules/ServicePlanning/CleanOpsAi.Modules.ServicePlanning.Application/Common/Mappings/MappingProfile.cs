@@ -109,7 +109,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Mappings
 
 			CreateMap<EnvironmentType, EnvironmentDto>();
 
-
+			CreateMap<TaskSchedule, ScheduleByWorkAreaDto>();
 		}
 
 		private static string SerializeRecurrenceConfig(RecurrenceConfig config)
