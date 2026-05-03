@@ -171,23 +171,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 // LẤY DATE TỪ TASK
                 leaveDateFrom = task.ScheduledStartAt;
                 leaveDateTo = task.ScheduledEndAt;
-
-                // BLOCK TASK
-                if (task.Status != TaskAssignmentStatus.Completed &&
-                    task.Status != TaskAssignmentStatus.Block)
-                {
-                    task.Status = TaskAssignmentStatus.Block;
-                    task.LastModified = _dateTimeProvider.UtcNow;
-                    task.LastModifiedBy = _userContext.UserId.ToString();
-
-                    var updated = await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
-                    if (!updated)
-                        throw new Exception("Failed to update TaskAssignment.");
-                }
-                else
-                {
-                    throw new BadRequestException("Task đã completed hoặc đã bị block.");
-                }
             }
             else
             {
@@ -205,22 +188,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 if (totalDays > 7)
                     throw new BadRequestException("Thời gian nghỉ tối đa là 7 ngày.");
 
-                // BLOCK ALL TASK TRONG RANGE
-                var tasks = await _taskAssignmentRepository
-                    .GetTasksByWorkerAndDateRange(dto.WorkerId, leaveDateFrom, leaveDateTo, ct);
-
-                foreach (var task in tasks)
-                {
-                    if (task.Status != TaskAssignmentStatus.Completed &&
-                        task.Status != TaskAssignmentStatus.Block)
-                    {
-                        task.Status = TaskAssignmentStatus.Block;
-                        task.LastModified = _dateTimeProvider.UtcNow;
-                        task.LastModifiedBy = _userContext.UserId.ToString();
-
-                        await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
-                    }
-                }
             }
 
             entity.LeaveDateFrom = leaveDateFrom;
@@ -303,42 +270,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             if (totalDays > 7)
                 throw new BadRequestException("Thời gian nghỉ tối đa là 7 ngày.");
 
-            // ===== SYNC TASK =====
-            var oldTasks = await _taskAssignmentRepository
-                .GetTasksByWorkerAndDateRange(entity.WorkerId, oldFrom, oldTo, ct);
-
-            var newTasks = await _taskAssignmentRepository
-                .GetTasksByWorkerAndDateRange(entity.WorkerId, newFrom, newTo, ct);
-
-            var oldTaskIds = oldTasks.Select(x => x.Id).ToHashSet();
-            var newTaskIds = newTasks.Select(x => x.Id).ToHashSet();
-
-            // UNBLOCK task không còn trong range mới
-            foreach (var task in oldTasks.Where(x => !newTaskIds.Contains(x.Id)))
-            {
-                if (task.Status == TaskAssignmentStatus.Block)
-                {
-                    task.Status = TaskAssignmentStatus.InProgress;
-                    task.LastModified = _dateTimeProvider.UtcNow;
-                    task.LastModifiedBy = _userContext.UserId.ToString();
-
-                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
-                }
-            }
-
-            // BLOCK task mới thêm vào range
-            foreach (var task in newTasks.Where(x => !oldTaskIds.Contains(x.Id)))
-            {
-                if (task.Status != TaskAssignmentStatus.Completed &&
-                    task.Status != TaskAssignmentStatus.Block)
-                {
-                    task.Status = TaskAssignmentStatus.Block;
-                    task.LastModified = _dateTimeProvider.UtcNow;
-                    task.LastModifiedBy = _userContext.UserId.ToString();
-
-                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
-                }
-            }
 
             // UPDATE ENTITY
             entity.LeaveDateFrom = newFrom;
@@ -398,55 +329,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 : null;
 
             var reviewByUserName = _userContext.FullName;
-
-            // Lấy đúng task
-            List<TaskAssignment> tasks;
-            if (entity.TaskAssignmentId.HasValue)
-            {
-                var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId.Value, ct);
-                tasks = task != null ? new List<TaskAssignment> { task } : new List<TaskAssignment>();
-            }
-            else
-            {
-                tasks = await _taskAssignmentRepository
-                    .GetTasksByWorkerAndDateRange(entity.WorkerId, entity.LeaveDateFrom, entity.LeaveDateTo, ct);
-            }
-
-            // APPROVED
-            if (dto.Status == RequestStatus.Approved)
-            {
-                foreach (var task in tasks)
-                {
-                    if (task.Status == TaskAssignmentStatus.NotStarted ||
-                        task.Status == TaskAssignmentStatus.InProgress)
-                    {
-                        task.Status = TaskAssignmentStatus.Block;
-                        task.LastModified = _dateTimeProvider.UtcNow;
-                        task.LastModifiedBy = _userContext.UserId.ToString();
-
-                        await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
-                    }
-                }
-            }
-
-            // REJECTED
-            if (dto.Status == RequestStatus.Rejected)
-            {
-                foreach (var task in tasks)
-                {
-                    if (task.Status == TaskAssignmentStatus.Block)
-                    {
-                        task.Status = TaskAssignmentStatus.InProgress;
-                        task.LastModified = _dateTimeProvider.UtcNow;
-                        task.LastModifiedBy = _userContext.UserId.ToString();
-
-                        await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
-                    }
-                }
-            }
-
-            // đảm bảo persist task changes
-            await _taskAssignmentRepository.SaveChangesAsync(ct);
 
             // persist request
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
