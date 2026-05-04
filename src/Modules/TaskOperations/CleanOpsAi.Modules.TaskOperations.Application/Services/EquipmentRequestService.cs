@@ -206,8 +206,40 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             }
 
             await _repo.UpdateAsync(entity, ct);
+			// ================= NOTIFICATION =================
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = dto.Status == EquipmentRequestStatus.Approved
+					? "Yêu cầu thiết bị đã được duyệt"
+					: "Yêu cầu thiết bị đã bị từ chối",
 
-            var result = await MapResult(entity);
+				Body = dto.Status == EquipmentRequestStatus.Approved
+					? "Yêu cầu thiết bị của bạn đã được chấp nhận."
+					: "Yêu cầu thiết bị của bạn đã bị từ chối.",
+
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "EQUIPMENT_REQUEST",
+					action = "REVIEWED",
+					status = dto.Status,
+					requestId = entity.Id,
+					taskAssignmentId = entity.TaskAssignmentId
+				}),
+
+				SenderType = SenderTypeEnum.Supporter,  
+				SenderId = _userContext.UserId,
+
+				Recipients = new List<NotificationRecipientEvent>
+	            {
+                    new()
+		            {
+			            RecipientType = RecipientTypeEnum.Worker,
+			            RecipientId = entity.WorkerId
+		            } 
+                }
+			}, ct);
+
+			var result = await MapResult(entity);
             result.ReviewedByUserName = _userContext.FullName;
 
             await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);

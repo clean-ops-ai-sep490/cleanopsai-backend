@@ -451,29 +451,40 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             // persist request
             await _emergencyLeaveRequestRepository.UpdateAsync(entity, ct);
 
-            // ================= PUBLISH EVENT =================
-            //var message = new EmergencyLeaveRequestReviewedEvent
-            //{
-            //    RequestId = entity.Id,
-            //    WorkerId = entity.WorkerId,
-            //    TaskAssignmentId = entity.TaskAssignmentId,
-            //    Status = entity.Status,
-            //    ReviewedByUserId = entity.ReviewedByUserId,
-            //    ApprovedAt = entity.ApprovedAt,
-            //    ReviewedAt = entity.LastModified
-            //};
+			// ================= PUBLISH EVENT =================
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			    {
+				    Title = dto.Status == RequestStatus.Approved
+		                ? "Yêu cầu nghỉ đã được duyệt"
+		                : "Yêu cầu nghỉ đã bị từ chối",
 
-            //var routingKey = entity.Status == RequestStatus.Approved
-            //    ? "emergency-leave-request.approved"
-            //    : "emergency-leave-request.rejected";
+				    Body = dto.Status == RequestStatus.Approved
+		                ? "Yêu cầu nghỉ của bạn đã được chấp nhận."
+		                : "Yêu cầu nghỉ của bạn đã bị từ chối.",
 
-            //await _publishEndpoint.Publish(message, context =>
-            //{
-            //    context.SetRoutingKey(routingKey);
-            //}, ct);
-            // =================================================
+				    Payload = JsonSerializer.Serialize(new
+				    {
+					    type = "EMERGENCY_LEAVE",
+					    action = "REVIEWED",
+					    status = dto.Status,
+					    requestId = entity.Id
+				    }),
 
-            var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
+				    SenderType = SenderTypeEnum.Manager, 
+				    SenderId = _userContext.UserId,
+
+				    Recipients = new List<NotificationRecipientEvent>
+	    {
+		    new()
+		    {
+			    RecipientType = RecipientTypeEnum.Worker,
+			    RecipientId = entity.WorkerId
+		    }
+	    }
+			    }, ct);
+
+
+			var dtoResult = _mapper.Map<EmergencyLeaveRequestDto>(entity);
             dtoResult.WorkerName = await GetWorkerNameAsync(entity.WorkerId);
             dtoResult.ReviewedByUserName = reviewByUserName;
             if (entity.TaskAssignmentId.HasValue)

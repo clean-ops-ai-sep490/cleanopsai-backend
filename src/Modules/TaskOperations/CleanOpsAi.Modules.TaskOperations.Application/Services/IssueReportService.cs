@@ -232,12 +232,42 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await _issueReportRepository.UpdateAsync(entity, ct);
 
-            var result = _mapper.Map<IssueReportDto>(entity);
+			// ================= NOTIFICATION =================
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = dto.Status == IssueStatus.Approved
+					? "Sự cố đã được xác nhận"
+					: "Sự cố đã bị từ chối",
 
-            result.ResolvedByUserName = resolverName;
+				Body = dto.Status == IssueStatus.Approved
+					? "Báo cáo sự cố của bạn đã được chấp nhận."
+					: "Báo cáo sự cố của bạn đã bị từ chối. Vui lòng tiếp tục công việc.",
 
-            await EnrichSingleAsync(result, ct);
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "ISSUE",
+					action = "RESOLVED",
+					status = dto.Status,
+					issueId = entity.Id,
+					taskAssignmentId = entity.TaskAssignmentId
+				}),
 
+				SenderType = SenderTypeEnum.Manager,  
+				SenderId = _userContext.UserId,
+
+				Recipients = new List<NotificationRecipientEvent>
+	            {
+		            new()
+		            {
+			            RecipientType = RecipientTypeEnum.Worker,
+			            RecipientId = entity.ReportedByWorkerId 
+                    }
+	            }
+			}, ct);
+
+			var result = _mapper.Map<IssueReportDto>(entity); 
+            result.ResolvedByUserName = resolverName; 
+            await EnrichSingleAsync(result, ct); 
             return result;
         }
 
