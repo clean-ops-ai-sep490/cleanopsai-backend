@@ -1,4 +1,4 @@
-﻿namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
+namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 {
     public class WorkerAvailabilityDto
     {

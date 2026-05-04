@@ -1,4 +1,4 @@
-﻿	using AutoMapper;
+	using AutoMapper;
 	using CleanOpsAi.BuildingBlocks.Application;
 	using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 	using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;

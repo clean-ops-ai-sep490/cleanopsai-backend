@@ -33,7 +33,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
                 .Include(s => s.WorkArea)
                 .Include(s => s.Contract)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Created)
+                .OrderByDescending(x => x.Id)
                 .ToListAsync();
 
             return slas;
@@ -45,7 +45,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
                 .Include(s => s.WorkArea)
                 .Include(s => s.Contract)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Created);
+                .OrderByDescending(x => x.Id);
 
             var totalCount = await query.CountAsync();
 
@@ -75,7 +75,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             if (contractId.HasValue)
                 query = query.Where(x => x.ContractId == contractId.Value);
 
-            query = query.OrderByDescending(x => x.Created);
+            query = query.OrderByDescending(x => x.Id);
 
             var totalCount = await query.CountAsync();
 

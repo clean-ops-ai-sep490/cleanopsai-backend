@@ -41,6 +41,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Domain.Entities
 
 		public virtual ICollection<EquipmentRequest> EquipmentRequests { get; set; } = new List<EquipmentRequest>();
 
-		public virtual ICollection<AdHocRequest> AdHocRequests { get; set; } = new List<AdHocRequest>(); 
+		public virtual ICollection<AdHocRequest> AdHocRequests { get; set; } = new List<AdHocRequest>();
 	}
 }

@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services; 
 using MassTransit; 

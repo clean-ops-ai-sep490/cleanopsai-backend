@@ -1,4 +1,4 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.WorkareaCheckin.Application.DTOs.Response;

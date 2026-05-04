@@ -93,7 +93,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             var query = _dbContext.Set<Location>()
                 .Include(l => l.Client)
                 .Where(l => l.ClientId == clientId && l.IsDeleted == false)
-                .OrderByDescending(l => l.Created)
+                .OrderByDescending(l => l.Id)
                 .AsQueryable();
 
             var totalCount = await query.CountAsync();
