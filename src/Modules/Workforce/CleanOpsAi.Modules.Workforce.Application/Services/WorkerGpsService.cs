@@ -74,6 +74,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         {
             var worker = await _workerRepository.GetByIdAsync(request.WorkerId);
 
+            if (request.IsConfirmed == true)
+            {
+                // cho phép 0, chỉ cần không null
+                if (request.Latitude is null || request.Longitude is null)
+                    return null;
+            }
+            else
+            {
+                // không confirmed thì KHÔNG cho 0 và KHÔNG cho null
+                if (request.Latitude is null || request.Longitude is null ||
+                    request.Latitude == 0 || request.Longitude == 0)
+                    return null;
+            }
+
             if (worker == null)
                 throw new KeyNotFoundException($"Worker with id {request.WorkerId} not found.");
 

@@ -29,7 +29,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         {
             return await _dbContext.Set<Skill>()
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -37,7 +37,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         {
             var query = _dbContext.Set<Skill>()
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -90,7 +90,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         {
             return await _dbContext.Set<Skill>()
                 .Where(x => x.IsDeleted == false && x.Category == category)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -100,6 +100,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .Where(ws => ws.WorkerId == workerId)
                 .Include(ws => ws.Skill)
                 .Where(ws => ws.Skill.IsDeleted == false)
+                .OrderByDescending(ws => ws.Skill.Created)
                 .ToListAsync();
         }
 

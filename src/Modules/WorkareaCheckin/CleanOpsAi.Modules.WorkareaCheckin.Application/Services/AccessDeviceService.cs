@@ -64,9 +64,37 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 			return _mapper.Map<AccessDeviceDto>(device);
 		}
 
-		public Task<PaginatedResult<AccessDeviceDto>> GetByCheckinPointAsync(Guid checkinPointId, PaginationRequest request, CancellationToken ct = default)
+		public async Task<PaginatedResult<AccessDeviceDto>> GetByCheckinPointAsync(
+		Guid checkinPointId,
+		PaginationRequest request,
+		CancellationToken ct = default)
 		{
-			throw new NotImplementedException();
+			var pagedEntities = await _repo.GetByCheckinPointAsync(checkinPointId, request, ct);
+
+			var dtoItems = pagedEntities.Content.Select(x => new AccessDeviceDto
+			{
+				Id = x.Id,
+				WorkareaCheckinPointId = x.WorkareaCheckinPointId,
+				Name = x.Name,
+				Code = x.Code,
+				Identifier = x.Identifier,
+				InstallationLocation = x.InstallationLocation,
+				DeviceType = x.DeviceType,
+				Status = x.Status,
+
+				BleInfo = x.BleInfo == null ? null : new BleBeaconInfoDto
+				{
+					ServiceUuid = x.BleInfo.ServiceUuid,
+					TxPower = x.BleInfo.TxPower,
+					RssiThreshold = x.BleInfo.RssiThreshold
+				}
+			}).ToList();
+
+			return new PaginatedResult<AccessDeviceDto>(
+				pagedEntities.PageNumber,
+				pagedEntities.PageSize,
+				pagedEntities.TotalElements,
+				dtoItems);
 		}
 
 		public async Task<AccessDeviceDto> GetById(Guid id, CancellationToken ct = default)

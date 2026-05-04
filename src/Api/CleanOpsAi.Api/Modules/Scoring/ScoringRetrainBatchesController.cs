@@ -9,7 +9,6 @@ namespace CleanOpsAi.Api.Modules.Scoring
 {
 	[Route("api/scoring/retrain/batches")]
 	[ApiController]
-	[Authorize(Roles = "Admin")]
 	public class ScoringRetrainBatchesController : ControllerBase
 	{
 		private readonly IScoringJobService _scoringJobService;
@@ -20,6 +19,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpGet]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
 			Summary = "List scoring retrain batches",
 			Description = "Lists recent retrain batches, optionally filtered by status for operations and audit.",
@@ -41,6 +41,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpGet("{batchId:guid}")]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
 			Summary = "Get scoring retrain batch",
 			Description = "Returns retrain batch state and execution history tracked in PostgreSQL.",
@@ -60,6 +61,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost("trigger")]
+		[Authorize(Roles = "Manager,Admin,3,2")]
 		[SwaggerOperation(
 			Summary = "Trigger scoring retrain batch",
 			Description = "Creates a retrain batch from reviewed scoring samples and publishes it to the async retrain pipeline.",

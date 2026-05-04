@@ -3,13 +3,15 @@ using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace CleanOpsAi.Api.Modules.TaskOperations
 {
-    [Route("api/[controller]")]
+	[Authorize]
+	[Route("api/[controller]")]
     [ApiController]
     public class EmergencyLeaveRequestsController : ControllerBase
     {
@@ -203,6 +205,24 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
             var result = await _emergencyLeaveRequestService.Delete(id, ct);
             if (!result) return NotFound();
             return Ok();
+        }
+
+        [HttpGet("worker/{workerId:guid}/current-month")]
+        [SwaggerOperation(
+            Summary = "Get emergency leave requests of a worker in current month",
+            Description = "Retrieves a paginated list of emergency leave requests of a specific worker within the current month.",
+            Tags = new[] { "EmergencyLeaveRequest" }
+        )]
+        [ProducesResponseType(typeof(PaginatedResult<EmergencyLeaveRequestDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetsByWorkerCurrentMonth(
+            Guid workerId,
+            [FromQuery] PaginationRequest request,
+            CancellationToken ct)
+        {
+            var result = await _emergencyLeaveRequestService
+                .GetsByWorkerCurrentMonth(workerId, request, ct);
+
+            return Ok(result);
         }
     }
 }

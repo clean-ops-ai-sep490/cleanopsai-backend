@@ -26,7 +26,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             var certifications = await _dbContext.Set<Certification>()
                 .Include(c => c.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             return certifications;
@@ -37,7 +37,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             var query = _dbContext.Set<Certification>()
                 .Include(c => c.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -93,7 +93,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.Set<Certification>()
                 .Include(c => c.WorkerCertifications)
                 .Where(x => !x.IsDeleted && x.Category.ToLower() == category.ToLower())
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 

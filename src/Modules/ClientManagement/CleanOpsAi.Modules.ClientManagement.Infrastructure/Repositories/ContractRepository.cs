@@ -31,14 +31,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         {
             return await _dbContext.Set<Contract>()
                 .Include(c => c.Client)
-                .OrderByDescending(c => c.Id)
+                .OrderByDescending(c => c.Created)
                 .ToListAsync();
         }
 
         // get all Contracts with pagination
         public async Task<(List<Contract> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Set<Contract>().Include(c => c.Client).AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Id);
+            var query = _dbContext.Set<Contract>().Include(c => c.Client).AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -88,7 +88,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             return await _dbContext.Set<Contract>()
                 .Include(c => c.Client)
                 .Where(c => c.ClientId == clientId && c.IsDeleted == false)
-                .OrderByDescending(c => c.Id)
+                .OrderByDescending(c => c.Created)
                 .ToListAsync();
         }
 
@@ -98,7 +98,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             var query = _dbContext.Set<Contract>()
                 .Include(c => c.Client)
                 .Where(c => c.ClientId == clientId && c.IsDeleted == false)
-                .OrderByDescending(c => c.Id)
+                .OrderByDescending(c => c.Created)
                 .AsQueryable();
 
             var totalCount = await query.CountAsync();

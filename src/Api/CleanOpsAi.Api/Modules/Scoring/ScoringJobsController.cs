@@ -1,6 +1,7 @@
 using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Request;
 using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -18,6 +19,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost]
+		[Authorize(Roles = "Worker")]
 		[SwaggerOperation(
 			Summary = "Submit scoring job",
 			Description = "Submits a clean/dirty scoring job and returns a job id for async polling.",

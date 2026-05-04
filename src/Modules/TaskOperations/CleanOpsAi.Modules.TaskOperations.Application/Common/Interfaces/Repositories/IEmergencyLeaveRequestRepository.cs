@@ -21,5 +21,6 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
         Task AddAsync(EmergencyLeaveRequest request, CancellationToken ct = default);
         Task UpdateAsync(EmergencyLeaveRequest request, CancellationToken ct = default);
         Task DeleteAsync(EmergencyLeaveRequest request, CancellationToken ct = default);
+        Task<PaginatedResult<EmergencyLeaveRequest>> GetsByWorkerCurrentMonthPagingAsync(Guid workerId, DateTime now, PaginationRequest request, CancellationToken ct = default);
     }
 }

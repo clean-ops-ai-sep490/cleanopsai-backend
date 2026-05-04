@@ -10,6 +10,5 @@ namespace CleanOpsAi.Modules.Workforce.Application.Dtos.WorkAreaSupervisors
     {
         public Guid WorkAreaId { get; set; }
         public Guid SupervisorId { get; set; }
-        public List<Guid> WorkerIds { get; set; } = new();
     }
 }

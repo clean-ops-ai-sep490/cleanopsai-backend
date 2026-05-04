@@ -34,7 +34,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         public async Task<List<Client>> GetAllAsync()
         {
             var clients = await _dbContext.Set<Client>()
-                .OrderByDescending(c => c.Id)
+                .OrderByDescending(c => c.Created)
                 .ToListAsync();
 
             return clients;
@@ -43,7 +43,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         // get all Clients with pagination
         public async Task<(List<Client> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Set<Client>().AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Id);
+            var query = _dbContext.Set<Client>().AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Created);
 
             var totalCount = await query.CountAsync();
 

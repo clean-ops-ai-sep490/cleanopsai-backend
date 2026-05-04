@@ -251,6 +251,31 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             Assert.Equal("A", result[0].FullName);
         }
 
+        [Fact]
+        public async Task GetWorkersByUserIds_ShouldReturnWorkerSummaries()
+        {
+            var userId = Guid.NewGuid();
+            var workerId = Guid.NewGuid();
+
+            _repoMock.GetWorkersByUserIds(Arg.Any<List<Guid>>())
+                .Returns(new List<Worker>
+                {
+                    new Worker
+                    {
+                        Id = workerId,
+                        UserId = userId,
+                        FullName = "Worker Lookup"
+                    }
+                });
+
+            var result = await _service.GetWorkersByUserIds(new List<Guid> { userId });
+
+            Assert.Single(result);
+            Assert.Equal(userId, result[0].UserId);
+            Assert.Equal(workerId, result[0].WorkerId);
+            Assert.Equal("Worker Lookup", result[0].FullName);
+        }
+
         // ================================
         // QUALIFIED
         // ================================

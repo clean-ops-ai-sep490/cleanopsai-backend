@@ -61,6 +61,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public DateTime RequestedAtUtc { get; set; }
 		public DateTime SourceWindowFromUtc { get; set; }
 		public int ReviewedSampleCount { get; set; }
+		public int AnnotatedSampleCount { get; set; }
+		public int ApprovedAnnotationCount { get; set; }
+		public int CalibrationSampleCount { get; set; }
 		public DateTime? CompletedAtUtc { get; set; }
 		public string? FailureReason { get; set; }
 		public bool Promoted { get; set; }
@@ -79,6 +82,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public DateTime RequestedAtUtc { get; set; }
 		public DateTime SourceWindowFromUtc { get; set; }
 		public int ReviewedSampleCount { get; set; }
+		public int AnnotatedSampleCount { get; set; }
+		public int ApprovedAnnotationCount { get; set; }
+		public int CalibrationSampleCount { get; set; }
 		public DateTime? CompletedAtUtc { get; set; }
 		public bool Promoted { get; set; }
 		public string? FailureReason { get; set; }

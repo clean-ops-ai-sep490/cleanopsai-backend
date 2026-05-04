@@ -9,6 +9,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\CleanOpsAi.BuildingBlocks.Infrastructure\CleanOpsAi.BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Scoring\CleanOpsAi.Modules.Scoring.Infrastructure\CleanOpsAi.Modules.Scoring.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\TaskOperations\CleanOpsAi.Modules.TaskOperations.Infrastructure\CleanOpsAi.Modules.TaskOperations.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Consumers\" />
   </ItemGroup>
 
 </Project>

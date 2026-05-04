@@ -8,7 +8,7 @@
 		// ── Signal 
 		public int? TxPower { get; set; }             // +3 dBm (từ beacon broadcast)
 		public int? RssiThreshold { get; set; }       // -85 → dưới mức này bỏ qua
-		public int? LastRssi { get; set; }            // cập nhật mỗi lần scan thấy
+		public int? LastRssi { get; set; }          
 
 		// ── Status  
 		public int? BatteryLevel { get; set; }        // % pin

@@ -1,9 +1,5 @@
 ﻿using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 {
@@ -13,6 +9,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request
 
         public AdHocRequestType RequestType { get; set; }
 
+        [Required]
         public DateTime RequestDateFrom { get; set; }
 
         public DateTime? RequestDateTo { get; set; }

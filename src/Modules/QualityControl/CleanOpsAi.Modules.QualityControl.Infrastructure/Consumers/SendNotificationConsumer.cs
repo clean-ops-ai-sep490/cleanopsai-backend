@@ -20,8 +20,7 @@ namespace CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers
 
 		public async Task Consume(ConsumeContext<SendNotificationEvent> context)
 		{
-			var message = context.Message;
-
+			var message = context.Message; 
 			try
 			{
 				await _notificationService.HandleSendNotificationAsync(message, context.CancellationToken);

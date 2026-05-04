@@ -1,13 +1,8 @@
-﻿using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 {
@@ -21,10 +16,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
         }
 
         public async Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAndTypeAsync(
+            Guid executionId, ImageType imageType, CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutionImages
+                .Where(x => x.TaskStepExecutionId == executionId
+                    && x.ImageType == imageType).OrderByDescending(x => x.Created)
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<TaskStepExecutionImage>> GetByExecutionIdAsync(
             Guid executionId, CancellationToken ct = default)
         {
             return await _context.TaskStepExecutionImages
-                .Where(x => x.TaskStepExecutionId == executionId)
+                .Where(x => x.TaskStepExecutionId == executionId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync(ct);
         }
 
@@ -37,6 +42,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
         public async Task SaveChangesAsync(CancellationToken ct = default)
         {
             await _context.SaveChangesAsync(ct);
+        }
+
+        public async Task<List<TaskStepExecutionImage>> GetActiveByExecutionIdAsync(
+            Guid taskStepExecutionId,
+            CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutionImages
+                .Where(x => x.TaskStepExecutionId == taskStepExecutionId
+                         && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
+                .ToListAsync(ct);
+        }
+
+        public async Task<TaskStepExecutionImage?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        {
+            return await _context.TaskStepExecutionImages
+                .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
         }
 
     }

@@ -57,9 +57,10 @@ public static class DependencyInjection
 		builder.Services.AddScoped<ISkillService, SkillService>();
 		builder.Services.AddScoped<IWorkerCertificationService, WorkerCertificationService>();
 		builder.Services.AddScoped<IWorkerSkillService, WorkerSkillService>();
-		builder.Services.AddScoped<IWorkerGpsService, WorkerGpsService>();
+        builder.Services.AddScoped<IWorkerGpsService, WorkerGpsService>();
 		builder.Services.AddScoped<IWorkAreaSupervisorService, WorkAreaSupervisorService>();
 		builder.Services.AddScoped<IPpeItemService, PpeItemService>();
+        builder.Services.AddScoped<IDashboardService, DashboardService>();
         builder.Services.AddScoped<IGeminiService, GeminiService>();
 
         // Dependency Injection for Azure Blob Storage Service

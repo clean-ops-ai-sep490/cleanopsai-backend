@@ -19,7 +19,7 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         private readonly IDateTimeProvider _dateTimeMock;
         private readonly ISkillRepository _skillRepoMock;
 
-        private readonly CertificationService _service;
+		private readonly CertificationService _service;
 
         public CertificationServiceTests()
         {
@@ -28,7 +28,7 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             _dateTimeMock = Substitute.For<IDateTimeProvider>();
             _skillRepoMock = Substitute.For<ISkillRepository>();
 
-            _service = new CertificationService(
+			_service = new CertificationService(
                 _repoMock,
                 _userContextMock,
                 _dateTimeMock,

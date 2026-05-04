@@ -5,5 +5,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repos
 	public interface ISopStepRepository : IBaseRepo<SopStep, Guid>
 	{
 		Task<List<SopStep>> GetListBySopId(Guid id, CancellationToken cancellationToken = default);
+
+		Task AddRangeAsync(List<SopStep> steps, CancellationToken cancellationToken = default);
 	}
 }

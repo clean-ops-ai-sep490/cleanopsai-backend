@@ -143,59 +143,299 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 		// UPDATE SUCCESS
 		// =========================
 		[Fact]
-        public async Task Update_ShouldUpdateEntity()
-        {
-            var taskId = Guid.NewGuid();
-            var assignment = new TaskAssignment { Id = taskId };
+		public async Task Update_ShouldUpdateFields_WhenValidRequest()
+		{
+			var taskId = Guid.NewGuid();
+			var assigneeId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
 
-            _taskAssignmentRepo.GetByIdAsync(taskId).Returns(assignment);
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = false,
+				TaskName = "Old Task Name",
+				DisplayLocation = "Old Location",
+				AssigneeId = Guid.NewGuid(),
+				AssigneeName = "Old Assignee",
+				ScheduledStartAt = now,
+				ScheduledEndAt = now.AddMinutes(60)
+			};
 
-            var dto = new TaskAssignmentDto { Id = taskId };
-            var updatedDto = new TaskAssignmentDto { Id = taskId };
+			var dto = new TaskAssignmentUpdateDto
+			{
+				TaskName = "New Task Name",
+				DisplayLocation = "New Location",
+				AssigneeId = assigneeId,
+				AssigneeName = "New Assignee",
+				ScheduledStartAt = now.AddHours(1),
+				DurationMinutes = 90
+			};
 
-            _mapper.Map(dto, assignment);
-            _mapper.Map<TaskAssignmentDto>(assignment).Returns(updatedDto);
+			var expectedDto = new TaskAssignmentDto { Id = taskId };
 
-            var result = await _service.Update(taskId, dto);
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+			_taskAssignmentRepo.HasOverlapAsync(
+				assigneeId, Arg.Any<DateTime>(), Arg.Any<DateTime>(),
+				taskId, Arg.Any<CancellationToken>()).Returns(false);
+			_mapper.Map<TaskAssignmentDto>(assignment).Returns(expectedDto);
 
-            Assert.NotNull(result);
-            Assert.Equal(taskId, result.Id);
-            await _taskAssignmentRepo.Received(1).SaveChangesAsync();
-        } 
+			var result = await _service.Update(taskId, dto);
 
-        // =========================
-        // UPDATE STATUS SUCCESS
-        // =========================
-        [Fact]
-        public async Task UpdateStatus_ShouldUpdateStatus()
-        {
-            var taskId = Guid.NewGuid();
-            var assignment = new TaskAssignment { Id = taskId, Status = TaskAssignmentStatus.NotStarted };
+			Assert.NotNull(result);
+			Assert.Equal(taskId, result.Id);
+			Assert.Equal("New Task Name", assignment.TaskName);
+			Assert.Equal("New Location", assignment.DisplayLocation);
+			Assert.Equal(assigneeId, assignment.AssigneeId);
+			Assert.Equal("New Assignee", assignment.AssigneeName);
+			Assert.Equal(now.AddHours(1), assignment.ScheduledStartAt);
+			Assert.Equal(now.AddHours(1).AddMinutes(90), assignment.ScheduledEndAt);
+			await _taskAssignmentRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+		}
 
-            _taskAssignmentRepo.GetByIdAsync(taskId).Returns(assignment);
+		// =========================
+		// UPDATE FAILURE - NOT FOUND
+		// =========================
+		[Fact]
+		public async Task Update_ShouldThrowNotFoundException_WhenTaskNotFound()
+		{
+			var taskId = Guid.NewGuid();
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns((TaskAssignment?)null);
 
-            var result = await _service.UpdateStatus(taskId, TaskAssignmentStatus.InProgress);
+			await Assert.ThrowsAsync<NotFoundException>(() =>
+				_service.Update(taskId, new TaskAssignmentUpdateDto()));
+		}
 
-            Assert.True(result);
-            Assert.Equal(TaskAssignmentStatus.InProgress, assignment.Status);
-            await _taskAssignmentRepo.Received(1).SaveChangesAsync();
-        }
+		// =========================
+		// UPDATE FAILURE - NOT STARTED
+		// =========================
+		[Theory]
+		[InlineData(TaskAssignmentStatus.InProgress)]
+		[InlineData(TaskAssignmentStatus.Completed)]
+		[InlineData(TaskAssignmentStatus.Block)]
+		public async Task Update_ShouldThrowBadRequest_WhenStatusIsNotNotStarted(TaskAssignmentStatus status)
+		{
+			var taskId = Guid.NewGuid();
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = status,
+				IsAdhocTask = false
+			};
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+
+			var ex = await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.Update(taskId, new TaskAssignmentUpdateDto()));
+
+			Assert.Contains("NotStarted", ex.Message);
+		}
+
+		// =========================
+		// UPDATE FAILURE - ADHOC TASK
+		// =========================
+		[Fact]
+		public async Task Update_ShouldThrowBadRequest_WhenTaskIsAdhoc()
+		{
+			var taskId = Guid.NewGuid();
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = true
+			};
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+
+			var ex = await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.Update(taskId, new TaskAssignmentUpdateDto()));
+
+			Assert.Contains("Adhoc", ex.Message);
+		}
+
+		// =========================
+		// UPDATE FAILURE - ASSIGNEE WITHOUT NAME
+		// =========================
+		[Fact]
+		public async Task Update_ShouldThrowBadRequest_WhenAssigneeIdWithoutAssigneeName()
+		{
+			var taskId = Guid.NewGuid();
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = false
+			};
+
+			var dto = new TaskAssignmentUpdateDto
+			{
+				AssigneeId = Guid.NewGuid(),
+				AssigneeName = null  
+			};
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+
+			await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.Update(taskId, dto));
+		}
+
+		// =========================
+		// UPDATE FAILURE - ASSIGNEE NAME WITHOUT ID
+		// =========================
+		[Fact]
+		public async Task Update_ShouldThrowBadRequest_WhenAssigneeNameWithoutAssigneeId()
+		{
+			var taskId = Guid.NewGuid();
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = false
+			};
+
+			var dto = new TaskAssignmentUpdateDto
+			{
+				AssigneeId = null, // thiếu id
+				AssigneeName = "Some Name"
+			};
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+
+			await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.Update(taskId, dto));
+		}
+
+		// =========================
+		// UPDATE FAILURE - DURATION INVALID
+		// =========================
+		[Theory]
+		[InlineData(0)]
+		[InlineData(-1)]
+		[InlineData(-100)]
+		public async Task Update_ShouldThrowBadRequest_WhenDurationMinutesIsInvalid(int duration)
+		{
+			var taskId = Guid.NewGuid();
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = false,
+				ScheduledStartAt = DateTime.UtcNow,
+				ScheduledEndAt = DateTime.UtcNow.AddMinutes(60)
+			};
+
+			var dto = new TaskAssignmentUpdateDto { DurationMinutes = duration };
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+
+			var ex = await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.Update(taskId, dto));
+
+			Assert.Contains("DurationMinutes", ex.Message);
+		}
+
+		// =========================
+		// UPDATE FAILURE - OVERLAP
+		// =========================
+		[Fact]
+		public async Task Update_ShouldThrowBadRequest_WhenAssigneeHasOverlap()
+		{
+			var taskId = Guid.NewGuid();
+			var assigneeId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
+
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = false,
+				AssigneeId = assigneeId,
+				ScheduledStartAt = now,
+				ScheduledEndAt = now.AddMinutes(60)
+			};
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+			_taskAssignmentRepo.HasOverlapAsync(
+				assigneeId, Arg.Any<DateTime>(), Arg.Any<DateTime>(),
+				taskId, Arg.Any<CancellationToken>()).Returns(true);
+
+			var ex = await Assert.ThrowsAsync<BadRequestException>(() =>
+				_service.Update(taskId, new TaskAssignmentUpdateDto()));
+
+			Assert.Contains("already has a task", ex.Message);
+		}
+
+		// =========================
+		// UPDATE SUCCESS - ONLY START TIME 
+		// =========================
+		[Fact]
+		public async Task Update_ShouldKeepOldDuration_WhenOnlyStartTimeUpdated()
+		{
+			var taskId = Guid.NewGuid();
+			var now = DateTime.UtcNow;
+			var oldDuration = TimeSpan.FromMinutes(60);
+
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted,
+				IsAdhocTask = false,
+				AssigneeId = Guid.NewGuid(),
+				ScheduledStartAt = now,
+				ScheduledEndAt = now + oldDuration
+			};
+
+			var newStart = now.AddHours(2);
+			var dto = new TaskAssignmentUpdateDto { ScheduledStartAt = newStart };
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>()).Returns(assignment);
+			_taskAssignmentRepo.HasOverlapAsync(
+				Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(),
+				taskId, Arg.Any<CancellationToken>()).Returns(false);
+			_mapper.Map<TaskAssignmentDto>(assignment).Returns(new TaskAssignmentDto { Id = taskId });
+
+			await _service.Update(taskId, dto);
+
+			Assert.Equal(newStart, assignment.ScheduledStartAt);
+			Assert.Equal(newStart + oldDuration, assignment.ScheduledEndAt); 
+		}
+
+
+		// =========================
+		// UPDATE STATUS SUCCESS
+		// =========================
+		[Fact]
+		public async Task UpdateStatus_ShouldUpdateStatus_WhenTaskExists()
+		{
+			var taskId = Guid.NewGuid();
+			var assignment = new TaskAssignment
+			{
+				Id = taskId,
+				Status = TaskAssignmentStatus.NotStarted
+			};
+
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>())
+				.Returns(assignment);
+
+			var result = await _service.UpdateStatus(taskId, TaskAssignmentStatus.InProgress);
+
+			Assert.True(result);
+			Assert.Equal(TaskAssignmentStatus.InProgress, assignment.Status);
+			await _taskAssignmentRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+		}
 
 		// =========================
 		// UPDATE STATUS FAIL - NOT FOUND
 		// =========================
 		[Fact]
-		public async Task Update_ShouldThrowNotFound_WhenNotFound()
+		public async Task UpdateStatus_ShouldThrowNotFoundException_WhenTaskNotFound()
 		{
 			var taskId = Guid.NewGuid();
-
-			_taskAssignmentRepo.GetByIdAsync(taskId)
+			_taskAssignmentRepo.GetByIdAsync(taskId, Arg.Any<CancellationToken>())
 				.Returns((TaskAssignment?)null);
 
-			var dto = new TaskAssignmentDto { Id = taskId };
-
 			await Assert.ThrowsAsync<NotFoundException>(() =>
-				_service.Update(taskId, dto));
+				_service.UpdateStatus(taskId, TaskAssignmentStatus.InProgress));
 		}
 
 		// =========================

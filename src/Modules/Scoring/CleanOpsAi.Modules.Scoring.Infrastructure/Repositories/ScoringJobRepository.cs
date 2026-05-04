@@ -3,6 +3,7 @@ using CleanOpsAi.Modules.Scoring.Domain.Entities;
 using CleanOpsAi.Modules.Scoring.Domain.Enums;
 using CleanOpsAi.Modules.Scoring.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 {
@@ -47,15 +48,78 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 				.ToListAsync(ct);
 		}
 
-		public async Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(int take, CancellationToken ct = default)
+		public async Task<IReadOnlyCollection<ScoringJobResult>> GetPendingResultsAsync(
+			int take,
+			IReadOnlyCollection<Guid>? submittedByUserIds = null,
+			CancellationToken ct = default)
 		{
 			var safeTake = Math.Clamp(take, 1, 500);
 
-			return await _dbContext.ScoringJobResults
+			var query = _dbContext.ScoringJobResults
 				.Include(x => x.ScoringJob)
 				.Where(x => x.ScoringJob.Status == ScoringJobStatus.Succeeded
-					&& x.Verdict == "PENDING")
+					&& x.Verdict == "PENDING");
+
+			if (submittedByUserIds is not null)
+			{
+				query = query.Where(x =>
+					x.ScoringJob.SubmittedByUserId.HasValue &&
+					submittedByUserIds.Contains(x.ScoringJob.SubmittedByUserId.Value));
+			}
+
+			return await query
 				.OrderByDescending(x => x.Created)
+				.Take(safeTake)
+				.ToListAsync(ct);
+		}
+
+		public async Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetAnnotationCandidatesAsync(
+			ScoringAnnotationCandidateStatus? status,
+			string? environmentKey,
+			Guid? assignedToUserId,
+			DateTime? createdFromUtc,
+			int take,
+			IReadOnlyCollection<Guid>? submittedByUserIds = null,
+			CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 500);
+
+			var query = _dbContext.ScoringAnnotationCandidates
+				.Include(x => x.Annotation)
+				.Include(x => x.Result)
+					.ThenInclude(x => x.ScoringJob)
+				.AsQueryable();
+
+			if (status.HasValue)
+			{
+				query = query.Where(x => x.CandidateStatus == status.Value);
+			}
+
+			if (!string.IsNullOrWhiteSpace(environmentKey))
+			{
+				var normalizedEnvironmentKey = environmentKey.Trim().ToUpperInvariant();
+				query = query.Where(x => x.EnvironmentKey == normalizedEnvironmentKey);
+			}
+
+			if (assignedToUserId.HasValue)
+			{
+				query = query.Where(x => x.AssignedToUserId == assignedToUserId.Value);
+			}
+
+			if (createdFromUtc.HasValue)
+			{
+				query = query.Where(x => x.CreatedAtUtc >= createdFromUtc.Value);
+			}
+
+			if (submittedByUserIds is not null)
+			{
+				query = query.Where(x =>
+					x.Result.ScoringJob.SubmittedByUserId.HasValue &&
+					submittedByUserIds.Contains(x.Result.ScoringJob.SubmittedByUserId.Value));
+			}
+
+			return await query
+				.OrderByDescending(x => x.CreatedAtUtc)
 				.Take(safeTake)
 				.ToListAsync(ct);
 		}
@@ -63,14 +127,46 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 		public async Task<IReadOnlyCollection<ScoringJobResult>> GetReviewedResultsForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default)
 		{
 			var safeTake = Math.Clamp(take, 1, 5000);
-
-			return await _dbContext.ScoringJobResults
+			var prefiltered = await _dbContext.ScoringJobResults
 				.Include(x => x.ScoringJob)
 				.Where(x => x.ScoringJob.Status == ScoringJobStatus.Succeeded
 					&& x.LastModified >= sinceUtc
-					&& (x.Verdict == "PASS" || x.Verdict == "FAIL")
-					&& EF.Functions.ILike(x.PayloadJson, "%\"original_verdict\":\"PENDING\"%"))
+					&& (x.Verdict == "PASS" || x.Verdict == "FAIL"))
 				.OrderByDescending(x => x.LastModified)
+				.Take(Math.Min(safeTake * 5, 20000))
+				.ToListAsync(ct);
+
+			return prefiltered
+				.Where(x => HasOriginalPendingHumanReview(x.PayloadJson))
+				.Take(safeTake)
+				.ToList();
+		}
+
+		public async Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetAnnotatedCandidatesForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 5000);
+
+			return await _dbContext.ScoringAnnotationCandidates
+				.Include(x => x.Annotation)
+				.Include(x => x.Result)
+				.Where(x => x.CreatedAtUtc >= sinceUtc && x.Annotation != null)
+				.OrderByDescending(x => x.CreatedAtUtc)
+				.Take(safeTake)
+				.ToListAsync(ct);
+		}
+
+		public async Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetApprovedAnnotationCandidatesForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default)
+		{
+			var safeTake = Math.Clamp(take, 1, 5000);
+
+			return await _dbContext.ScoringAnnotationCandidates
+				.Include(x => x.Annotation)
+				.Include(x => x.Result)
+				.Where(x =>
+					x.CreatedAtUtc >= sinceUtc &&
+					x.CandidateStatus == ScoringAnnotationCandidateStatus.Approved &&
+					x.Annotation != null)
+				.OrderByDescending(x => x.CreatedAtUtc)
 				.Take(safeTake)
 				.ToListAsync(ct);
 		}
@@ -80,6 +176,24 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 			return await _dbContext.ScoringJobResults
 				.Include(x => x.ScoringJob)
 				.FirstOrDefaultAsync(x => x.Id == resultId, ct);
+		}
+
+		public async Task<ScoringAnnotationCandidate?> GetAnnotationCandidateByIdAsync(Guid candidateId, CancellationToken ct = default)
+		{
+			return await _dbContext.ScoringAnnotationCandidates
+				.Include(x => x.Annotation)
+				.Include(x => x.Result)
+					.ThenInclude(x => x.ScoringJob)
+				.FirstOrDefaultAsync(x => x.Id == candidateId, ct);
+		}
+
+		public async Task<ScoringAnnotationCandidate?> GetAnnotationCandidateByResultIdAsync(Guid resultId, CancellationToken ct = default)
+		{
+			return await _dbContext.ScoringAnnotationCandidates
+				.Include(x => x.Annotation)
+				.Include(x => x.Result)
+					.ThenInclude(x => x.ScoringJob)
+				.FirstOrDefaultAsync(x => x.ResultId == resultId, ct);
 		}
 
 		public async Task<ScoringRetrainBatch?> GetRetrainBatchByIdWithRunsAsync(Guid batchId, CancellationToken ct = default)
@@ -129,6 +243,16 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 			await _dbContext.ScoringJobs.AddAsync(job, ct);
 		}
 
+		public async Task InsertAnnotationCandidateAsync(ScoringAnnotationCandidate candidate, CancellationToken ct = default)
+		{
+			await _dbContext.ScoringAnnotationCandidates.AddAsync(candidate, ct);
+		}
+
+		public async Task InsertAnnotationAsync(ScoringAnnotation annotation, CancellationToken ct = default)
+		{
+			await _dbContext.ScoringAnnotations.AddAsync(annotation, ct);
+		}
+
 		public async Task InsertRetrainBatchAsync(ScoringRetrainBatch batch, CancellationToken ct = default)
 		{
 			await _dbContext.ScoringRetrainBatches.AddAsync(batch, ct);
@@ -142,6 +266,34 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 		public Task<int> SaveChangesAsync(CancellationToken ct = default)
 		{
 			return _dbContext.SaveChangesAsync(ct);
+		}
+
+		private static bool HasOriginalPendingHumanReview(string? payloadJson)
+		{
+			if (string.IsNullOrWhiteSpace(payloadJson))
+			{
+				return false;
+			}
+
+			try
+			{
+				using var document = JsonDocument.Parse(payloadJson);
+				if (!document.RootElement.TryGetProperty("human_review", out var humanReview))
+				{
+					return false;
+				}
+
+				if (!humanReview.TryGetProperty("original_verdict", out var originalVerdict))
+				{
+					return false;
+				}
+
+				return string.Equals(originalVerdict.GetString(), "PENDING", StringComparison.OrdinalIgnoreCase);
+			}
+			catch (JsonException)
+			{
+				return false;
+			}
 		}
 	}
 }

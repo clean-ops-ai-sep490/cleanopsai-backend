@@ -34,26 +34,27 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Services
 
             await blobClient.UploadAsync(fileStream, overwrite: true);
 
-            return GenerateSasUrl(newFileName, containerName);
-        }
+            return blobClient.Uri.ToString();
 
-        public string GenerateSasUrl(string fileName, string containerName)
-        {
-            var container = _blobServiceClient.GetBlobContainerClient(containerName);
+		}
 
-            var blobClient = container.GetBlobClient(fileName);
+		public string GenerateSasUrl(string fileName, string containerName)
+		{
+			var container = _blobServiceClient.GetBlobContainerClient(containerName);
 
-            var sasBuilder = new BlobSasBuilder
-            {
-                BlobContainerName = containerName,
-                BlobName = fileName,
-                Resource = "b",
-                ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(30)
-            };
+			var blobClient = container.GetBlobClient(fileName);
 
-            sasBuilder.SetPermissions(BlobSasPermissions.Read);
+			var sasBuilder = new BlobSasBuilder
+			{
+				BlobContainerName = containerName,
+				BlobName = fileName,
+				Resource = "b",
+				ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(30)
+			};
 
-            return blobClient.GenerateSasUri(sasBuilder).ToString();
-        }
-    }
+			sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+			return blobClient.GenerateSasUri(sasBuilder).ToString();
+		}
+	}
 }

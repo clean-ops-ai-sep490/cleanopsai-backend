@@ -1,4 +1,6 @@
-﻿using CleanOpsAi.Modules.ClientManagement.Application.Configurations;
+using Azure;
+using Azure.AI.DocumentIntelligence;
+using CleanOpsAi.Modules.ClientManagement.Application.Configurations;
 using CleanOpsAi.Modules.ClientManagement.Application.Interfaces;
 using CleanOpsAi.Modules.ClientManagement.Application.Services;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Data;
@@ -31,7 +33,12 @@ public static class DependencyInjection
 
 		builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(AssemblyReference.Assembly));
 
-        // Dependency Injection for Repositories
+		//builder.Services.AddSingleton(_ =>
+		//	new DocumentIntelligenceClient(
+		//	new Uri(builder.Configuration["AzureDocumentIntelligence:Endpoint"]!),
+		//	new AzureKeyCredential(builder.Configuration["AzureDocumentIntelligence:Key"]!)));
+
+		// Dependency Injection for Repositories
 		builder.Services.AddScoped<IClientRepository, ClientRepository>();
         builder.Services.AddScoped<IContractRepository, ContractRepository>();
 		builder.Services.AddScoped<ILocationRepository, LocationRepository>();
@@ -52,12 +59,16 @@ public static class DependencyInjection
         builder.Services.AddScoped<ISlaService, SlaService>();
         builder.Services.AddScoped<ISlaTaskService, SlaTaskService>();
 		builder.Services.AddScoped<ISlaShiftService, SlaShiftService>();
+        builder.Services.AddScoped<IContractScanService, ContractScanService>();
 
-        // Dependency Injection for Azure Blob Storage Service
-        builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
+		// Dependency Injection for Azure Blob Storage Service
+		builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
 
-        // ENUM -> STRING JSON
-        builder.Services.Configure<JsonOptions>(options =>
+        // HTTP Client for Gemini
+        //builder.Services.AddHttpClient<ContractScanService>();
+
+		// ENUM -> STRING JSON
+		builder.Services.Configure<JsonOptions>(options =>
         {
             options.JsonSerializerOptions.Converters
                 .Add(new JsonStringEnumConverter());

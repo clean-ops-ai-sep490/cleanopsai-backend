@@ -20,7 +20,24 @@ namespace CleanOpsAi.Api.Modules.ServicePlanning
 		{
 			_taskScheduleService = taskScheduleService; 
 		}
-		
+
+		[Authorize]
+		[HttpGet("by-workarea/{workAreaId}")]
+		[SwaggerOperation(
+			Summary = "Get task schedules by work area",
+			Description = "Retrieves paginated task schedules for a specific work area that have been assigned to a worker.",
+			Tags = new[] { "TaskSchedule" }
+		)]
+		[ProducesResponseType(typeof(PaginatedResult<ScheduleByWorkAreaDto>), StatusCodes.Status200OK)]
+		public async Task<IActionResult> GetByWorkArea(
+		[FromRoute] Guid workAreaId,
+		[FromQuery] PaginationRequest request,
+		CancellationToken ct)
+		{
+			var result = await _taskScheduleService.GetByWorkAreaPaged(workAreaId, request, ct);
+			return Ok(result);
+		}
+
 		[Authorize]
 		[HttpGet]
 		[SwaggerOperation(

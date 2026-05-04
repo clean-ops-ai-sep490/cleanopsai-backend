@@ -7,13 +7,8 @@ using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Application.Services;
-using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.TaskOperations.Domain.Entities; 
+using NSubstitute; 
 using Xunit;
 
 namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
@@ -26,10 +21,13 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly IDateTimeProvider _dateTime;
         private readonly IWorkerQueryService _workerService;
         private readonly IEquipmentQueryService _equipmentService;
-
+        private readonly ITaskAssignmentRepository _taskAssignmentRepository;
         private readonly EquipmentRequestService _service;
+		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
-        public EquipmentRequestServiceTests()
+
+		public EquipmentRequestServiceTests()
         {
             _repo = Substitute.For<IEquipmentRequestRepository>();
             _mapper = Substitute.For<IMapper>();
@@ -37,15 +35,21 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
             _dateTime = Substitute.For<IDateTimeProvider>();
             _workerService = Substitute.For<IWorkerQueryService>();
             _equipmentService = Substitute.For<IEquipmentQueryService>();
+            _taskAssignmentRepository = Substitute.For<ITaskAssignmentRepository>();
+            _notificationPublisher = Substitute.For<INotificationPublisher>();
+            _idGenerator = Substitute.For<IIdGenerator>();
 
-            _service = new EquipmentRequestService(
+			_service = new EquipmentRequestService(
                 _repo,
                 _mapper,
                 _userContext,
                 _dateTime,
                 _workerService,
-                _equipmentService
-            );
+                _equipmentService,
+                _taskAssignmentRepository,
+				_notificationPublisher,
+                _idGenerator
+			);
         }
 
         // ================= GET BY ID =================

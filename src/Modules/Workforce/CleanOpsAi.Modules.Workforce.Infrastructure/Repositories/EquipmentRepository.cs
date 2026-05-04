@@ -29,7 +29,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         {
             return await _dbContext.Set<Equipment>()
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -37,7 +37,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         {
             var query = _dbContext.Set<Equipment>()
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -97,7 +97,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             var totalCount = list.Count;
 
             var items = list
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();

@@ -3,17 +3,15 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -26,6 +24,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IWorkerQueryService _workerQueryService;
         private readonly IEquipmentQueryService _equipmentQueryService;
         private readonly ITaskAssignmentRepository _taskAssignmentRepository;
+		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
         public EquipmentRequestService(
             IEquipmentRequestRepository repo,
@@ -34,7 +34,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
             IEquipmentQueryService equipmentQueryService,
-            ITaskAssignmentRepository taskAssignmentRepository)
+            ITaskAssignmentRepository taskAssignmentRepository,
+            INotificationPublisher notificationPublisher,
+            IIdGenerator idGenerator)
         {
             _repo = repo;
             _mapper = mapper;
@@ -43,6 +45,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _workerQueryService = workerQueryService;
             _equipmentQueryService = equipmentQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
+			_notificationPublisher = notificationPublisher;
+            _idGenerator = idGenerator;
         }
 
         public async Task<EquipmentRequestDto> CreateBatch(
@@ -78,6 +82,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var entity = new EquipmentRequest
             {
+                Id = _idGenerator.Generate(),
                 TaskAssignmentId = dto.TaskAssignmentId,
                 WorkerId = dto.WorkerId,
                 Reason = dto.Reason,
@@ -96,7 +101,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var result = await MapResult(entity);
             await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
-            return result;
+
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Yêu cầu thiết bị mới",
+				Body = $"{result.WorkerName ?? "Một nhân viên"} đã gửi yêu cầu thiết bị.",
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "EQUIPMENT_REQUEST",
+					action = "CREATED",
+					requestId = entity.Id,
+					taskAssignmentId = entity.TaskAssignmentId,
+					workerId = entity.WorkerId
+				}),
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+				{
+					new()
+					{
+						RecipientType = RecipientTypeEnum.Supporter,
+						RecipientId = null
+					}
+				}
+			}, ct);
+			return result;
         }
 
         public async Task<EquipmentRequestDto?> Update(
@@ -157,12 +186,64 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? _dateTimeProvider.UtcNow
                 : null;
 
-            await _repo.UpdateAsync(entity, ct);
+            var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId, ct);
 
-            var result = await MapResult(entity);
+            if (task != null)
+            {
+                if (dto.Status == EquipmentRequestStatus.Rejected &&
+                    task.Status == TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.InProgress;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    var updated = await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                    if (!updated)
+                    {
+                        throw new Exception("Failed to update TaskAssignment status.");
+                    }
+                }
+            }
+
+            await _repo.UpdateAsync(entity, ct);
+			// ================= NOTIFICATION =================
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = dto.Status == EquipmentRequestStatus.Approved
+					? "Yêu cầu thiết bị đã được duyệt"
+					: "Yêu cầu thiết bị đã bị từ chối",
+
+				Body = dto.Status == EquipmentRequestStatus.Approved
+					? "Yêu cầu thiết bị của bạn đã được chấp nhận."
+					: "Yêu cầu thiết bị của bạn đã bị từ chối.",
+
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "EQUIPMENT_REQUEST",
+					action = "REVIEWED",
+					status = dto.Status,
+					requestId = entity.Id,
+					taskAssignmentId = entity.TaskAssignmentId
+				}),
+
+				SenderType = SenderTypeEnum.Supporter,  
+				SenderId = _userContext.UserId,
+
+				Recipients = new List<NotificationRecipientEvent>
+	            {
+                    new()
+		            {
+			            RecipientType = RecipientTypeEnum.Worker,
+			            RecipientId = entity.WorkerId
+		            } 
+                }
+			}, ct);
+
+			var result = await MapResult(entity);
             result.ReviewedByUserName = _userContext.FullName;
 
             await EnrichAsync(new List<EquipmentRequestDto> { result }, ct);
+
             return result;
         }
 
@@ -197,6 +278,63 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             return dto;
         }
 
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByStatus(
+            EquipmentRequestStatus status,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var paged = await _repo.GetByStatusAsync(status, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(paged.Content);
+
+            if (dtos.Count > 0)
+            {
+                await EnrichAsync(dtos, ct);
+            }
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                paged.PageNumber,
+                paged.PageSize,
+                paged.TotalElements,
+                dtos);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByTaskAssignmentId(
+            Guid taskAssignmentId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetByTaskAssignmentIdAsync(taskAssignmentId, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
+        }
+
+        public async Task<PaginatedResult<EquipmentRequestDto>> GetByWorkerId(
+            Guid workerId,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            var result = await _repo.GetByWorkerIdAsync(workerId, request, ct);
+
+            var dtos = _mapper.Map<List<EquipmentRequestDto>>(result.Content);
+
+            await EnrichAsync(dtos, ct);
+
+            return new PaginatedResult<EquipmentRequestDto>(
+                result.PageNumber,
+                result.PageSize,
+                result.TotalElements,
+                dtos);
+        }
+
         public async Task<bool> Delete(Guid id, CancellationToken ct = default)
         {
             var entity = await _repo.GetByIdAsync(id, ct);
@@ -215,6 +353,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 ? await _workerQueryService.GetUserNames(workerIds)
                 : new Dictionary<Guid, string>();
 
+            // TASK 
+            var taskIds = dtos
+                .Select(x => x.TaskAssignmentId)
+                .Distinct()
+                .ToList();
+
+            var taskDict = taskIds.Any()
+                ? (await _taskAssignmentRepository.GetByIdsAsync(taskIds, ct))
+                    .ToDictionary(x => x.Id, x => x.TaskName)
+                : new Dictionary<Guid, string>();
+
             // EQUIPMENT
             var equipmentIds = dtos
                 .SelectMany(x => x.Items)
@@ -230,6 +379,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             foreach (var dto in dtos)
             {
                 dto.WorkerName = workerDict.GetValueOrDefault(dto.WorkerId);
+                dto.TaskName = taskDict.GetValueOrDefault(dto.TaskAssignmentId);
 
                 foreach (var item in dto.Items)
                 {

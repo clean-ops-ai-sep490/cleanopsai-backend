@@ -26,14 +26,14 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
         {
             return await _dbContext.Set<Location>()
                 .Include(c => c.Client)
-                .OrderByDescending(c => c.Id)
+                .OrderByDescending(c => c.Created)
                 .ToListAsync();
         }
 
         // get all Locations with pagination
         public async Task<(List<Location> Items, int TotalCount)> GetAllPaginationAsync(int pageNumber, int pageSize)
         {
-            var query = _dbContext.Set<Location>().Include(c => c.Client).AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Id);
+            var query = _dbContext.Set<Location>().Include(c => c.Client).AsQueryable().Where(c => c.IsDeleted == false).OrderByDescending(c => c.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -83,7 +83,7 @@ namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Repositories
             return await _dbContext.Set<Location>()
                 .Include(l => l.Client)
                 .Where(l => l.ClientId == clientId && l.IsDeleted == false)
-                .OrderByDescending(l => l.Id)
+                .OrderByDescending(l => l.Created)
                 .ToListAsync();
         }
 

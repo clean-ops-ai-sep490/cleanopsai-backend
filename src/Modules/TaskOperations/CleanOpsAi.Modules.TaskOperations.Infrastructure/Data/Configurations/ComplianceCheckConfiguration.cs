@@ -24,6 +24,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 				.HasForeignKey(x => x.TaskStepExecutionId)
 				.OnDelete(DeleteBehavior.Cascade);
 
+			builder.Property(x => x.MinScore)
+			.HasPrecision(5, 2)
+			.HasDefaultValue(0);
+
+			builder.Property(x => x.Status)
+			.IsRequired()
+			.HasConversion<string>();
+
+			builder.Property(x => x.FailedImageCount)
+			.IsRequired()
+			.HasDefaultValue(0);
+
+			builder.Property(x => x.AIResultRaw).HasColumnType("jsonb"); 
+
 			builder.HasQueryFilter(x => !x.IsDeleted);
 		}
 	}

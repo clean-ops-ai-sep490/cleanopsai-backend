@@ -2,18 +2,13 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
-using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Application.Pagination; 
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
-using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CleanOpsAi.Modules.TaskOperations.Domain.Enums; 
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -25,28 +20,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
         private readonly ISupervisorQueryService _supervisorQueryService;
-        private readonly IWorkAreaQueryService _workAreaQueryService;
+        private readonly IWorkAreaQueryService _workAreaQueryService; 
 
-        public AdHocRequestService(
+		public AdHocRequestService(
             IAdHocRequestRepository repository,
-            IMapper mapper,
-            IUserContext userContext,
-            IDateTimeProvider dateTimeProvider,
-            IWorkerQueryService workerQueryService,
-            ISupervisorQueryService supervisorQueryService,
-            IWorkAreaQueryService workAreaQueryService
-        )
-        {
-            _repository = repository;
-            _mapper = mapper;
-            _userContext = userContext;
-            _dateTimeProvider = dateTimeProvider;
-            _workerQueryService = workerQueryService;
-            _supervisorQueryService = supervisorQueryService;
-            _workAreaQueryService = workAreaQueryService;
-        }
+			IMapper mapper,
+			IUserContext userContext,
+			IDateTimeProvider dateTimeProvider,
+			IWorkerQueryService workerQueryService,
+			ISupervisorQueryService supervisorQueryService,
+			IWorkAreaQueryService workAreaQueryService 
+		)
+		{
+			_repository = repository;
+			_mapper = mapper;
+			_userContext = userContext;
+			_dateTimeProvider = dateTimeProvider;
+			_workerQueryService = workerQueryService;
+			_supervisorQueryService = supervisorQueryService;
+			_workAreaQueryService = workAreaQueryService;
+		}
 
-        public async Task<AdHocRequestDto?> GetById(Guid id, CancellationToken ct = default)
+		public async Task<AdHocRequestDto?> GetById(Guid id, CancellationToken ct = default)
         {
             var entity = await _repository.GetByIdExistAsync(id, ct);
             if (entity == null) return null;
@@ -133,15 +128,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         }
 
         public async Task<AdHocRequestDto?> Create(CreateAdHocRequestDto dto, CancellationToken ct = default)
-        {
-            // 1. Resolve WorkerId từ UserId hiện tại
+        { 
             var workerId = await _workerQueryService.GetWorkerIdByUserIdAsync(_userContext.UserId, ct);
             if (workerId == null)
-                throw new BadRequestException("Worker profile not found for current user.");
-
-            // 2. Validate dates
-            if (dto.RequestDateFrom == null)
-                throw new BadRequestException("RequestDateFrom is required.");
+                throw new BadRequestException("Worker profile not found for current user."); 
 
             var from = dto.RequestDateFrom;
             var to = dto.RequestDateTo ?? from;
@@ -161,25 +151,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             // 4. Resolve ReviewerId (Supervisor) từ WorkAreaId + WorkerId
             var supervisorId = await _supervisorQueryService.GetSupervisorIdAsync(
                 dto.WorkAreaId, workerId.Value, ct);
-            entity.ReviewedByUserId = supervisorId;
+            entity.ReviewedByUserId = supervisorId; 
 
-            Console.WriteLine($"DEBUG - WorkAreaId: {dto.WorkAreaId}");
-            Console.WriteLine($"DEBUG - WorkerId: {workerId.Value}");
-            Console.WriteLine($"DEBUG - SupervisorId resolved: {supervisorId}");
-
-            await _repository.AddAsync(entity, ct);
-
-            // //  PUSH NOTIFICATION (RabbitMQ)
-            // await _publishEndpoint.Publish(new AdHocRequestCreatedEvent
-            // {
-            //     RequestId = entity.Id,
-            //     TaskAssignmentId = entity.TaskAssignmentId,
-            //     RequestedByWorkerId = entity.RequestedByWorkerId,
-            //     RequestType = entity.RequestType,
-            //     Reason = entity.Reason,
-            //     Description = entity.Description,
-            //     CreatedAt = entity.Created
-            // }, ct);
+            await _repository.AddAsync(entity, ct); 
 
             var result = _mapper.Map<AdHocRequestDto>(entity);
             result.WorkerName = await GetWorkerNameAsync(entity.RequestedByWorkerId);
@@ -189,7 +163,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 result.ReviewedByUserName = await _supervisorQueryService.GetSupervisorNameAsync(
                     entity.ReviewedByUserId.Value, ct);
 
-            return result;
+			
+
+			return result;
         }
 
         public async Task<AdHocRequestDto?> Update(Guid id, UpdateAdHocRequestDto dto, CancellationToken ct = default)

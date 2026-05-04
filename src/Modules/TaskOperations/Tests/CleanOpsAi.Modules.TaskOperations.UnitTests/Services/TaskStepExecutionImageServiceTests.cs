@@ -1,4 +1,6 @@
+using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
@@ -25,20 +27,29 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
         private readonly IFileStorageService _storageService;
 
         private readonly TaskStepExecutionImageService _service;
+        private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTime;
+		private readonly IIdGenerator _idGenerator;
 
-        public TaskStepExecutionImageServiceTests()
+		public TaskStepExecutionImageServiceTests()
         {
             _assignmentRepo = Substitute.For<ITaskAssignmentRepository>();
             _stepRepo = Substitute.For<ITaskStepExecutionRepository>();
             _imageRepo = Substitute.For<ITaskStepExecutionImageRepository>();
             _storageService = Substitute.For<IFileStorageService>();
+            _userContext = Substitute.For<IUserContext>();
+            _dateTime = Substitute.For<IDateTimeProvider>();
+			_idGenerator = Substitute.For<IIdGenerator>();
 
             _service = new TaskStepExecutionImageService(
                 _assignmentRepo,
                 _stepRepo,
                 _imageRepo,
-                _storageService
-            );
+                _storageService,
+                _userContext,
+                _dateTime,
+				_idGenerator
+			);
         }
 
         // =========================

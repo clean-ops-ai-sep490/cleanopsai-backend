@@ -1,6 +1,8 @@
 using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces.Messaging;
+using CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs;
@@ -22,27 +24,33 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
     {
         private readonly ITaskStepExecutionRepository _repository;
         private readonly IDateTimeProvider _dateTimeProvider;
-        private readonly IMapper _mapper;
+        private readonly IMapper _mapper; 
+        private readonly TaskStepExecutionService _service;  
+		private readonly IEventBus _eventBus;
+		private readonly IPpeCheckNotifier _notifier;
 
-        private readonly TaskStepExecutionService _service;
 
-        public TaskStepExecutionServiceTests()
-        {
-            _repository = Substitute.For<ITaskStepExecutionRepository>();
-            _dateTimeProvider = Substitute.For<IDateTimeProvider>();
-            _mapper = Substitute.For<IMapper>();
+		public TaskStepExecutionServiceTests()
+		{
+			_repository = Substitute.For<ITaskStepExecutionRepository>();
+			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
+			_mapper = Substitute.For<IMapper>(); 
+			_eventBus = Substitute.For<IEventBus>();
+            _notifier = Substitute.For<IPpeCheckNotifier>();
 
-            _service = new TaskStepExecutionService(
-                _repository,
-                _dateTimeProvider,
-                _mapper
-            );
-        }
+			_service = new TaskStepExecutionService(
+				_repository,
+				_dateTimeProvider,
+				_mapper, 
+				_eventBus,
+				_notifier
+			);
+		}
 
-        // =========================
-        // COMPLETE STEP SUCCESS
-        // =========================
-        [Fact]
+		// =========================
+		// COMPLETE STEP SUCCESS
+		// =========================
+		[Fact]
         public async Task CompleteStepAsync_ShouldCompleteStep_WhenValidRequest()
         {
             var stepId = Guid.NewGuid();

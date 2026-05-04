@@ -46,11 +46,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 
 		public async Task<PaginatedResult<TaskSwapRequest>> GetSwapRequestsPaging(Guid supervisorId, SwapRequestStatus? status, PaginationRequest paginationRequest, CancellationToken ct = default)
 		{
-			var query = _context.TaskSwapRequests.AsQueryable();
+			var query = _context.TaskSwapRequests.AsQueryable(); 
 
 			if (status.HasValue)
 			{
 				query = query.Where(x => x.Status == status.Value && x.ReviewedByUserId == supervisorId).OrderByDescending(x=>x.Id);
+			}else
+			{
+				query = query.Where(x => x.ReviewedByUserId == supervisorId).OrderByDescending(x => x.Id);
 			}
 
 			return await query.ToPaginatedResultAsync(paginationRequest, ct);
@@ -64,7 +67,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 				(x.TaskAssignmentId == taskAssignmentId ||
 				 x.TargetTaskAssignmentId == taskAssignmentId) &&
 				(x.Status == SwapRequestStatus.PendingTargetApproval ||
-				 x.Status == SwapRequestStatus.PendingManagerApproval));
+				 x.Status == SwapRequestStatus.PendingSupervisorApproval));
 		}
 	}
 }

@@ -2,6 +2,7 @@
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
+using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Data; 
@@ -66,13 +67,13 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 					t.WorkAreaId == workAreaId &&
 					t.AssigneeId != excludeAssigneeId &&
 					t.Status == TaskAssignmentStatus.NotStarted &&
-					t.ScheduledStartAt < scheduledEndAt &&
-					t.ScheduledEndAt > scheduledStartAt &&
+					//t.ScheduledStartAt < scheduledEndAt &&
+					//t.ScheduledEndAt > scheduledStartAt &&
 					t.ScheduledStartAt >= weekStart &&
 					t.ScheduledStartAt < weekEnd &&
 					!t.TaskSwapRequests.Any(s =>
 						s.Status == SwapRequestStatus.PendingTargetApproval ||
-						s.Status == SwapRequestStatus.PendingManagerApproval)
+						s.Status == SwapRequestStatus.PendingSupervisorApproval)
 				);
 
 			if (qualifiedWorkerIds != null && qualifiedWorkerIds.Any())
@@ -89,6 +90,24 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			return await query
 				.OrderBy(t => t.ScheduledStartAt)
 				.ToPaginatedResultAsync(paginationRequest, ct);
+		}
+
+		public async Task<bool> HasOverlapAsync(
+			Guid assigneeId,
+			DateTime newStart,
+			DateTime newEnd,
+			Guid? excludeTaskId = null,
+			CancellationToken ct = default)
+		{
+			return await _context.TaskAssignments
+				.AnyAsync(x =>
+					x.AssigneeId == assigneeId &&
+					!x.IsDeleted && 
+					x.Status != TaskAssignmentStatus.Completed &&
+					(excludeTaskId == null || x.Id != excludeTaskId) &&
+					x.ScheduledStartAt < newEnd &&
+					x.ScheduledEndAt > newStart,
+					ct);
 		}
 
 		public async Task<bool> HasTimeConflictAsync(Guid excludeTaskId, Guid assigneeId, DateTime scheduledStartAt, DateTime scheduledEndAt, CancellationToken ct = default)
@@ -191,6 +210,60 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.TaskAssignments
                 .Where(x => ids.Contains(x.Id))
                 .ToListAsync(ct);
+        }
+
+        public async Task<List<TaskAssignment>> GetTasksByWorkerAndDateRange(
+			Guid workerId,
+			DateTime from,
+			DateTime to,
+			CancellationToken ct)
+        {
+            return await _context.TaskAssignments
+                .Where(x =>
+                    x.AssigneeId == workerId &&
+                    !x.IsDeleted &&
+                    x.ScheduledStartAt < to &&
+                    x.ScheduledEndAt > from // overlap
+                )
+                .ToListAsync(ct);
+        }
+
+        public async Task<int> CountAllAsync()
+        {
+            return await _context.TaskAssignments.CountAsync(x => !x.IsDeleted);
+        }
+
+        public async Task<int> CountByStatusAsync(TaskAssignmentStatus status)
+        {
+            return await _context.TaskAssignments
+                .CountAsync(x => !x.IsDeleted && x.Status == status);
+        }
+
+        public async Task<List<WorkerTaskStatsDto>> GetTopWorkersByMonthAsync(
+            DateTime from,
+            DateTime to,
+            bool descending,
+            int take = 5)
+        {
+            var query = _context.TaskAssignments
+                .Where(x =>
+                    !x.IsDeleted &&
+                    x.Status == TaskAssignmentStatus.Completed &&
+                    x.ScheduledStartAt >= from &&
+                    x.ScheduledStartAt <= to)
+                .GroupBy(x => new { x.AssigneeId, x.AssigneeName })
+                .Select(g => new WorkerTaskStatsDto
+                {
+                    WorkerId = g.Key.AssigneeId,
+                    WorkerName = g.Key.AssigneeName,
+                    TotalTasks = g.Count()
+                });
+
+            query = descending
+                ? query.OrderByDescending(x => x.TotalTasks).ThenBy(x => x.WorkerName)
+                : query.OrderBy(x => x.TotalTasks).ThenBy(x => x.WorkerName);
+
+            return await query.Take(take).ToListAsync();
         }
 
     }

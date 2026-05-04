@@ -1,4 +1,7 @@
-﻿using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
+using CleanOpsAi.BuildingBlocks.Application.Interfaces;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
@@ -16,6 +19,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly ITaskStepExecutionRepository _stepRepo;
         private readonly ITaskStepExecutionImageRepository _imageRepo;
         private readonly IFileStorageService _storageService;
+        private readonly IUserContext _userContext;
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IIdGenerator _idGenerator;
 
         private const string CONTAINER = "contracts";
         private const string BEFORE_FOLDER = "before";
@@ -27,16 +33,24 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        private const string AI_PPE_CHECK_BEHAVIOR = "ai-ppe-check";
+
         public TaskStepExecutionImageService(
             ITaskAssignmentRepository assignmentRepo,
             ITaskStepExecutionRepository stepRepo,
             ITaskStepExecutionImageRepository imageRepo,
-            IFileStorageService storageService)
+            IFileStorageService storageService,
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvide,
+            IIdGenerator idGenerator)
         {
             _assignmentRepo = assignmentRepo;
             _stepRepo = stepRepo;
             _imageRepo = imageRepo;
             _storageService = storageService;
+            _userContext = userContext;
+            _dateTimeProvider = dateTimeProvide;
+            _idGenerator = idGenerator;
         }
 
         public async Task<UploadStepImagesResponse> UploadImagesAsync(
@@ -60,7 +74,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             await _imageRepo.AddRangeAsync(uploadedImages, ct);
 
             var response = BuildResponse(imageType, request.MinPhotos, uploadedImages.Count);
-            step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            if (!ShouldPreserveExistingResult(step, imageType))
+            {
+                step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            }
 
             await _imageRepo.SaveChangesAsync(ct);
 
@@ -84,10 +101,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             // Soft-delete ảnh cũ
             var existingImages = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(
-                taskStepExecutionId, ct);
+                taskStepExecutionId, imageType, ct);
 
             foreach (var img in existingImages)
+            {
                 img.IsDeleted = true;
+                img.LastModified = _dateTimeProvider.UtcNow;
+                img.LastModifiedBy = _userContext.UserId.ToString();
+            }
 
             // Upload ảnh mới
             var newImages = await UploadFilesToStorageAsync(
@@ -96,7 +117,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             await _imageRepo.AddRangeAsync(newImages, ct);
 
             var response = BuildResponse(imageType, request.MinPhotos, newImages.Count);
-            step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            if (!ShouldPreserveExistingResult(step, imageType))
+            {
+                step.ResultData = JsonSerializer.Serialize(response, _jsonOptions);
+            }
 
             await _imageRepo.SaveChangesAsync(ct);
 
@@ -127,6 +151,52 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                     }).ToList()
                 }).ToList()
             };
+        }
+
+        public async Task<bool> DeleteImagesByStepExecutionIdAsync(
+            Guid taskStepExecutionId,
+            CancellationToken ct = default)
+        {
+            var step = await _stepRepo.GetByIdAsync(taskStepExecutionId, ct)
+                ?? throw new NotFoundException(nameof(TaskStepExecution), taskStepExecutionId);
+
+            // Chỉ cho xoá khi đang InProgress
+            EnsureStepIsInProgress(step);
+
+            var images = await _imageRepo.GetActiveByExecutionIdAsync(taskStepExecutionId, ct);
+
+            if (images == null || images.Count == 0)
+                throw new BadRequestException("No images to delete.");
+
+            foreach (var img in images)
+            {
+                img.IsDeleted = true;
+            }
+
+            await _imageRepo.SaveChangesAsync(ct);
+
+            return true;
+        }
+
+        public async Task<bool> DeleteImageByIdAsync(Guid imageId, CancellationToken ct = default)
+        {
+            var image = await _imageRepo.GetByIdAsync(imageId, ct)
+                ?? throw new NotFoundException(nameof(TaskStepExecutionImage), imageId);
+
+            // lấy step để check status
+            var step = await _stepRepo.GetByIdAsync(image.TaskStepExecutionId, ct)
+                ?? throw new NotFoundException(nameof(TaskStepExecution), image.TaskStepExecutionId);
+
+            // chỉ cho xoá khi InProgress
+            EnsureStepIsInProgress(step);
+
+            image.IsDeleted = true;
+            image.LastModified = _dateTimeProvider.UtcNow;
+            image.LastModifiedBy = _userContext.UserId.ToString();
+
+            await _imageRepo.SaveChangesAsync(ct);
+
+            return true;
         }
 
         // ---------- Helpers ----------
@@ -167,9 +237,12 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             return urls.Select(url => new TaskStepExecutionImage
             {
+                Id = _idGenerator.Generate(),
                 TaskStepExecutionId = taskStepExecutionId,
                 ImageUrl = url,
-                ImageType = imageType
+                ImageType = imageType,
+                Created = _dateTimeProvider.UtcNow,
+                CreatedBy = _userContext.UserId.ToString()
             }).ToList();
         }
 
@@ -182,6 +255,42 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
                 MinPhotos = minPhotos,
                 ActualPhotos = actualPhotos
             };
+        }
+
+        private static bool ShouldPreserveExistingResult(TaskStepExecution step, ImageType imageType)
+        {
+            return imageType == ImageType.Ppe && IsAiPpeCheckStep(step.ConfigSnapshot);
+        }
+
+        private static bool IsAiPpeCheckStep(string configSnapshot)
+        {
+            if (string.IsNullOrWhiteSpace(configSnapshot))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(configSnapshot);
+                if (!document.RootElement.TryGetProperty("schema", out var schema))
+                {
+                    return false;
+                }
+
+                if (!schema.TryGetProperty("x-behavior", out var behavior))
+                {
+                    return false;
+                }
+
+                return string.Equals(
+                    behavior.GetString(),
+                    AI_PPE_CHECK_BEHAVIOR,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
         }
     }
 }

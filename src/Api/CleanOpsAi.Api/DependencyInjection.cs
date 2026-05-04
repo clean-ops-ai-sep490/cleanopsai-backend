@@ -1,9 +1,13 @@
-﻿using CleanOpsAi.Api.Common.Exceptions;
-using CleanOpsAi.Api.Middlewares; 
+using CleanOpsAi.Api.Common.Exceptions;
+using CleanOpsAi.Api.Hubs;
+using CleanOpsAi.Api.Middlewares;
+using CleanOpsAi.Api.Services;
 using CleanOpsAi.BuildingBlocks.Infrastructure.Extensions;
 using CleanOpsAi.Modules.ClientManagement.Infrastructure.Consumers;
 using CleanOpsAi.Modules.QualityControl.Infrastructure.Consumers;
+using CleanOpsAi.Modules.Scoring.Infrastructure.Consumers;
 using CleanOpsAi.Modules.ServicePlanning.Infrastructure.Consumer;
+using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Infrastructure.Consumers;
 using CleanOpsAi.Modules.UserAccess.Infrastructure.Consumers;
 using CleanOpsAi.Modules.Workforce.Infrastructure.Consumers;
@@ -73,8 +77,14 @@ public static class DependencyInjection
 			typeof(GetSupervisorByWorkAreaConsumer).Assembly,
             typeof(GetWorkersByWorkAreaConsumer).Assembly,
             typeof(GetBusyWorkerIdsConsumer).Assembly,
-            typeof(GetEquipmentsByIdsConsumer).Assembly
-        );
+            typeof(GetEquipmentsByIdsConsumer).Assembly,
+			typeof(TaskScheduleUpdateConsumer).Assembly,
+            typeof(WorkAreaConsumer).Assembly,
+            typeof(ScoringCompletedConsumer).Assembly,
+			typeof(AiScoringRequestedConsumer).Assembly,
+			typeof(PpeCheckRequestedConsumer).Assembly,
+			typeof(PpeCheckCompletedConsumer).Assembly
+		);
 
 		builder.Services.AddCors(options =>
 		{
@@ -90,11 +100,22 @@ public static class DependencyInjection
 		});
 
 		builder.Services.AddExceptionHandler<CustomExceptionHandler>();
-		builder.Services.AddProblemDetails(); 
+		builder.Services.AddProblemDetails();
 		builder.Services.AddScoped<PerformanceMiddleware>();
 
+		// SignalR — real-time compliance check notifications
+		builder.Services.AddSignalR(options =>
+		{
+			options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+		}).AddJsonProtocol(options =>
+		{
+			options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+		});
 
-		builder.Services.AddHttpContextAccessor(); 
-		builder.Services.AddMemoryCache(); 
+		builder.Services.AddScoped<IComplianceNotifier, SignalRComplianceNotifier>();
+		builder.Services.AddScoped<IPpeCheckNotifier, SignalRPpeCheckNotifier>();
+
+		builder.Services.AddHttpContextAccessor();
+		builder.Services.AddMemoryCache();
 	}
 }

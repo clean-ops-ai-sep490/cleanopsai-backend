@@ -59,7 +59,7 @@ namespace CleanOpsAi.Modules.UserAccess.Infrastructure.Auth
 			}
 
 			// Assign Identity role
-			await _userManager.AddToRoleAsync(user, nameof(UserRole.Worker));
+			await _userManager.AddToRoleAsync(user, role.ToString());
 
 			return new RegisterUserResult
 			{

@@ -45,10 +45,16 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .Include(x => x.WorkerSkills)
                 .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             return workers;
+        }
+
+        public async Task<int> CountAllActiveAsync()
+        {
+            return await _dbContext.Set<Worker>()
+                .CountAsync(x => x.IsDeleted == false);
         }
 
         public async Task<(List<Worker> Items, int TotalCount)> GetAllPaginationAsync(
@@ -59,7 +65,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .Include(x => x.WorkerSkills)
                 .Include(x => x.WorkerCertifications)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -344,6 +350,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 				.ToListAsync();
 		}
 
+		public Task<List<Worker>> GetWorkersByUserIds(List<Guid> userIds)
+		{
+			return _dbContext.Set<Worker>()
+				.Where(x => userIds.Contains(x.UserId) && x.IsDeleted == false)
+				.ToListAsync();
+		}
+
 		public async Task<List<Guid>> GetWorkersWithAllSkillsAndCertsAsync(List<Guid> workerIds, List<Guid> requiredSkillIds, List<Guid> requiredCertIds, CancellationToken ct)
 		{
 			var query = _dbContext.Set<Worker>().AsQueryable();
@@ -414,5 +427,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 			// Chỉ cần kiểm tra tồn tại
 			return await query.AnyAsync(ct);
 		}
+
+
 	}
 }

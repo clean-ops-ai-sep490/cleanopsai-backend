@@ -26,6 +26,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.EmergencyLeaveRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -34,6 +35,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.EmergencyLeaveRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.WorkerId == workerId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -42,6 +44,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.EmergencyLeaveRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.TaskAssignmentId == taskAssignmentId && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -50,6 +53,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await _context.EmergencyLeaveRequests
                 .Include(x => x.TaskAssignment)
                 .Where(x => x.Status == status && !x.IsDeleted)
+                .OrderByDescending(x => x.Created)
                 .ToPaginatedResultAsync(request, ct);
         }
 
@@ -91,5 +95,29 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             _context.EmergencyLeaveRequests.Update(request);
             await _context.SaveChangesAsync(ct);
         }
+
+        public async Task<PaginatedResult<EmergencyLeaveRequest>> GetsByWorkerCurrentMonthPagingAsync(
+            Guid workerId,
+            DateTime now,
+            PaginationRequest request,
+            CancellationToken ct = default)
+        {
+            // đảm bảo now là UTC
+            var nowUtc = DateTime.SpecifyKind(now, DateTimeKind.Utc);
+
+            var monthStart = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthEnd = monthStart.AddMonths(1).AddTicks(-1);
+
+            return await _context.EmergencyLeaveRequests
+                .Include(x => x.TaskAssignment)
+                .Where(x =>
+                    x.WorkerId == workerId &&
+                    !x.IsDeleted &&
+                    x.LeaveDateFrom <= monthEnd &&
+                    x.LeaveDateTo >= monthStart)
+                .OrderByDescending(x => x.LeaveDateFrom)
+                .ToPaginatedResultAsync(request, ct);
+        }
+
     }
 }

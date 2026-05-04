@@ -30,11 +30,24 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<WorkAreaSupervisor?> GetByWorkerIdAsync(Guid workerId)
+        public async Task<(List<WorkAreaSupervisor> Items, int TotalCount)> GetByWorkerIdPaginationAsync(
+            Guid workerId,
+            int pageNumber,
+            int pageSize)
         {
-            return await _dbContext.Set<WorkAreaSupervisor>()
+            var query = _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
-                .FirstOrDefaultAsync(x => x.WorkerId == workerId && x.IsDeleted == false);
+                .Where(x => x.WorkerId == workerId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
         }
 
         public async Task<List<WorkAreaSupervisor>> GetAllAsync()
@@ -42,7 +55,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -53,7 +66,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             var query = _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
                 .Where(x => x.IsDeleted == false)
-                .OrderByDescending(x => x.Id);
+                .OrderByDescending(x => x.Created);
 
             var totalCount = await query.CountAsync();
 
@@ -70,7 +83,7 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.Set<WorkAreaSupervisor>()
                 .Include(x => x.Worker)
                 .Where(x => x.WorkAreaId == workAreaId && x.IsDeleted == false)
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
 
@@ -90,27 +103,25 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
         }
 
         // Lấy GPS mới nhất của tất cả worker trong một WorkArea
-        public async Task<List<WorkerGps>> GetWorkersLatestGpsByWorkAreaIdAsync(Guid workAreaId)
+        public async Task<List<WorkerGps>> GetLatestGpsByWorkAreaAsync(Guid workAreaId)
         {
-            // B1: Lấy danh sách WorkerId trong WorkArea
             var workerIds = await _dbContext.Set<WorkAreaSupervisor>()
-                .Where(x => x.WorkAreaId == workAreaId
-                         && x.WorkerId != null
-                         && x.IsDeleted == false)
+                .Where(x => x.WorkAreaId == workAreaId && x.IsDeleted == false)
                 .Select(x => x.WorkerId!.Value)
                 .ToListAsync();
 
             if (!workerIds.Any())
                 return new List<WorkerGps>();
 
-            // B2: Lấy GPS mới nhất của từng worker
-            var allGps = await _dbContext.Set<WorkerGps>()
+            var gps = await _dbContext.Set<WorkerGps>()
                 .Include(x => x.Worker)
-                .Where(x => workerIds.Contains(x.WorkerId) && x.IsDeleted == false)
+                .Where(x =>
+                    workerIds.Contains(x.WorkerId) &&
+                    x.IsDeleted == false)
                 .OrderByDescending(x => x.Created)
                 .ToListAsync();
 
-            return allGps
+            return gps
                 .GroupBy(x => x.WorkerId)
                 .Select(g => g.First())
                 .ToList();
@@ -178,5 +189,52 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
 				.Select(x => x.UserId) 
 				.ToListAsync(ct);
 		}
-	} 
+
+        public async Task<List<WorkAreaSupervisor>> GetWorkersBySupervisorIdAsync(Guid supervisorId)
+        {
+            return await _dbContext.Set<WorkAreaSupervisor>()
+                .Include(x => x.Worker)
+                .Where(x => x.UserId == supervisorId && x.IsDeleted == false)
+                .OrderByDescending(x => x.Created)
+                .ToListAsync();
+        }
+
+        public async Task<(List<WorkAreaSupervisor> Items, int TotalCount)>GetWorkersByWorkAreaPagingAsync(
+            Guid workAreaId,
+            int pageNumber,
+            int pageSize)
+        {
+            var query = _dbContext.Set<WorkAreaSupervisor>()
+                .Include(x => x.Worker)
+                .Where(x =>
+                    x.WorkAreaId == workAreaId &&
+                    x.IsDeleted == false)
+                .OrderByDescending(x => x.Created);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+        public async Task<int> UpdateSupervisorAsync(Guid workAreaId, Guid newSupervisorId)
+        {
+            var entities = await _dbContext.Set<WorkAreaSupervisor>()
+                .Where(x => x.WorkAreaId == workAreaId && x.IsDeleted == false)
+                .ToListAsync();
+
+            foreach (var entity in entities)
+            {
+                entity.UserId = newSupervisorId;
+                entity.LastModified = DateTime.UtcNow;
+            }
+
+            return await _dbContext.SaveChangesAsync();
+        }
+
+    } 
 }

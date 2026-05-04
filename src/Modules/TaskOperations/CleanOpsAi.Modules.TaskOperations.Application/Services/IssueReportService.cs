@@ -3,12 +3,16 @@ using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
+using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
+using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Request;
 using CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response;
 using CleanOpsAi.Modules.TaskOperations.Domain.Entities;
 using CleanOpsAi.Modules.TaskOperations.Domain.Enums;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 {
@@ -20,6 +24,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IWorkerQueryService _workerQueryService;
+		private readonly INotificationPublisher _notificationPublisher;
+        private readonly IIdGenerator _idGenerator;
 
         public IssueReportService(
             IIssueReportRepository issueReportRepository,
@@ -27,7 +33,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IUserContext userContext,
             IDateTimeProvider dateTimeProvider,
             IWorkerQueryService workerQueryService,
-            ITaskAssignmentRepository taskAssignmentRepository)
+            ITaskAssignmentRepository taskAssignmentRepository,
+            INotificationPublisher notificationPublisher,
+            IIdGenerator idGenerator)
         {
             _issueReportRepository = issueReportRepository;
             _mapper = mapper;
@@ -35,7 +43,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _dateTimeProvider = dateTimeProvider;
             _workerQueryService = workerQueryService;
             _taskAssignmentRepository = taskAssignmentRepository;
-        }
+            _notificationPublisher = notificationPublisher;
+            _idGenerator = idGenerator;
+		}
 
         // ================= GET BY ID =================
         public async Task<IssueReportDto?> GetById(Guid id, CancellationToken ct = default)
@@ -133,6 +143,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             }
             var entity = _mapper.Map<IssueReport>(dto);
 
+            entity.Id = _idGenerator.Generate();
             entity.Status = IssueStatus.Pending;
             entity.Created = _dateTimeProvider.UtcNow;
             entity.CreatedBy = _userContext.UserId.ToString();
@@ -143,7 +154,30 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             await EnrichSingleAsync(result, ct);
 
-            return result;
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = "Báo cáo sự cố mới",
+				Body = $"{result.ReportedByWorkerName} đã báo lỗi task tại {result.DisplayLocation}",
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "ISSUE",
+					action = "CREATED",
+					issueId = entity.Id,
+					taskAssignmentId = dto.TaskAssignmentId
+				}),
+				SenderType = SenderTypeEnum.Worker,
+				SenderId = _userContext.UserId,
+				Recipients = new List<NotificationRecipientEvent>
+	{
+		        new()
+		        {
+			        RecipientType = RecipientTypeEnum.Manager,
+			        RecipientId = null
+		        }
+	        }
+			}, ct);
+
+			return result;
         }
 
         // ================= UPDATE =================
@@ -180,14 +214,60 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var resolverName = _userContext.FullName;
 
+            var task = await _taskAssignmentRepository.GetByIdAsync(entity.TaskAssignmentId, ct);
+
+            if (task != null)
+            {
+                // Nếu reject -> mở block lại
+                if (dto.Status == IssueStatus.Rejected &&
+                    task.Status == TaskAssignmentStatus.Block)
+                {
+                    task.Status = TaskAssignmentStatus.InProgress;
+                    task.LastModified = _dateTimeProvider.UtcNow;
+                    task.LastModifiedBy = _userContext.UserId.ToString();
+
+                    await _taskAssignmentRepository.UpdateAsync(task.Id, task, ct);
+                }
+            }
+
             await _issueReportRepository.UpdateAsync(entity, ct);
 
-            var result = _mapper.Map<IssueReportDto>(entity);
+			// ================= NOTIFICATION =================
+			await _notificationPublisher.PublishAsync(new SendNotificationEvent
+			{
+				Title = dto.Status == IssueStatus.Approved
+					? "Sự cố đã được xác nhận"
+					: "Sự cố đã bị từ chối",
 
-            result.ResolvedByUserName = resolverName;
+				Body = dto.Status == IssueStatus.Approved
+					? "Báo cáo sự cố của bạn đã được chấp nhận."
+					: "Báo cáo sự cố của bạn đã bị từ chối. Vui lòng tiếp tục công việc.",
 
-            await EnrichSingleAsync(result, ct);
+				Payload = JsonSerializer.Serialize(new
+				{
+					type = "ISSUE",
+					action = "RESOLVED",
+					status = dto.Status,
+					issueId = entity.Id,
+					taskAssignmentId = entity.TaskAssignmentId
+				}),
 
+				SenderType = SenderTypeEnum.Manager,  
+				SenderId = _userContext.UserId,
+
+				Recipients = new List<NotificationRecipientEvent>
+	            {
+		            new()
+		            {
+			            RecipientType = RecipientTypeEnum.Worker,
+			            RecipientId = entity.ReportedByWorkerId 
+                    }
+	            }
+			}, ct);
+
+			var result = _mapper.Map<IssueReportDto>(entity); 
+            result.ResolvedByUserName = resolverName; 
+            await EnrichSingleAsync(result, ct); 
             return result;
         }
 
@@ -212,6 +292,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 
             var task = await _taskAssignmentRepository.GetByIdAsync(dto.TaskAssignmentId, ct);
             dto.DisplayLocation = task?.DisplayLocation;
+            dto.TaskName = task?.TaskName;
         }
 
         // ================= ENRICH LIST =================
@@ -230,15 +311,22 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             var workerDict = workerTask.Result;
             var tasks = taskTask.Result;
 
-            var taskDict = tasks.ToDictionary(x => x.Id, x => x.DisplayLocation);
+            var taskDict = tasks.ToDictionary(x => x.Id, x => new
+            {
+                x.TaskName,
+                x.DisplayLocation
+            });
 
             foreach (var dto in dtos)
             {
                 dto.ReportedByWorkerName =
                     workerDict.GetValueOrDefault(dto.ReportedByWorkerId);
 
-                dto.DisplayLocation =
-                    taskDict.GetValueOrDefault(dto.TaskAssignmentId);
+                if (taskDict.TryGetValue(dto.TaskAssignmentId, out var task))
+                {
+                    dto.DisplayLocation = task.DisplayLocation;
+                    dto.TaskName = task.TaskName;
+                }
             }
         }
     }

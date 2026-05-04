@@ -2,12 +2,16 @@
 {
 	public class TaskAssignmentUpdateDto
 	{
-		public Guid TaskScheduleId { get; set; }
+		public string? TaskName { get; set; }
 
-		public Guid AssigneeId { get; set; }
+		public DateTime? ScheduledStartAt { get; set; }
 
-		public DateTime ScheduledStartAt { get; set; }
+		public int? DurationMinutes { get; set; }
 
-		public string? DisplayLocation { get; set; }
+		public Guid? AssigneeId { get; set; }
+
+		public string? AssigneeName { get; set; } 
+
+		public string? DisplayLocation { get; set; } 
 	}
 }

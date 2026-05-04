@@ -2,7 +2,6 @@
 using CleanOpsAi.BuildingBlocks.Application;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Domain.Dtos.Notifications;
-using CleanOpsAi.BuildingBlocks.Infrastructure.Events;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Repositories;
 using CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Services;
 using CleanOpsAi.Modules.QualityControl.Application.DTOs.Request;
@@ -23,6 +22,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		private readonly IDateTimeProvider _dateProvider;
 		private readonly IUserContext _userContext;
 		private readonly ILogger<NotificationService> _logger;
+		private readonly IIdGenerator _idGenerator;
 		private readonly NotificationService _service;
 
 		public AppNotificationTests()
@@ -34,6 +34,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_dateProvider = Substitute.For<IDateTimeProvider>();
 			_userContext = Substitute.For<IUserContext>();
 			_logger = Substitute.For<ILogger<NotificationService>>();
+			_idGenerator = Substitute.For<IIdGenerator>();
 
 			_service = new NotificationService(
 				_notificationRepository,
@@ -42,6 +43,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 				_mapper,
 				_dateProvider,
 				_userContext,
+				_idGenerator,
 				_logger);
 		}
 
@@ -57,12 +59,16 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			var entity = new AppNotification();
 			var expectedDto = new NotificationDto { Id = Guid.NewGuid(), Title = dto.Title };
 			var userId = Guid.NewGuid();
+			var generatedId = Guid.NewGuid();
 			var now = DateTime.UtcNow;
 
 			_mapper.Map<AppNotification>(dto).Returns(entity);
 			_userContext.UserId.Returns(userId);
 			_userContext.Role.Returns("Admin");
 			_dateProvider.UtcNow.Returns(now);
+			_idGenerator.Generate().Returns(generatedId);
+			// Stub both overloads of SaveChangesAsync
+			_notificationRepository.SaveChangesAsync().Returns(1);
 			_notificationRepository.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 			_mapper.Map<NotificationDto>(entity).Returns(expectedDto);
 
@@ -72,6 +78,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			Assert.Equal(SenderTypeEnum.Admin, entity.SenderType);
 			Assert.Equal(userId, entity.SenderId);
 			Assert.Equal(now, entity.Created);
+			Assert.Equal(generatedId, entity.Id);
 
 			await _notificationRepository.Received(1).InsertAsync(entity);
 			await _notificationRepository.Received(1).SaveChangesAsync();
@@ -88,6 +95,8 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(Guid.NewGuid());
 			_userContext.Role.Returns("Manager");
 			_dateProvider.UtcNow.Returns(DateTime.UtcNow);
+			_idGenerator.Generate().Returns(Guid.NewGuid());
+			_notificationRepository.SaveChangesAsync().Returns(1);
 			_notificationRepository.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 			_mapper.Map<NotificationDto>(entity).Returns(expectedDto);
 
@@ -107,6 +116,8 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 			_userContext.UserId.Returns(Guid.NewGuid());
 			_userContext.Role.Returns("Other");
 			_dateProvider.UtcNow.Returns(DateTime.UtcNow);
+			_idGenerator.Generate().Returns(Guid.NewGuid());
+			_notificationRepository.SaveChangesAsync().Returns(1);
 			_notificationRepository.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 			_mapper.Map<NotificationDto>(entity).Returns(expectedDto);
 
@@ -135,6 +146,7 @@ namespace CleanOpsAi.Modules.QualityControl.UnitTests.Services
 		{
 			var id = Guid.NewGuid();
 			_notificationRepository.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns((AppNotification?)null);
+			_mapper.Map<NotificationDto?>(null).Returns((NotificationDto?)null);
 
 			var result = await _service.GetById(id);
 

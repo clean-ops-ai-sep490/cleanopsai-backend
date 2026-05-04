@@ -8,8 +8,8 @@ Repo nay duoc chuan hoa theo mo hinh:
 
 - 1 compose duy nhat: docker-compose.yml
 
-Compose chinh mac dinh chay backend infra + API + worker, va goi scoring service ben ngoai qua SCORING_SERVICE_BASE_URL.
-Database cho backend/worker duoc su dung truc tiep qua BACKEND_DB_CONNECTION (vd: Supabase Postgres).
+Compose chinh mac dinh chay API + worker, va goi scoring service ben ngoai qua SCORING_SERVICE_BASE_URL.
+Database cho backend/worker duoc su dung truc tiep qua BACKEND_DB_CONNECTION (vd: Supabase Postgres), message broker duoc su dung qua MESSAGE_BROKER_* (vd: CloudAMQP).
 
 ## Prerequisites
 
@@ -32,13 +32,11 @@ Service chinh:
 
 - Backend API: http://localhost:5000
 - Swagger backend: http://localhost:5000/swagger
-- RabbitMQ UI: http://localhost:15672 (guest/guest)
-- PostgreSQL: localhost:5432
-- Redis: localhost:6379
 
 Mac dinh backend se goi scoring service tai:
 
 - SCORING_SERVICE_BASE_URL=http://host.docker.internal:8000
+- MESSAGE_BROKER_HOST / USERNAME / PASSWORD tu file .env hoac environment runtime
 
 ### 2. Tat stack
 
@@ -71,7 +69,7 @@ Moi result trong response se co them `visualizationBlobUrl` de frontend/mobile m
 
 ## Environment Notes
 
-Compose yeu cau BACKEND_DB_CONNECTION. Cac bien nen set khi chay staging/prod:
+Compose yeu cau BACKEND_DB_CONNECTION va MESSAGE_BROKER_* . Cac bien nen set khi chay staging/prod:
 
 - BACKEND_DB_CONNECTION (bat buoc)
 - MESSAGE_BROKER_HOST, MESSAGE_BROKER_USERNAME, MESSAGE_BROKER_PASSWORD
@@ -99,11 +97,12 @@ Tuy chon timeout/poll:
 - Khong commit secret that su vao file compose, README, hoac code.
 - Su dung file .env local (khong commit) hoac secret store (Key Vault/CI secret) de inject bien moi truong.
 - Neu secret da lo trong lich su git, can rotate ngay va scrub history bang cong cu rewrite history.
-- Doi password mac dinh RabbitMQ khi len environment chia se.
+- Neu dung broker online dung chung, can quan ly credentials va virtual host rieng cho moi environment neu co the.
 - Kiem tra lai log startup de dam bao khong in connection string day du.
 
 ## Troubleshooting nhanh
 
 - Job QUEUED lau: kiem tra cleanopsai-scoring-worker co Up khong.
+- API/worker khong len duoc bus: kiem tra MESSAGE_BROKER_HOST co dung schema amqp/amqps, username/password, va broker co mo truy cap tu may chay Docker.
 - API loi ket noi scoring: kiem tra SCORING_SERVICE_BASE_URL va scoring docs health (/).
 - Retrain khong chay: kiem tra SCORING_RETRAIN_* env. Neu dung remote trainer, can bat SCORING_RETRAIN_REMOTE_ENABLED=true va dam bao scoring API co endpoint /retrain/jobs.

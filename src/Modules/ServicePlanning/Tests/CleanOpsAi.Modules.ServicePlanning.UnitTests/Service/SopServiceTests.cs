@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CleanOpsAi.BuildingBlocks.Application;
+using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.BuildingBlocks.Application.Interfaces;
 using CleanOpsAi.BuildingBlocks.Application.Pagination;
 using CleanOpsAi.Modules.ServicePlanning.Application.Common.Interfaces.Repositories;
@@ -18,6 +19,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 		private readonly IStepRepository _stepRepository;
 		private readonly ISopRequiredSkillRepository _sopRequiredSkillRepository;
 		private readonly ISopRequiredCertificationRepository _sopRequiredCertificationRepository;
+		private readonly ISopStepRepository _sopStepRepository;
 		private readonly IMapper _mapper;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IIdGenerator _idGenerator;
@@ -30,6 +32,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			_stepRepository = Substitute.For<IStepRepository>();
 			_sopRequiredSkillRepository = Substitute.For<ISopRequiredSkillRepository>();
 			_sopRequiredCertificationRepository = Substitute.For<ISopRequiredCertificationRepository>();
+			_sopStepRepository = Substitute.For<ISopStepRepository>();
 			_mapper = Substitute.For<IMapper>();
 			_dateTimeProvider = Substitute.For<IDateTimeProvider>();
 			_idGenerator = Substitute.For<IIdGenerator>();
@@ -40,6 +43,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 				_stepRepository,
 				_sopRequiredSkillRepository,
 				_sopRequiredCertificationRepository,
+				_sopStepRepository,
 				_mapper,
 				_dateTimeProvider,
 				_idGenerator,
@@ -98,9 +102,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.UnitTests.Service
 			var id = Guid.NewGuid();
 			_sopRepository.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns((Sop?)null);
 
-			var result = await _service.GetSopByIdAsync(id);
-
-			Assert.Null(result);
+			await Assert.ThrowsAsync<NotFoundException>(() => _service.GetSopByIdAsync(id));
 		}
 
 		[Fact]

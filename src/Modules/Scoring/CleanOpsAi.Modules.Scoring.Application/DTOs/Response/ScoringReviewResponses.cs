@@ -5,6 +5,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public Guid ResultId { get; set; }
 		public Guid JobId { get; set; }
 		public string RequestId { get; set; } = null!;
+		public Guid? SubmittedByUserId { get; set; }
+		public Guid? WorkerId { get; set; }
+		public string? WorkerName { get; set; }
 		public string EnvironmentKey { get; set; } = null!;
 		public string SourceType { get; set; } = null!;
 		public string Source { get; set; } = null!;

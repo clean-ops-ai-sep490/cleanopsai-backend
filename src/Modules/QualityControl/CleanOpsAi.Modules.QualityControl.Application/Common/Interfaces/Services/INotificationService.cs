@@ -6,7 +6,7 @@ namespace CleanOpsAi.Modules.QualityControl.Application.Common.Interfaces.Servic
 {
 	public interface INotificationService
 	{
-		Task HandleAsync(SendNotificationEvent message);
+		//Task HandleAsync(SendNotificationEvent message);
 
 		Task<NotificationDto?> GetById(Guid id, CancellationToken ct = default);
 

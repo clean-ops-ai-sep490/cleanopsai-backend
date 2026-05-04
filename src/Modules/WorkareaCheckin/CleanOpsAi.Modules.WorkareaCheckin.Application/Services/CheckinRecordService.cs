@@ -37,47 +37,67 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 
 		public async Task<CheckinResponseDto> Checkin(CheckinRequestDto request, CancellationToken ct = default)
 		{
-			if (request.WorkareaId == null && string.IsNullOrWhiteSpace(request.DeviceUuid))
+			bool isQr = request.WorkareaId != null && !string.IsNullOrWhiteSpace(request.Code);
+			bool isBle = !string.IsNullOrWhiteSpace(request.DeviceUuid);
+
+			if (!isQr && !isBle)
 				throw new BadRequestException("QR or BLE data is required");
 
-			var checkPoint = await _pointRepo.GetByIdAsync(request.CheckinPointId, ct);
-			if (checkPoint == null)
-				throw new NotFoundException("CheckinPoint not found");
-
-			if (!string.Equals(checkPoint.Code, request.Code, StringComparison.OrdinalIgnoreCase))
-			{
-				throw new BadRequestException("Invalid QR data");
-			}
-
-			Guid pointId = checkPoint.Id;
+			Guid pointId;
 			Guid? deviceId = null;
 			CheckinType type;
 			 
-			if (request.WorkareaId != null)
+			if (isQr)
 			{
-				if (checkPoint.WorkareaId != request.WorkareaId.Value)
-				{
-					throw new BadRequestException("This Check-in Point does not belong to the scanned Workarea.");
-				}
+				if (request.CheckinPointId == null)
+					throw new BadRequestException("CheckinPointId is required for QR");
 
+				var checkPoint = await _pointRepo.GetByIdAsync(request.CheckinPointId.Value, ct);
+				if (checkPoint == null)
+					throw new NotFoundException("CheckinPoint not found");
+
+				if (!string.Equals(checkPoint.Code, request.Code, StringComparison.OrdinalIgnoreCase))
+					throw new BadRequestException("Invalid QR");
+
+				if (checkPoint.WorkareaId != request.WorkareaId)
+					throw new BadRequestException("Wrong workarea");
+
+				pointId = checkPoint.Id;
 				type = CheckinType.Qr;
-			} 
+			}
 			else
 			{
-				throw new NotImplementedException("BLE checkin is not implemented yet");
-				//var device = await _deviceRepo.GetByUuid(request.DeviceUuid!, ct);
-				//if (device == null)
-				//	throw new NotFoundException("Device not found");
+				if (request.Rssi == null)
+					throw new BadRequestException("RSSI is required for BLE check-in");
 
-				//pointId = device.WorkareaCheckinPointId;
-				//deviceId = device.Id;
-				//type = CheckinType.Ble;
+				var device = await _deviceRepo.GetByUuidAsync(request.DeviceUuid!, ct);
+				if (device == null)
+					throw new NotFoundException("Device not found");
+
+				if (device.Status != DeviceStatus.Active)
+					throw new BadRequestException("Device is inactive");
+
+				var threshold = device.BleInfo?.RssiThreshold ?? -75;
+
+				if (request.Rssi < threshold)
+					throw new BadRequestException("Signal too weak");
+
+				// optional tracking
+				if (device.BleInfo != null)
+				{
+					device.BleInfo.LastRssi = request.Rssi;
+					device.BleInfo.LastSeenAt = _dateTimeProvider.UtcNow;
+				}
+
+				pointId = device.WorkareaCheckinPointId;
+				deviceId = device.Id;
+				type = CheckinType.Ble;
 			}
 
 			var record = new CheckinRecord
 			{
 				Id = _idGenerator.Generate(),
-				WorkerId = request.WorkerId, 
+				WorkerId = request.WorkerId,
 
 				WorkareaCheckinPointId = pointId,
 				AccessDeviceId = deviceId,
@@ -89,7 +109,7 @@ namespace CleanOpsAi.Modules.WorkareaCheckin.Application.Services
 				CheckinType = type,
 				Status = CheckinStatus.Active,
 
-				Notes = request.Notes, 
+				Notes = request.Notes,
 
 				Created = _dateTimeProvider.UtcNow,
 				CreatedBy = _userContext.UserId.ToString()

@@ -20,6 +20,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Data.Configurations
 			builder.Property(x => x.ScheduledStartAt)
 				.IsRequired();
 
+			builder.Property(x => x.TaskName)
+				.HasMaxLength(255);
+
 			builder.Property(x => x.IsAdhocTask)
 				.IsRequired();
 
