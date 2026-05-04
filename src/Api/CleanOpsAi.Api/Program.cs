@@ -28,8 +28,9 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler();
 app.UseMiddleware<PerformanceMiddleware>();
 
+var swaggerEnabled = app.Configuration.GetValue<bool>("Swagger:Enabled");
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || swaggerEnabled)
 {
     app.UseSwagger();
     app.UseSwaggerUI(); 

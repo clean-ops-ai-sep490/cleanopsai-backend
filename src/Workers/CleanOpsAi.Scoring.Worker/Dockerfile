@@ -1,12 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
 COPY . .
-RUN dotnet restore "Workers/CleanOpsAi.Scoring.Worker/CleanOpsAi.Scoring.Worker.csproj"
-RUN dotnet publish "Workers/CleanOpsAi.Scoring.Worker/CleanOpsAi.Scoring.Worker.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet restore "src/Workers/CleanOpsAi.Scoring.Worker/CleanOpsAi.Scoring.Worker.csproj"
+RUN dotnet publish "src/Workers/CleanOpsAi.Scoring.Worker/CleanOpsAi.Scoring.Worker.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "CleanOpsAi.Scoring.Worker.dll"]

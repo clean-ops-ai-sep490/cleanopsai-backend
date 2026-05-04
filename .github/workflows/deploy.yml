@@ -1,0 +1,56 @@
+name: CI/CD Build and Deploy
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: Production
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # 3. Build & Push API
+      - name: Build and Push API Image
+        run: |
+          docker build -f src/Api/CleanOpsAi.Api/Dockerfile -t ${{ secrets.ACR_LOGIN_SERVER }}/api:${{ github.sha }} .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/api:${{ github.sha }}
+
+      # 4. Build & Push Worker
+      - name: Build and Push Worker Image
+        run: |
+          docker build -f src/Workers/CleanOpsAi.Scoring.Worker/Dockerfile -t ${{ secrets.ACR_LOGIN_SERVER }}/worker:${{ github.sha }} .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/worker:${{ github.sha }}
+
+      # 5. Deploy API
+      - name: Deploy API to ACA
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.CONTAINER_APP_NAME_API }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/api:${{ github.sha }}
+
+      # 6. Deploy Worker
+      - name: Deploy Worker to ACA
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.CONTAINER_APP_NAME_WORKER }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+          imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/worker:${{ github.sha }}
