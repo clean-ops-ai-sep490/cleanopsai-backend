@@ -5,18 +5,13 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build-and-deploy:
+  # Job 1: Build & Push API (song song với worker)
+  build-api:
     runs-on: ubuntu-latest
     environment: Azure
-    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to ACR
         uses: azure/docker-login@v2
@@ -25,19 +20,42 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # 3. Build & Push API
       - name: Build and Push API Image
         run: |
           docker build -f src/Api/CleanOpsAi.Api/Dockerfile -t ${{ secrets.ACR_LOGIN_SERVER }}/api:${{ github.sha }} .
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/api:${{ github.sha }}
 
-      # 4. Build & Push Worker
+  # Job 2: Build & Push Worker (song song với api)
+  build-worker:
+    runs-on: ubuntu-latest
+    environment: Azure
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Login to ACR
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
       - name: Build and Push Worker Image
         run: |
           docker build -f src/Workers/CleanOpsAi.Scoring.Worker/Dockerfile -t ${{ secrets.ACR_LOGIN_SERVER }}/worker:${{ github.sha }} .
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/worker:${{ github.sha }}
 
-      # 5. Deploy API
+  # Job 3: Deploy API (chờ build-api xong)
+  deploy-api:
+    runs-on: ubuntu-latest
+    environment: Azure
+    needs: build-api
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy API to ACA
         uses: azure/container-apps-deploy-action@v1
         with:
@@ -46,7 +64,17 @@ jobs:
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
           imageToDeploy: ${{ secrets.ACR_LOGIN_SERVER }}/api:${{ github.sha }}
 
-      # 6. Deploy Worker
+  # Job 4: Deploy Worker (chờ build-worker xong)
+  deploy-worker:
+    runs-on: ubuntu-latest
+    environment: Azure
+    needs: build-worker
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy Worker to ACA
         uses: azure/container-apps-deploy-action@v1
         with:
