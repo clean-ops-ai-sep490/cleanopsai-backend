@@ -10,750 +10,750 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CleanOpsAi.Modules.ClientManagement.Infrastructure.Migrations
 {
-    [DbContext(typeof(ClientManagementDbContext))]
-    partial class ClientManagementDbContextModelSnapshot : ModelSnapshot
-    {
-        protected override void BuildModel(ModelBuilder modelBuilder)
-        {
+	[DbContext(typeof(ClientManagementDbContext))]
+	partial class ClientManagementDbContextModelSnapshot : ModelSnapshot
+	{
+		protected override void BuildModel(ModelBuilder modelBuilder)
+		{
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasDefaultSchema("client_management")
-                .HasAnnotation("ProductVersion", "8.0.15")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("email");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id")
-                        .HasName("pk_clients");
-
-                    b.ToTable("clients", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("client_id");
-
-                    b.Property<DateTime>("ContractEndDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("contract_end_date");
-
-                    b.Property<DateTime>("ContractStartDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("contract_start_date");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("UrlFile")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("url_file");
-
-                    b.HasKey("Id")
-                        .HasName("pk_contracts");
+			modelBuilder
+				.HasDefaultSchema("client_management")
+				.HasAnnotation("ProductVersion", "8.0.15")
+				.HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+			NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<string>("Email")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("email");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.HasKey("Id")
+					.HasName("pk_clients");
+
+				b.ToTable("clients", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<Guid>("ClientId")
+					.HasColumnType("uuid")
+					.HasColumnName("client_id");
+
+				b.Property<DateTime>("ContractEndDate")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("contract_end_date");
+
+				b.Property<DateTime>("ContractStartDate")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("contract_start_date");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.Property<string>("UrlFile")
+					.IsRequired()
+					.HasColumnType("text")
+					.HasColumnName("url_file");
+
+				b.HasKey("Id")
+					.HasName("pk_contracts");
 
-                    b.HasIndex("ClientId")
-                        .HasDatabaseName("ix_contracts_client_id");
+				b.HasIndex("ClientId")
+					.HasDatabaseName("ix_contracts_client_id");
 
-                    b.ToTable("contracts", "client_management");
-                });
+				b.ToTable("contracts", "client_management");
+			});
 
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ContractShift", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("BreakMinutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("break_minutes");
-
-                    b.Property<Guid>("ContractId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("contract_id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<int>("DayType")
-                        .HasColumnType("integer")
-                        .HasColumnName("day_type");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ContractShift", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<int>("BreakMinutes")
+					.HasColumnType("integer")
+					.HasColumnName("break_minutes");
+
+				b.Property<Guid>("ContractId")
+					.HasColumnType("uuid")
+					.HasColumnName("contract_id");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<int>("DayType")
+					.HasColumnType("integer")
+					.HasColumnName("day_type");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
 
-                    b.Property<int>("RequiredWorkers")
-                        .HasColumnType("integer")
-                        .HasColumnName("required_workers");
-
-                    b.Property<TimeOnly>("ShiftEnd")
-                        .HasColumnType("time without time zone")
-                        .HasColumnName("shift_end");
-
-                    b.Property<TimeOnly>("ShiftStart")
-                        .HasColumnType("time without time zone")
-                        .HasColumnName("shift_start");
-
-                    b.Property<Guid>("WorkAreaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("work_area_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_contract_shifts");
+				b.Property<int>("RequiredWorkers")
+					.HasColumnType("integer")
+					.HasColumnName("required_workers");
+
+				b.Property<TimeOnly>("ShiftEnd")
+					.HasColumnType("time without time zone")
+					.HasColumnName("shift_end");
+
+				b.Property<TimeOnly>("ShiftStart")
+					.HasColumnType("time without time zone")
+					.HasColumnName("shift_start");
+
+				b.Property<Guid>("WorkAreaId")
+					.HasColumnType("uuid")
+					.HasColumnName("work_area_id");
+
+				b.HasKey("Id")
+					.HasName("pk_contract_shifts");
 
-                    b.HasIndex("ContractId")
-                        .HasDatabaseName("ix_contract_shifts_contract_id");
-
-                    b.HasIndex("WorkAreaId")
-                        .HasDatabaseName("ix_contract_shifts_work_area_id");
-
-                    b.ToTable("contract_shifts", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("address");
-
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("client_id");
-
-                    b.Property<string>("Commune")
-                        .HasColumnType("text")
-                        .HasColumnName("commune");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Province")
-                        .HasColumnType("text")
-                        .HasColumnName("province");
-
-                    b.Property<string>("Street")
-                        .HasColumnType("text")
-                        .HasColumnName("street");
-
-                    b.HasKey("Id")
-                        .HasName("pk_locations");
-
-                    b.HasIndex("ClientId")
-                        .HasDatabaseName("ix_locations_client_id");
-
-                    b.ToTable("locations", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("ContractId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("contract_id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("description");
-
-                    b.Property<Guid?>("EnvironmentTypeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("environment_type_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<int>("ServiceType")
-                        .HasColumnType("integer")
-                        .HasColumnName("service_type");
-
-                    b.Property<Guid>("WorkAreaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("work_area_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_sla");
-
-                    b.HasIndex("ContractId")
-                        .HasDatabaseName("ix_sla_contract_id");
-
-                    b.HasIndex("WorkAreaId")
-                        .HasDatabaseName("ix_sla_work_area_id");
-
-                    b.ToTable("sla", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("BreakTime")
-                        .HasColumnType("integer")
-                        .HasColumnName("break_time");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<TimeOnly>("EndTime")
-                        .HasColumnType("time without time zone")
-                        .HasColumnName("end_time");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("name");
-
-                    b.Property<int>("RequiredWorker")
-                        .HasColumnType("integer")
-                        .HasColumnName("required_worker");
-
-                    b.Property<Guid>("SlaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sla_id");
-
-                    b.Property<TimeOnly>("StartTime")
-                        .HasColumnType("time without time zone")
-                        .HasColumnName("start_time");
-
-                    b.HasKey("Id")
-                        .HasName("pk_sla_shifts");
-
-                    b.HasIndex("SlaId")
-                        .HasDatabaseName("ix_sla_shifts_sla_id");
-
-                    b.ToTable("sla_shifts", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("RecurrenceConfig")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("recurrence_config");
-
-                    b.Property<string>("RecurrenceType")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("recurrence_type");
-
-                    b.Property<Guid>("SlaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sla_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_sla_tasks");
-
-                    b.HasIndex("SlaId")
-                        .HasDatabaseName("ix_sla_tasks_sla_id");
-
-                    b.ToTable("sla_tasks", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<Guid>("ZoneId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("zone_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_work_areas");
-
-                    b.HasIndex("ZoneId")
-                        .HasDatabaseName("ix_work_areas_zone_id");
-
-                    b.ToTable("work_areas", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkAreaDetail", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<double>("Area")
-                        .HasColumnType("double precision")
-                        .HasColumnName("area");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<double>("TotalArea")
-                        .HasColumnType("double precision")
-                        .HasColumnName("total_area");
-
-                    b.Property<Guid>("WorkAreaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("work_area_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_work_area_details");
-
-                    b.HasIndex("WorkAreaId")
-                        .HasDatabaseName("ix_work_area_details_work_area_id");
-
-                    b.ToTable("work_area_details", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("location_id");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id")
-                        .HasName("pk_zones");
-
-                    b.HasIndex("LocationId")
-                        .HasDatabaseName("ix_zones_location_id");
-
-                    b.ToTable("zones", "client_management");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", "Client")
-                        .WithMany("Contracts")
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_contracts_clients_client_id");
-
-                    b.Navigation("Client");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ContractShift", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", "Contract")
-                        .WithMany("ContractShifts")
-                        .HasForeignKey("ContractId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_contract_shifts_contracts_contract_id");
-
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
-                        .WithMany()
-                        .HasForeignKey("WorkAreaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_contract_shifts_work_areas_work_area_id");
-
-                    b.Navigation("Contract");
-
-                    b.Navigation("WorkArea");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", "Client")
-                        .WithMany("Locations")
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_locations_clients_client_id");
-
-                    b.Navigation("Client");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", "Contract")
-                        .WithMany("Slas")
-                        .HasForeignKey("ContractId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_sla_contracts_contract_id");
-
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
-                        .WithMany("Slas")
-                        .HasForeignKey("WorkAreaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_sla_work_areas_work_area_id");
-
-                    b.Navigation("Contract");
-
-                    b.Navigation("WorkArea");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", "Sla")
-                        .WithMany()
-                        .HasForeignKey("SlaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_sla_shifts_sla_sla_id");
-
-                    b.Navigation("Sla");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", "Sla")
-                        .WithMany()
-                        .HasForeignKey("SlaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_sla_tasks_sla_sla_id");
-
-                    b.Navigation("Sla");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", "Zone")
-                        .WithMany("WorkAreas")
-                        .HasForeignKey("ZoneId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_work_areas_zones_zone_id");
-
-                    b.Navigation("Zone");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkAreaDetail", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
-                        .WithMany()
-                        .HasForeignKey("WorkAreaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_work_area_details_work_areas_work_area_id");
-
-                    b.Navigation("WorkArea");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
-                {
-                    b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", "Location")
-                        .WithMany("Zones")
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_zones_locations_location_id");
-
-                    b.Navigation("Location");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", b =>
-                {
-                    b.Navigation("Contracts");
-
-                    b.Navigation("Locations");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
-                {
-                    b.Navigation("ContractShifts");
-
-                    b.Navigation("Slas");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
-                {
-                    b.Navigation("Zones");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
-                {
-                    b.Navigation("Slas");
-                });
-
-            modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
-                {
-                    b.Navigation("WorkAreas");
-                });
+				b.HasIndex("ContractId")
+					.HasDatabaseName("ix_contract_shifts_contract_id");
+
+				b.HasIndex("WorkAreaId")
+					.HasDatabaseName("ix_contract_shifts_work_area_id");
+
+				b.ToTable("contract_shifts", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<string>("Address")
+					.IsRequired()
+					.HasColumnType("text")
+					.HasColumnName("address");
+
+				b.Property<Guid>("ClientId")
+					.HasColumnType("uuid")
+					.HasColumnName("client_id");
+
+				b.Property<string>("Commune")
+					.HasColumnType("text")
+					.HasColumnName("commune");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<double?>("Latitude")
+					.HasColumnType("double precision")
+					.HasColumnName("latitude");
+
+				b.Property<double?>("Longitude")
+					.HasColumnType("double precision")
+					.HasColumnName("longitude");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.Property<string>("Province")
+					.HasColumnType("text")
+					.HasColumnName("province");
+
+				b.Property<string>("Street")
+					.HasColumnType("text")
+					.HasColumnName("street");
+
+				b.HasKey("Id")
+					.HasName("pk_locations");
+
+				b.HasIndex("ClientId")
+					.HasDatabaseName("ix_locations_client_id");
+
+				b.ToTable("locations", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<Guid>("ContractId")
+					.HasColumnType("uuid")
+					.HasColumnName("contract_id");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<string>("Description")
+					.HasMaxLength(1000)
+					.HasColumnType("character varying(1000)")
+					.HasColumnName("description");
+
+				b.Property<Guid?>("EnvironmentTypeId")
+					.HasColumnType("uuid")
+					.HasColumnName("environment_type_id");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.Property<int>("ServiceType")
+					.HasColumnType("integer")
+					.HasColumnName("service_type");
+
+				b.Property<Guid>("WorkAreaId")
+					.HasColumnType("uuid")
+					.HasColumnName("work_area_id");
+
+				b.HasKey("Id")
+					.HasName("pk_sla");
+
+				b.HasIndex("ContractId")
+					.HasDatabaseName("ix_sla_contract_id");
+
+				b.HasIndex("WorkAreaId")
+					.HasDatabaseName("ix_sla_work_area_id");
+
+				b.ToTable("sla", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<int>("BreakTime")
+					.HasColumnType("integer")
+					.HasColumnName("break_time");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<TimeOnly>("EndTime")
+					.HasColumnType("time without time zone")
+					.HasColumnName("end_time");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(100)
+					.HasColumnType("character varying(100)")
+					.HasColumnName("name");
+
+				b.Property<int>("RequiredWorker")
+					.HasColumnType("integer")
+					.HasColumnName("required_worker");
+
+				b.Property<Guid>("SlaId")
+					.HasColumnType("uuid")
+					.HasColumnName("sla_id");
+
+				b.Property<TimeOnly>("StartTime")
+					.HasColumnType("time without time zone")
+					.HasColumnName("start_time");
+
+				b.HasKey("Id")
+					.HasName("pk_sla_shifts");
+
+				b.HasIndex("SlaId")
+					.HasDatabaseName("ix_sla_shifts_sla_id");
+
+				b.ToTable("sla_shifts", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.Property<string>("RecurrenceConfig")
+					.IsRequired()
+					.HasColumnType("jsonb")
+					.HasColumnName("recurrence_config");
+
+				b.Property<string>("RecurrenceType")
+					.IsRequired()
+					.HasColumnType("text")
+					.HasColumnName("recurrence_type");
+
+				b.Property<Guid>("SlaId")
+					.HasColumnType("uuid")
+					.HasColumnName("sla_id");
+
+				b.HasKey("Id")
+					.HasName("pk_sla_tasks");
+
+				b.HasIndex("SlaId")
+					.HasDatabaseName("ix_sla_tasks_sla_id");
+
+				b.ToTable("sla_tasks", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.Property<Guid>("ZoneId")
+					.HasColumnType("uuid")
+					.HasColumnName("zone_id");
+
+				b.HasKey("Id")
+					.HasName("pk_work_areas");
+
+				b.HasIndex("ZoneId")
+					.HasDatabaseName("ix_work_areas_zone_id");
+
+				b.ToTable("work_areas", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkAreaDetail", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<double>("Area")
+					.HasColumnType("double precision")
+					.HasColumnName("area");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.Property<double>("TotalArea")
+					.HasColumnType("double precision")
+					.HasColumnName("total_area");
+
+				b.Property<Guid>("WorkAreaId")
+					.HasColumnType("uuid")
+					.HasColumnName("work_area_id");
+
+				b.HasKey("Id")
+					.HasName("pk_work_area_details");
+
+				b.HasIndex("WorkAreaId")
+					.HasDatabaseName("ix_work_area_details_work_area_id");
+
+				b.ToTable("work_area_details", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
+			{
+				b.Property<Guid>("Id")
+					.ValueGeneratedOnAdd()
+					.HasColumnType("uuid")
+					.HasColumnName("id");
+
+				b.Property<DateTime>("Created")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("created");
+
+				b.Property<string>("CreatedBy")
+					.HasColumnType("text")
+					.HasColumnName("created_by");
+
+				b.Property<string>("Description")
+					.HasColumnType("text")
+					.HasColumnName("description");
+
+				b.Property<bool>("IsDeleted")
+					.HasColumnType("boolean")
+					.HasColumnName("is_deleted");
+
+				b.Property<DateTime>("LastModified")
+					.HasColumnType("timestamp with time zone")
+					.HasColumnName("last_modified");
+
+				b.Property<string>("LastModifiedBy")
+					.HasColumnType("text")
+					.HasColumnName("last_modified_by");
+
+				b.Property<Guid>("LocationId")
+					.HasColumnType("uuid")
+					.HasColumnName("location_id");
+
+				b.Property<string>("Name")
+					.IsRequired()
+					.HasMaxLength(200)
+					.HasColumnType("character varying(200)")
+					.HasColumnName("name");
+
+				b.HasKey("Id")
+					.HasName("pk_zones");
+
+				b.HasIndex("LocationId")
+					.HasDatabaseName("ix_zones_location_id");
+
+				b.ToTable("zones", "client_management");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", "Client")
+					.WithMany("Contracts")
+					.HasForeignKey("ClientId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_contracts_clients_client_id");
+
+				b.Navigation("Client");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.ContractShift", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", "Contract")
+					.WithMany("ContractShifts")
+					.HasForeignKey("ContractId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_contract_shifts_contracts_contract_id");
+
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
+					.WithMany()
+					.HasForeignKey("WorkAreaId")
+					.OnDelete(DeleteBehavior.Restrict)
+					.IsRequired()
+					.HasConstraintName("fk_contract_shifts_work_areas_work_area_id");
+
+				b.Navigation("Contract");
+
+				b.Navigation("WorkArea");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", "Client")
+					.WithMany("Locations")
+					.HasForeignKey("ClientId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_locations_clients_client_id");
+
+				b.Navigation("Client");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", "Contract")
+					.WithMany("Slas")
+					.HasForeignKey("ContractId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_sla_contracts_contract_id");
+
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
+					.WithMany("Slas")
+					.HasForeignKey("WorkAreaId")
+					.OnDelete(DeleteBehavior.Restrict)
+					.IsRequired()
+					.HasConstraintName("fk_sla_work_areas_work_area_id");
+
+				b.Navigation("Contract");
+
+				b.Navigation("WorkArea");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaShift", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", "Sla")
+					.WithMany()
+					.HasForeignKey("SlaId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_sla_shifts_sla_sla_id");
+
+				b.Navigation("Sla");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.SlaTask", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Sla", "Sla")
+					.WithMany()
+					.HasForeignKey("SlaId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_sla_tasks_sla_sla_id");
+
+				b.Navigation("Sla");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", "Zone")
+					.WithMany("WorkAreas")
+					.HasForeignKey("ZoneId")
+					.OnDelete(DeleteBehavior.Restrict)
+					.IsRequired()
+					.HasConstraintName("fk_work_areas_zones_zone_id");
+
+				b.Navigation("Zone");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkAreaDetail", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", "WorkArea")
+					.WithMany()
+					.HasForeignKey("WorkAreaId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_work_area_details_work_areas_work_area_id");
+
+				b.Navigation("WorkArea");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
+			{
+				b.HasOne("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", "Location")
+					.WithMany("Zones")
+					.HasForeignKey("LocationId")
+					.OnDelete(DeleteBehavior.Cascade)
+					.IsRequired()
+					.HasConstraintName("fk_zones_locations_location_id");
+
+				b.Navigation("Location");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Client", b =>
+			{
+				b.Navigation("Contracts");
+
+				b.Navigation("Locations");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Contract", b =>
+			{
+				b.Navigation("ContractShifts");
+
+				b.Navigation("Slas");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Location", b =>
+			{
+				b.Navigation("Zones");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.WorkArea", b =>
+			{
+				b.Navigation("Slas");
+			});
+
+			modelBuilder.Entity("CleanOpsAi.Modules.ClientManagement.Domain.Entities.Zone", b =>
+			{
+				b.Navigation("WorkAreas");
+			});
 #pragma warning restore 612, 618
-        }
-    }
+		}
+	}
 }
