@@ -28,12 +28,14 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler();
 app.UseMiddleware<PerformanceMiddleware>();
 
-var swaggerEnabled = app.Configuration.GetValue<bool>("Swagger:Enabled");
-// Configure the HTTP request pipeline.
+var swaggerEnabled = app.Configuration.GetValue<bool>("Swagger:Enabled"); 
 if (app.Environment.IsDevelopment() || swaggerEnabled)
 {
     app.UseSwagger();
-    app.UseSwaggerUI(); 
+    app.UseSwaggerUI(options =>
+	{
+		options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+	});
 }
 
 app.UseCors("AllowFrontend");
