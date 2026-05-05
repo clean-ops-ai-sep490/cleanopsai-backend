@@ -82,9 +82,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (taskAssignment == null)
 				throw new NotFoundException(nameof(TaskAssignment), id);
 
-			if (taskAssignment.Status != TaskAssignmentStatus.NotStarted)
-				throw new BadRequestException(
-					$"Task can only be updated when status is NotStarted. Current status: {taskAssignment.Status}.");
+			//if (taskAssignment.Status != TaskAssignmentStatus.NotStarted)
+			//	throw new BadRequestException(
+			//		$"Task can only be updated when status is NotStarted. Current status: {taskAssignment.Status}.");
 
 			if (taskAssignment.IsAdhocTask)
 				throw new BadRequestException(
