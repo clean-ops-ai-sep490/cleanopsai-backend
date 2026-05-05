@@ -134,11 +134,23 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			if (filter.Status.HasValue)
 				query = query.Where(x => x.Status == filter.Status.Value);
 
+			//if (filter.FromDate.HasValue)
+			//	query = query.Where(x => x.ScheduledStartAt >= filter.FromDate.Value.Date);
+
+			//if (filter.ToDate.HasValue)
+			//	query = query.Where(x => x.ScheduledEndAt <= filter.ToDate.Value.Date.AddDays(1).AddTicks(-1));
+
 			if (filter.FromDate.HasValue)
-				query = query.Where(x => x.ScheduledStartAt >= filter.FromDate.Value.Date);
+			{
+				var from = filter.FromDate.Value; 
+				query = query.Where(x => x.ScheduledEndAt >= from);
+			}
 
 			if (filter.ToDate.HasValue)
-				query = query.Where(x => x.ScheduledEndAt <= filter.ToDate.Value.Date.AddDays(1).AddTicks(-1));
+			{
+				var to = filter.ToDate.Value; 
+				query = query.Where(x => x.ScheduledStartAt <= to);
+			}
 
 			if (filter.IsAdhocTask.HasValue)
 				query = query.Where(x => x.IsAdhocTask == filter.IsAdhocTask.Value);
