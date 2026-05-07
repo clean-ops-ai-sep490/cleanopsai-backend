@@ -185,6 +185,10 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			if (requesterTask == null)
 				throw new NotFoundException(nameof(TaskAssignment), dto.TaskAssignmentId);
 
+			var now = _dateTimeProvider.UtcNow;
+			if (requesterTask.ScheduledStartAt <= now.AddHours(2))
+				throw new BadRequestException("Không thể đổi ca cho task bắt đầu trong vòng 2 tiếng");
+
 			var requirements = await _sopRequirementsQueryService.GetSopRequirementsByScheduleId(requesterTask.TaskScheduleId, ct);
 
 			List<Guid>? qualifiedWorkerIds = null;
@@ -199,22 +203,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			}
 
 
+			//var today = _dateTimeProvider.UtcNow;
+			//var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+			//var endOfWeek = startOfWeek.AddDays(7);
+
 			var today = _dateTimeProvider.UtcNow;
-			var startOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+			var diff = (7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7;
+			var startOfWeek = today.AddDays(-diff).Date;
 			var endOfWeek = startOfWeek.AddDays(7);
 
+			var cutoffTime = now.AddHours(2);
+
 			var candidates = await _taskAssignmentRepository.GetSwapCandidatesAsync(
-				workAreaId: requesterTask.WorkAreaId,
-				excludeAssigneeId: requesterTask.AssigneeId,
-				scheduledStartAt: requesterTask.ScheduledStartAt,
-				scheduledEndAt: requesterTask.ScheduledEndAt,
-				weekStart: startOfWeek,
-				weekEnd: endOfWeek,
-				date: dto.Date,
-				preferredStartTime: dto.PreferredStartTime,
-				qualifiedWorkerIds: qualifiedWorkerIds,
-				paginationRequest: paginationRequest,
-				ct: ct);
+			   requesterTaskId: requesterTask.Id,
+			   requesterAssigneeId: requesterTask.AssigneeId,
+			   requesterScheduledStartAt: requesterTask.ScheduledStartAt,
+			   requesterScheduledEndAt: requesterTask.ScheduledEndAt,
+			   workAreaId: requesterTask.WorkAreaId,
+			   weekStart: startOfWeek,
+			   weekEnd: endOfWeek,
+			   cutoffTime: cutoffTime,	
+			   date: dto.Date,
+			   preferredStartTime: dto.PreferredStartTime,
+			   qualifiedWorkerIds: qualifiedWorkerIds,
+			   paginationRequest: paginationRequest,
+			   ct: ct);
 
 			return Result<PaginatedResult<SwapCandidateDto>>.Success(
 				new PaginatedResult<SwapCandidateDto>(

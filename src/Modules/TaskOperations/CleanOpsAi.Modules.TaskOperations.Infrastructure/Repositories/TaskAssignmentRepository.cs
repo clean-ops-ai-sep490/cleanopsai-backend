@@ -50,42 +50,104 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 				.FirstOrDefaultAsync(x=>x.Id == id, ct);
 		}
 
-		public async Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(Guid workAreaId,
-			Guid excludeAssigneeId,
-			DateTime scheduledStartAt,
-			DateTime scheduledEndAt,
-			DateTime weekStart,
-			DateTime weekEnd,
-			DateOnly? date,
-			TimeOnly? preferredStartTime,
-			List<Guid>? qualifiedWorkerIds,
-			PaginationRequest paginationRequest,
-			CancellationToken ct = default)
+		//public async Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(Guid workAreaId,
+		//	Guid excludeAssigneeId,
+		//	DateTime scheduledStartAt,
+		//	DateTime scheduledEndAt,
+		//	DateTime weekStart,
+		//	DateTime weekEnd,
+		//	DateOnly? date,
+		//	TimeOnly? preferredStartTime,
+		//	List<Guid>? qualifiedWorkerIds,
+		//	PaginationRequest paginationRequest,
+		//	CancellationToken ct = default)
+		//{
+		//	var query = _context.TaskAssignments
+		//		.Where(t =>
+		//			t.WorkAreaId == workAreaId &&
+		//			t.AssigneeId != excludeAssigneeId &&
+		//			t.Status == TaskAssignmentStatus.NotStarted &&
+		//			//t.ScheduledStartAt < scheduledEndAt &&
+		//			//t.ScheduledEndAt > scheduledStartAt &&
+		//			t.ScheduledStartAt >= weekStart &&
+		//			t.ScheduledStartAt < weekEnd &&
+		//			!t.TaskSwapRequests.Any(s =>
+		//				s.Status == SwapRequestStatus.PendingTargetApproval ||
+		//				s.Status == SwapRequestStatus.PendingSupervisorApproval)
+		//		);
+
+		//	if (qualifiedWorkerIds != null && qualifiedWorkerIds.Any())
+		//		query = query.Where(t => qualifiedWorkerIds.Contains(t.AssigneeId));
+
+		//	if (date.HasValue)
+		//		query = query.Where(t =>
+		//			DateOnly.FromDateTime(t.ScheduledStartAt) == date.Value);
+
+		//	if (preferredStartTime.HasValue)
+		//		query = query.Where(t =>
+		//			TimeOnly.FromDateTime(t.ScheduledStartAt) >= preferredStartTime.Value);
+
+		//	return await query
+		//		.OrderBy(t => t.ScheduledStartAt)
+		//		.ToPaginatedResultAsync(paginationRequest, ct);
+		//}
+
+		public async Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(
+		Guid requesterTaskId,           // Task A (của requester)
+		Guid requesterAssigneeId,       // Worker A
+		DateTime requesterScheduledStartAt,  // Giờ bắt đầu Task A
+		DateTime requesterScheduledEndAt,    // Giờ kết thúc Task A
+		Guid workAreaId,
+		DateTime weekStart,
+		DateTime weekEnd,
+		DateTime cutoffTime,
+		DateOnly? date,
+		TimeOnly? preferredStartTime,
+		List<Guid>? qualifiedWorkerIds,
+		PaginationRequest paginationRequest,
+		CancellationToken ct = default)
 		{
 			var query = _context.TaskAssignments
-				.Where(t =>
-					t.WorkAreaId == workAreaId &&
-					t.AssigneeId != excludeAssigneeId &&
-					t.Status == TaskAssignmentStatus.NotStarted &&
-					//t.ScheduledStartAt < scheduledEndAt &&
-					//t.ScheduledEndAt > scheduledStartAt &&
+				.Where(t => 
+					t.WorkAreaId == workAreaId && 
+					t.AssigneeId != requesterAssigneeId && 
+					t.Status == TaskAssignmentStatus.NotStarted && 
 					t.ScheduledStartAt >= weekStart &&
 					t.ScheduledStartAt < weekEnd &&
+					t.ScheduledStartAt > cutoffTime &&
+					// Điều kiện 1: Worker B không có task khác trùng giờ Task A
+					// (vì sau swap, B sẽ làm Task A)
+					!_context.TaskAssignments.Any(other =>
+						other.AssigneeId == t.AssigneeId &&
+						other.Id != t.Id &&
+						other.ScheduledStartAt < requesterScheduledEndAt &&
+						other.ScheduledEndAt > requesterScheduledStartAt) &&
+
+					// Điều kiện 2: Worker A không có task khác trùng giờ Task B
+					// (vì sau swap, A sẽ làm Task B)
+					!_context.TaskAssignments.Any(other =>
+						other.AssigneeId == requesterAssigneeId &&
+						other.Id != requesterTaskId &&
+						other.ScheduledStartAt < t.ScheduledEndAt &&
+						other.ScheduledEndAt > t.ScheduledStartAt) &&
+
+					// Điều kiện 3: Task B không có pending swap request nào
 					!t.TaskSwapRequests.Any(s =>
 						s.Status == SwapRequestStatus.PendingTargetApproval ||
 						s.Status == SwapRequestStatus.PendingSupervisorApproval)
 				);
 
+			// Filter theo skills/certifications nếu SOP có yêu cầu
 			if (qualifiedWorkerIds != null && qualifiedWorkerIds.Any())
 				query = query.Where(t => qualifiedWorkerIds.Contains(t.AssigneeId));
 
+			// Filter theo ngày cụ thể
 			if (date.HasValue)
-				query = query.Where(t =>
-					DateOnly.FromDateTime(t.ScheduledStartAt) == date.Value);
+				query = query.Where(t => DateOnly.FromDateTime(t.ScheduledStartAt) == date.Value);
 
+			// Filter theo giờ bắt đầu mong muốn
 			if (preferredStartTime.HasValue)
-				query = query.Where(t =>
-					TimeOnly.FromDateTime(t.ScheduledStartAt) >= preferredStartTime.Value);
+				query = query.Where(t => TimeOnly.FromDateTime(t.ScheduledStartAt) >= preferredStartTime.Value);
 
 			return await query
 				.OrderBy(t => t.ScheduledStartAt)
