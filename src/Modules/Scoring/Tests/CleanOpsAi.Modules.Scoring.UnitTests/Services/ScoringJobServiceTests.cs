@@ -53,6 +53,71 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 		}
 
 		[Fact]
+		public async Task SubmitAsync_ShouldUseSubmittedByUserIdFromRequest()
+		{
+			var workerUserId = Guid.NewGuid();
+			ScoringJob? insertedJob = null;
+
+			_repository
+				.InsertAsync(Arg.Do<ScoringJob>(job => insertedJob = job), Arg.Any<CancellationToken>())
+				.Returns(Task.CompletedTask);
+			_eventBus
+				.PublishAsync(Arg.Any<ScoringJobRequestedEvent>(), Arg.Any<CancellationToken>())
+				.Returns(Task.CompletedTask);
+
+			await _service.SubmitAsync(new CreateScoringJobRequest
+			{
+				RequestId = "request-1",
+				ImageUrls = new List<string> { "https://example.com/after.jpg" },
+				SubmittedByUserId = workerUserId.ToString()
+			});
+
+			Assert.NotNull(insertedJob);
+			Assert.Equal(workerUserId, insertedJob!.SubmittedByUserId);
+			await _eventBus.Received(1).PublishAsync(
+				Arg.Is<ScoringJobRequestedEvent>(evt => evt.SubmittedByUserId == workerUserId),
+				Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
+		public async Task SubmitAsync_ShouldFallbackToAuthenticatedUser_WhenSubmittedByUserIdMissing()
+		{
+			var actorUserId = Guid.NewGuid();
+			ScoringJob? insertedJob = null;
+
+			_userContext.IsAuthenticated.Returns(true);
+			_userContext.UserId.Returns(actorUserId);
+			_repository
+				.InsertAsync(Arg.Do<ScoringJob>(job => insertedJob = job), Arg.Any<CancellationToken>())
+				.Returns(Task.CompletedTask);
+			_eventBus
+				.PublishAsync(Arg.Any<ScoringJobRequestedEvent>(), Arg.Any<CancellationToken>())
+				.Returns(Task.CompletedTask);
+
+			await _service.SubmitAsync(new CreateScoringJobRequest
+			{
+				RequestId = "request-2",
+				ImageUrls = new List<string> { "https://example.com/after.jpg" }
+			});
+
+			Assert.NotNull(insertedJob);
+			Assert.Equal(actorUserId, insertedJob!.SubmittedByUserId);
+		}
+
+		[Fact]
+		public async Task SubmitAsync_ShouldThrowArgumentException_WhenSubmittedByUserIdInvalid()
+		{
+			await Assert.ThrowsAsync<ArgumentException>(() => _service.SubmitAsync(new CreateScoringJobRequest
+			{
+				RequestId = "request-3",
+				ImageUrls = new List<string> { "https://example.com/after.jpg" },
+				SubmittedByUserId = "not-a-guid"
+			}));
+
+			await _repository.DidNotReceive().InsertAsync(Arg.Any<ScoringJob>(), Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
 		public async Task GetPendingResultsAsync_ShouldFilterByManagedWorkers_WhenUserIsSupervisor()
 		{
 			var supervisorId = Guid.NewGuid();

@@ -109,7 +109,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					? "LOBBY_CORRIDOR"
 					: request.EnvironmentKey.Trim().ToUpperInvariant(),
 				Status = ScoringJobStatus.Queued,
-				SubmittedByUserId = _userContext.IsAuthenticated ? _userContext.UserId : null,
+				SubmittedByUserId = ResolveSubmittedByUserId(request.SubmittedByUserId),
 				Created = now,
 				LastModified = now,
 				CreatedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
@@ -1481,6 +1481,23 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			}
 
 			return string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email;
+		}
+
+		private Guid? ResolveSubmittedByUserId(string? submittedByUserId)
+		{
+			if (!string.IsNullOrWhiteSpace(submittedByUserId))
+			{
+				if (Guid.TryParse(submittedByUserId.Trim(), out var parsed) && parsed != Guid.Empty)
+				{
+					return parsed;
+				}
+
+				throw new ArgumentException("SubmittedByUserId must be a valid user id.", nameof(submittedByUserId));
+			}
+
+			return _userContext.IsAuthenticated && _userContext.UserId != Guid.Empty
+				? _userContext.UserId
+				: null;
 		}
 
 		private bool IsAdmin()

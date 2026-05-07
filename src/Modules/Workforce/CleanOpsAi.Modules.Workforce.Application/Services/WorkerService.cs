@@ -533,6 +533,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 			return workers.Select(x => new WorkerDto
 			{
 				Id = x.Id,
+				UserId = x.UserId,
 				FullName = x.FullName
 			}).ToList();
 		}

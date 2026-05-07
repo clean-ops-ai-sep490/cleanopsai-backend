@@ -23,6 +23,17 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Services.Features.Que
 			return response.Workers.ToDictionary(w => w.Id, w => w.FullName);
 		}
 
+		public async Task<Guid?> GetUserIdByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
+		{
+			var response = await _bus.RequestAsync<GetWorkersByIdsRequest, GetWorkersByIdsResponse>(new GetWorkersByIdsRequest
+			{
+				WorkerIds = new List<Guid> { workerId }
+			}, ct);
+
+			var worker = response.Workers.FirstOrDefault(w => w.Id == workerId);
+			return worker?.UserId == Guid.Empty ? null : worker?.UserId;
+		}
+
         public async Task<Guid?> GetWorkerIdByUserIdAsync(Guid userId, CancellationToken ct = default)
         {
 			var response = await _bus.RequestAsync<GetWorkerIdByUserIdRequest, GetWorkerIdByUserIdResponse>(
