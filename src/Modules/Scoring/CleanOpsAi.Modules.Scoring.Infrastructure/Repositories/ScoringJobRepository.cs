@@ -159,16 +159,32 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 		{
 			var safeTake = Math.Clamp(take, 1, 5000);
 
-			return await _dbContext.ScoringAnnotationCandidates
+			return await ApprovedAnnotationCandidatesForRetrainQuery(sinceUtc)
 				.Include(x => x.Annotation)
 				.Include(x => x.Result)
-				.Where(x =>
-					x.CreatedAtUtc >= sinceUtc &&
-					x.CandidateStatus == ScoringAnnotationCandidateStatus.Approved &&
-					x.Annotation != null)
-				.OrderByDescending(x => x.CreatedAtUtc)
+				.OrderByDescending(x => x.ApprovedAtUtc)
 				.Take(safeTake)
 				.ToListAsync(ct);
+		}
+
+		public async Task<int> CountApprovedAnnotationCandidatesForRetrainAsync(DateTime sinceUtc, CancellationToken ct = default)
+		{
+			return await ApprovedAnnotationCandidatesForRetrainQuery(sinceUtc)
+				.CountAsync(ct);
+		}
+
+		private IQueryable<ScoringAnnotationCandidate> ApprovedAnnotationCandidatesForRetrainQuery(DateTime sinceUtc)
+		{
+			return _dbContext.ScoringAnnotationCandidates
+				.Where(x =>
+					x.CandidateStatus == ScoringAnnotationCandidateStatus.Approved &&
+					x.Annotation != null &&
+					x.ApprovedAtUtc.HasValue &&
+					x.ApprovedAtUtc.Value >= sinceUtc &&
+					x.SnapshotBlobKey != null &&
+					x.SnapshotBlobKey != string.Empty &&
+					x.MetadataBlobKey != null &&
+					x.MetadataBlobKey != string.Empty);
 		}
 
 		public async Task<ScoringJobResult?> GetResultByIdWithJobAsync(Guid resultId, CancellationToken ct = default)
@@ -201,6 +217,22 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Repositories
 			return await _dbContext.ScoringRetrainBatches
 				.Include(x => x.Runs.OrderByDescending(r => r.StartedAtUtc))
 				.FirstOrDefaultAsync(x => x.Id == batchId, ct);
+		}
+
+		public async Task<ScoringRetrainBatch?> GetLatestRetrainBatchAsync(CancellationToken ct = default)
+		{
+			return await _dbContext.ScoringRetrainBatches
+				.OrderByDescending(x => x.RequestedAtUtc)
+				.FirstOrDefaultAsync(ct);
+		}
+
+		public async Task<bool> HasActiveRetrainBatchAsync(CancellationToken ct = default)
+		{
+			return await _dbContext.ScoringRetrainBatches
+				.AnyAsync(x =>
+					x.Status == ScoringRetrainBatchStatus.Queued ||
+					x.Status == ScoringRetrainBatchStatus.Running,
+					ct);
 		}
 
 		public async Task<IReadOnlyCollection<ScoringRetrainBatch>> GetRetrainBatchesAsync(ScoringRetrainBatchStatus? status, int take, CancellationToken ct = default)

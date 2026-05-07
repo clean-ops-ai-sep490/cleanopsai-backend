@@ -61,7 +61,7 @@ namespace CleanOpsAi.Api.Modules.Scoring
 		}
 
 		[HttpPost("trigger")]
-		[Authorize(Roles = "Manager,Admin,3,2")]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
 			Summary = "Trigger scoring retrain batch",
 			Description = "Creates a retrain batch from reviewed scoring samples and publishes it to the async retrain pipeline.",

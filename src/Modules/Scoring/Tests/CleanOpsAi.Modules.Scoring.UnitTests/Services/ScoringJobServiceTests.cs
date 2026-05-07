@@ -8,6 +8,7 @@ using CleanOpsAi.Modules.Scoring.Application.DTOs.Response;
 using CleanOpsAi.Modules.Scoring.Application.Services;
 using CleanOpsAi.Modules.Scoring.Domain.Entities;
 using CleanOpsAi.Modules.Scoring.Domain.Enums;
+using CleanOpsAi.Modules.Scoring.IntegrationEvents;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using System.Text.Json;
@@ -513,6 +514,13 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			Assert.Equal(ScoringAnnotationCandidateStatus.Approved, candidate.CandidateStatus);
 			Assert.Equal(reviewerId, candidate.Annotation!.ApprovedByUserId);
 			await _annotationArtifactService.Received(1).PublishApprovedAnnotationAsync(candidate, annotation, Arg.Any<CancellationToken>());
+			await _eventBus.Received(1).PublishAsync(
+				Arg.Is<ScoringAnnotationApprovedEvent>(x =>
+					x.CandidateId == candidate.Id &&
+					x.AnnotationId == annotation.Id &&
+					x.ResultId == candidate.ResultId &&
+					x.JobId == candidate.JobId),
+				Arg.Any<CancellationToken>());
 		}
 
 		[Fact]
@@ -538,19 +546,76 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			{
 				LookbackDays = 7,
 				MinReviewedSamples = 1,
+				MinApprovedAnnotations = 1,
 				MaxSamplesPerBatch = 500,
 			});
 
 			Assert.Equal(2, response.ReviewedSampleCount);
 			Assert.Equal(2, response.AnnotatedSampleCount);
 			Assert.Equal(1, response.ApprovedAnnotationCount);
-			Assert.Equal(2, response.CalibrationSampleCount);
+			Assert.Equal(1, response.CalibrationSampleCount);
 			await _repository.Received(1).InsertRetrainBatchAsync(
 				Arg.Is<ScoringRetrainBatch>(x =>
 					x.ReviewedSampleCount == 2 &&
 					x.AnnotatedSampleCount == 2 &&
 					x.ApprovedAnnotationCount == 1 &&
-					x.CalibrationSampleCount == 2),
+					x.CalibrationSampleCount == 1),
+				Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
+		public async Task TriggerRetrainAsync_ShouldRequireApprovedAnnotations()
+		{
+			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
+				.Returns(new[] { BuildReviewedResult("PASS"), BuildReviewedResult("FAIL") });
+			_repository.GetAnnotatedCandidatesForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
+				.Returns(new[] { BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Submitted) });
+			_repository.GetApprovedAnnotationCandidatesForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
+				.Returns(Array.Empty<ScoringAnnotationCandidate>());
+
+			await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TriggerRetrainAsync(new TriggerScoringRetrainRequest
+			{
+				LookbackDays = 7,
+				MinReviewedSamples = 1,
+				MinApprovedAnnotations = 1,
+				MaxSamplesPerBatch = 500,
+			}));
+
+			await _repository.DidNotReceive().InsertRetrainBatchAsync(
+				Arg.Any<ScoringRetrainBatch>(),
+				Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
+		public async Task TriggerRetrainAsync_ShouldUseLatestBatchTime_WhenRequested()
+		{
+			var latestRequestedAt = DateTime.UtcNow.AddHours(-3);
+			_repository.GetLatestRetrainBatchAsync(Arg.Any<CancellationToken>())
+				.Returns(new ScoringRetrainBatch
+				{
+					Id = Guid.NewGuid(),
+					RequestedAtUtc = latestRequestedAt,
+					SourceWindowFromUtc = latestRequestedAt.AddDays(-7),
+					Status = ScoringRetrainBatchStatus.Promoted,
+				});
+			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
+				.Returns(new[] { BuildReviewedResult("PASS") });
+			_repository.GetAnnotatedCandidatesForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
+				.Returns(new[] { BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Approved) });
+			_repository.GetApprovedAnnotationCandidatesForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
+				.Returns(new[] { BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Approved) });
+
+			await _service.TriggerRetrainAsync(new TriggerScoringRetrainRequest
+			{
+				LookbackDays = 7,
+				MinApprovedAnnotations = 1,
+				MaxSamplesPerBatch = 500,
+				UseLastBatchTime = true,
+			});
+
+			await _repository.Received(1).GetApprovedAnnotationCandidatesForRetrainAsync(
+				Arg.Is<DateTime>(x => x == latestRequestedAt),
+				500,
 				Arg.Any<CancellationToken>());
 		}
 

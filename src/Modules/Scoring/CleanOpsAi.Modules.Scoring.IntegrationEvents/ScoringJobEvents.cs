@@ -44,6 +44,19 @@ namespace CleanOpsAi.Modules.Scoring.IntegrationEvents
 		public string? ReviewedByEmail { get; init; }
 	}
 
+	public record ScoringAnnotationApprovedEvent
+	{
+		public Guid CandidateId { get; init; }
+		public Guid AnnotationId { get; init; }
+		public Guid ResultId { get; init; }
+		public Guid JobId { get; init; }
+		public string RequestId { get; init; } = null!;
+		public string EnvironmentKey { get; init; } = null!;
+		public DateTime ApprovedAtUtc { get; init; }
+		public Guid? ApprovedByUserId { get; init; }
+		public string? ApprovedByEmail { get; init; }
+	}
+
 	public record ScoringRetrainSampleItem
 	{
 		public Guid ResultId { get; init; }
@@ -63,6 +76,9 @@ namespace CleanOpsAi.Modules.Scoring.IntegrationEvents
 		public DateTime RequestedAtUtc { get; init; }
 		public DateTime SourceWindowFromUtc { get; init; }
 		public int ReviewedSampleCount { get; init; }
+		public int ApprovedAnnotationCount { get; init; }
+		public int MinApprovedAnnotations { get; init; }
+		public int MaxSamplesPerBatch { get; init; }
 		public List<ScoringRetrainSampleItem> Samples { get; init; } = new();
 	}
 

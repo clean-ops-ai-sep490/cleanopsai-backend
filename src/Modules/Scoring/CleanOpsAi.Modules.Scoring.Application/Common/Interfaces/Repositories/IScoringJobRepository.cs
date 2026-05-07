@@ -22,11 +22,14 @@ namespace CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Repositories
 			CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetAnnotatedCandidatesForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringAnnotationCandidate>> GetApprovedAnnotationCandidatesForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default);
+		Task<int> CountApprovedAnnotationCandidatesForRetrainAsync(DateTime sinceUtc, CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringJobResult>> GetReviewedResultsForRetrainAsync(DateTime sinceUtc, int take, CancellationToken ct = default);
 		Task<ScoringJobResult?> GetResultByIdWithJobAsync(Guid resultId, CancellationToken ct = default);
 		Task<ScoringAnnotationCandidate?> GetAnnotationCandidateByIdAsync(Guid candidateId, CancellationToken ct = default);
 		Task<ScoringAnnotationCandidate?> GetAnnotationCandidateByResultIdAsync(Guid resultId, CancellationToken ct = default);
 		Task<ScoringRetrainBatch?> GetRetrainBatchByIdWithRunsAsync(Guid batchId, CancellationToken ct = default);
+		Task<ScoringRetrainBatch?> GetLatestRetrainBatchAsync(CancellationToken ct = default);
+		Task<bool> HasActiveRetrainBatchAsync(CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringRetrainBatch>> GetRetrainBatchesAsync(ScoringRetrainBatchStatus? status, int take, CancellationToken ct = default);
 		Task ReplaceResultsAsync(Guid jobId, IReadOnlyCollection<ScoringJobResult> results, CancellationToken ct = default);
 		Task InsertAsync(ScoringJob job, CancellationToken ct = default);

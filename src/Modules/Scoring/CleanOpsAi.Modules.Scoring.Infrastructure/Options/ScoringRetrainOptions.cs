@@ -9,7 +9,10 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Options
 		public string TimeZoneId { get; set; } = "SE Asia Standard Time";
 		public int LookbackDays { get; set; } = 7;
 		public int MinReviewedSamples { get; set; } = 25;
+		public int MinApprovedAnnotations { get; set; } = 100;
 		public int MaxSamplesPerBatch { get; set; } = 500;
+		public bool AutoTriggerEnabled { get; set; } = true;
+		public int AutoBatchThreshold { get; set; } = 100;
 
 		public string TrainerCommand { get; set; } = string.Empty;
 		public string? TrainerWorkingDirectory { get; set; }

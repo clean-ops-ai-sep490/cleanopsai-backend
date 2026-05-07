@@ -34,6 +34,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Jobs
 				{
 					LookbackDays = config.LookbackDays,
 					MinReviewedSamples = config.MinReviewedSamples,
+					MinApprovedAnnotations = config.MinApprovedAnnotations,
 					MaxSamplesPerBatch = config.MaxSamplesPerBatch,
 				}, context.CancellationToken);
 

@@ -275,6 +275,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				RequestedAtUtc = message.RequestedAtUtc,
 				SourceWindowFromUtc = message.SourceWindowFromUtc,
 				ReviewedSampleCount = message.ReviewedSampleCount,
+				ApprovedAnnotationCount = message.ApprovedAnnotationCount,
+				CalibrationSampleCount = message.ApprovedAnnotationCount,
 				Status = ScoringRetrainBatchStatus.Queued,
 				Created = now,
 				LastModified = now,
@@ -636,10 +638,15 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				client.DefaultRequestHeaders.Add("X-Retrain-Api-Key", options.RemoteTrainerApiKey);
 			}
 
+			var minApprovedAnnotations = Math.Max(1, message.MinApprovedAnnotations);
+			var maxSamplesPerBatch = Math.Clamp(message.MaxSamplesPerBatch <= 0 ? message.ApprovedAnnotationCount : message.MaxSamplesPerBatch, 1, 5000);
 			var createRequest = new RemoteRetrainJobCreateRequest(
 				message.BatchId,
 				message.SourceWindowFromUtc,
 				message.ReviewedSampleCount,
+				message.ApprovedAnnotationCount,
+				minApprovedAnnotations,
+				maxSamplesPerBatch,
 				message.Samples.Select(s => new RemoteRetrainSampleItem(
 					s.ResultId,
 					s.JobId,
@@ -1178,6 +1185,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			Guid BatchId,
 			DateTime SourceWindowFromUtc,
 			int ReviewedSampleCount,
+			int ApprovedAnnotationCount,
+			int MinApprovedAnnotations,
+			int MaxSamplesPerBatch,
 			List<RemoteRetrainSampleItem> Samples);
 
 		private sealed record RemoteRetrainJobCreateResponse(
