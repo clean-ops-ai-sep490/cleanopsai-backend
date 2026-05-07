@@ -16,13 +16,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
 
 		Task<TaskAssignment?> GetByIdExist(Guid id, CancellationToken ct = default);
 
+		//Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(
+		//	Guid workAreaId,
+		//	Guid excludeAssigneeId,
+		//	DateTime scheduledStartAt,
+		//	DateTime scheduledEndAt,
+		//	DateTime weekStart,
+		//	DateTime weekEnd,
+		//	DateOnly? date,
+		//	TimeOnly? preferredStartTime,
+		//	List<Guid>? qualifiedWorkerIds,
+		//	PaginationRequest paginationRequest,
+		//	CancellationToken ct = default);
+
 		Task<PaginatedResult<TaskAssignment>> GetSwapCandidatesAsync(
+			Guid requesterTaskId,          
+			Guid requesterAssigneeId,   
+			DateTime requesterScheduledStartAt,   
+			DateTime requesterScheduledEndAt,    
 			Guid workAreaId,
-			Guid excludeAssigneeId,
-			DateTime scheduledStartAt,
-			DateTime scheduledEndAt,
 			DateTime weekStart,
 			DateTime weekEnd,
+			DateTime cutoffTime,
 			DateOnly? date,
 			TimeOnly? preferredStartTime,
 			List<Guid>? qualifiedWorkerIds,

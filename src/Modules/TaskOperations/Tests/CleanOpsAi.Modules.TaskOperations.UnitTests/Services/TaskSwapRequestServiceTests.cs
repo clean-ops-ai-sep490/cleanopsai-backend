@@ -646,21 +646,31 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 				.Returns(Task.FromResult(NoRequirements()));
 
 			var candidateAssignments = new List<TaskAssignment>
-			{
-				new() { Id = Guid.NewGuid(), AssigneeId = Guid.NewGuid() },
-				new() { Id = Guid.NewGuid(), AssigneeId = Guid.NewGuid() }
-			};
+	{
+		new() { Id = Guid.NewGuid(), AssigneeId = Guid.NewGuid() },
+		new() { Id = Guid.NewGuid(), AssigneeId = Guid.NewGuid() }
+	};
 
 			_taskAssignmentRepo
 				.GetSwapCandidatesAsync(
-					Arg.Any<Guid>(), Arg.Any<Guid>(),
-					Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-					Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-					Arg.Any<DateOnly?>(), Arg.Any<TimeOnly?>(),
-					Arg.Any<List<Guid>>(),
+					Arg.Any<Guid>(),
+					Arg.Any<Guid>(),
+					Arg.Any<DateTime>(),
+					Arg.Any<DateTime>(),
+					Arg.Any<Guid>(),
+					Arg.Any<DateTime>(),
+					Arg.Any<DateTime>(),
+					Arg.Any<DateTime>(),
+					Arg.Any<DateOnly?>(),
+					Arg.Any<TimeOnly?>(),
+					Arg.Any<List<Guid>?>(),
 					Arg.Any<PaginationRequest>(),
 					Arg.Any<CancellationToken>())
-				.Returns(new PaginatedResult<TaskAssignment>(1, 10, 2, candidateAssignments));
+				.Returns(new PaginatedResult<TaskAssignment>(
+					1,
+					10,
+					2,
+					candidateAssignments));
 
 			_mapper
 				.Map<List<SwapCandidateDto>>(Arg.Any<List<TaskAssignment>>())
@@ -671,12 +681,18 @@ namespace CleanOpsAi.Modules.TaskOperations.UnitTests.Services
 					{
 						WorkerId = x.AssigneeId,
 						AssigneeName = "Test User",
-						Task = new SwapTaskInfoDto { TaskAssignmentId = x.Id }
+						Task = new SwapTaskInfoDto
+						{
+							TaskAssignmentId = x.Id
+						}
 					}).ToList();
 				});
 
 			var result = await _service.GetSwapCandidatesAsync(
-				new GetSwapCandidatesDto { TaskAssignmentId = taskAssignmentId },
+				new GetSwapCandidatesDto
+				{
+					TaskAssignmentId = taskAssignmentId
+				},
 				new PaginationRequest(1, 10));
 
 			Assert.True(result.Succeeded);
