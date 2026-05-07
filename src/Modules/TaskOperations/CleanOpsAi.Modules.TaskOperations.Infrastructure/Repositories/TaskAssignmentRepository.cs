@@ -278,5 +278,14 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
             return await query.Take(take).ToListAsync();
         }
 
-    }
+		public async Task<PaginatedResult<TaskAssignment>> GetAdhocTasksCreateBySupervisor(string suppervisorId, PaginationRequest request, CancellationToken ct = default)
+		{
+			var query = _context.TaskAssignments.AsQueryable();
+
+			query = query.Where(x => x.IsAdhocTask == true && x.CreatedBy == suppervisorId);
+
+			return await query.ToPaginatedResultAsync(request, ct);
+		}
+
+	}
 }

@@ -81,5 +81,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Reposi
             bool descending,
             int take = 5);
 
-    }
+		Task<PaginatedResult<TaskAssignment>> GetAdhocTasksCreateBySupervisor(string suppervisorId, PaginationRequest request, CancellationToken ct = default);
+
+	}
 }
