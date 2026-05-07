@@ -257,27 +257,42 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         // filter workers based on skills, certifications, location, and availability (busy or not) within a time range
         public async Task<List<WorkerResponse>> FilterAsync(WorkerFilterRequest request)
         {
-            // Validate startAt/endAt
+            // =========================
+            // 1. NORMALIZE UTC
+            // =========================
+            if (request.StartAt.HasValue)
+                request.StartAt = NormalizeToUtc(request.StartAt.Value);
+
+            if (request.EndAt.HasValue)
+                request.EndAt = NormalizeToUtc(request.EndAt.Value);
+
+            // =========================
+            // 2. VALIDATE DATE RANGE
+            // =========================
             if (request.StartAt.HasValue && request.EndAt.HasValue)
             {
-                if (request.StartAt > request.EndAt)
+                if (request.StartAt >= request.EndAt)
                     throw new BadRequestException("startAt phải nhỏ hơn endAt.");
             }
-            else if (request.StartAt.HasValue && !request.EndAt.HasValue)
+            else if (request.StartAt.HasValue)
             {
                 throw new BadRequestException("Cần truyền endAt khi có startAt.");
             }
-            else if (!request.StartAt.HasValue && request.EndAt.HasValue)
+            else if (request.EndAt.HasValue)
             {
                 throw new BadRequestException("Cần truyền startAt khi có endAt.");
             }
 
-            // Nếu FE truyền address thì geocode sang lat/lng
+            // =========================
+            // 3. GEOCODE ADDRESS
+            // =========================
             if (!string.IsNullOrWhiteSpace(request.Address)
                 && !request.Latitude.HasValue
                 && !request.Longitude.HasValue)
             {
-                var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+                var coords = await _goongMapService
+                    .GetCoordinatesAsync(request.Address);
+
                 if (coords.HasValue)
                 {
                     request.Latitude = coords.Value.lat;
@@ -285,36 +300,67 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 }
             }
 
-            //// Lấy danh sách worker đang bận
+            // =========================
+            // 4. GET BUSY WORKERS
+            // =========================
             var busyWorkerIds = new HashSet<Guid>();
+
             if (request.StartAt.HasValue && request.EndAt.HasValue)
             {
                 var busyResponse = await _busyWorkerClient
-                    .GetResponse<GetBusyWorkerIdsResponse>(new GetBusyWorkerIdsRequest
-                    {
-                        StartAt = request.StartAt.Value,
-                        EndAt = request.EndAt.Value
-                    });
+                    .GetResponse<GetBusyWorkerIdsResponse>(
+                        new GetBusyWorkerIdsRequest
+                        {
+                            StartAt = request.StartAt.Value,
+                            EndAt = request.EndAt.Value
+                        });
 
-                busyWorkerIds = busyResponse.Message.BusyWorkerIds.ToHashSet();
+                busyWorkerIds = busyResponse
+                    .Message
+                    .BusyWorkerIds
+                    .ToHashSet();
             }
 
+            // =========================
+            // 5. FILTER WORKERS
+            // =========================
             var workers = await _workerRepository.FilterAsync(request);
 
+            // =========================
+            // 6. REMOVE BUSY WORKERS
+            // =========================
+            workers = workers
+                .Where(x => !busyWorkerIds.Contains(x.Id))
+                .ToList();
+
+            // =========================
+            // 7. MAP RESPONSE
+            // =========================
             return workers
-            .Where(x => !busyWorkerIds.Contains(x.Id)) // loại worker bận
-            .Select(x => new WorkerResponse
+                .Select(x => new WorkerResponse
+                {
+                    Id = x.Id,
+                    UserId = x.UserId,
+                    FullName = x.FullName,
+                    DisplayAddress = x.DisplayAddress,
+                    Latitude = x.Latitude,
+                    Longitude = x.Longitude,
+                    AvatarUrl = x.AvatarUrl,
+
+                    TotalSkills = x.WorkerSkills?.Count ?? 0,
+                    TotalCertifications = x.WorkerCertifications?.Count ?? 0
+                })
+                .ToList();
+        }
+
+        private static DateTime NormalizeToUtc(DateTime value)
+        {
+            return value.Kind switch
             {
-                Id = x.Id,
-                UserId = x.UserId,
-                FullName = x.FullName,
-                DisplayAddress = x.DisplayAddress,
-                Latitude = x.Latitude,
-                Longitude = x.Longitude,
-                AvatarUrl = x.AvatarUrl,
-                TotalSkills = x.WorkerSkills.Count,
-                TotalCertifications = x.WorkerCertifications.Count
-            }).ToList();
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            };
         }
 
         // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
@@ -374,11 +420,17 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             var request = new WorkerFilterRequest
             {
                 Address = CleanAddress(parsed.Address),
-                SkillCategories = parsed.SkillCategories,
-                CertificateCategories = parsed.CertificateCategories,
+                //SkillIds = parsed.SkillCategories,
+                //CertificateCategories = parsed.CertificateCategories,
                 StartAt = parsed.StartAt,
                 EndAt = parsed.EndAt
             };
+
+            if (request.StartAt.HasValue)
+                request.StartAt = NormalizeToUtc(request.StartAt.Value);
+
+            if (request.EndAt.HasValue)
+                request.EndAt = NormalizeToUtc(request.EndAt.Value);
 
             // =========================
             // 4. GEOCODE SAFE
@@ -434,7 +486,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             // =========================
             // 6. DB FAST QUERY (IMPORTANT FIX)
             // =========================
-            var workers = await _workerRepository.FilterStrictAsync(request);
+            var workers = await _workerRepository.FilterAsync(request);
 
             // =========================
             // 7. REMOVE BUSY

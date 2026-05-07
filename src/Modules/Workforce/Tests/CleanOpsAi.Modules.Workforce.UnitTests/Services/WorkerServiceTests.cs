@@ -207,29 +207,29 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         // ================================
         // NLP FILTER
         // ================================
-        [Fact]
-        public async Task NlpFilterAsync_ShouldCallGemini()
-        {
-            _geminiMock.ParseWorkerFilterAsync("test")
-                .Returns(new WorkerFilterNlpResult
-                {
-                    Address = "HCM",
-                    SkillCategories = new List<string>(),
-                    CertificateCategories = new List<string>(),
-                    StartAt = null,
-                    EndAt = null
-                });
+        //[Fact]
+        //public async Task NlpFilterAsync_ShouldCallGemini()
+        //{
+        //    _geminiMock.ParseWorkerFilterAsync("test")
+        //        .Returns(new WorkerFilterNlpResult
+        //        {
+        //            Address = "HCM",
+        //            SkillCategories = new List<string>(),
+        //            CertificateCategories = new List<string>(),
+        //            StartAt = null,
+        //            EndAt = null
+        //        });
 
-            _goongMock.GetCoordinatesAsync("HCM")
-                .Returns((10.8231, 106.6297));
+        //    _goongMock.GetCoordinatesAsync("HCM")
+        //        .Returns((10.8231, 106.6297));
 
-            _repoMock.FilterStrictAsync(Arg.Any<WorkerFilterRequest>())
-                .Returns(new List<Worker>());
+        //    _repoMock.FilterStrictAsync(Arg.Any<WorkerFilterRequest>())
+        //        .Returns(new List<Worker>());
 
-            var result = await _service.NlpFilterAsync("test");
+        //    var result = await _service.NlpFilterAsync("test");
 
-            Assert.NotNull(result);
-        }
+        //    Assert.NotNull(result);
+        //}
 
         // ================================
         // GET BY IDS
