@@ -21,6 +21,25 @@ namespace CleanOpsAi.Api.Modules.TaskOperations
 			_taskAssignmentService = taskAssignmentService;
 		}
 
+		[Authorize(Roles = "Supervisor")]
+		[HttpGet("adhoc/supervisor")]
+		[SwaggerOperation(
+			Summary = "Get Adhoc Tasks Created By Supervisor",
+			Description = "Retrieves paginated adhoc task assignments created by the current supervisor.",
+			Tags = new[] { "TaskAssignment" }
+		)]
+		[ProducesResponseType(typeof(PaginatedResult<TaskAssignmentDto>), StatusCodes.Status200OK)]
+		[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+		public async Task<IActionResult> GetAdhocTasksCreateBySupervisor(
+		[FromQuery] PaginationRequest request,
+		CancellationToken ct)
+		{
+			var result = await _taskAssignmentService
+				.GetAdhocTasksCreateBySupervisor(request, ct);
+
+			return Ok(result);
+		}
+
 		[HttpGet]
 		[SwaggerOperation(
 			Summary = "Get task assignments with filtering & pagination",

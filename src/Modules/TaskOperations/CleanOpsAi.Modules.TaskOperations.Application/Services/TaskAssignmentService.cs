@@ -485,6 +485,20 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             }
         }
 
+		public async Task<PaginatedResult<TaskAssignmentDto>> GetAdhocTasksCreateBySupervisor(PaginationRequest request, CancellationToken ct = default)
+		{
+			if(!_userContext.IsAuthenticated)
+				throw new UnauthorizedAccessException();
 
-    }
+			var result = await _taskAssignmentRepository.GetAdhocTasksCreateBySupervisor(_userContext.UserId.ToString(), 
+				request, ct);
+
+			return new PaginatedResult<TaskAssignmentDto>(
+				result.PageNumber,
+				result.PageSize,
+				result.TotalElements,
+				_mapper.Map<List<TaskAssignmentDto>>(result.Content ?? new List<TaskAssignment>())
+			);
+		}
+	}
 }

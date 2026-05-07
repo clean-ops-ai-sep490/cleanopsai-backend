@@ -35,5 +35,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Common.Interfaces.Servic
 			DateTime end,
 			CancellationToken ct = default);
 
-    }
+
+		Task<PaginatedResult<TaskAssignmentDto>> GetAdhocTasksCreateBySupervisor(PaginationRequest request, CancellationToken ct = default);
+
+	}
 }
