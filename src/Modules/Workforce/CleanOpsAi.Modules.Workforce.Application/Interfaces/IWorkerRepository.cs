@@ -25,7 +25,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 
         Task<List<Worker>> FilterAsync(WorkerFilterRequest request);
 
-        Task<List<Worker>> FilterStrictAsync(WorkerFilterRequest request);
+        //Task<List<Worker>> FilterStrictAsync(WorkerFilterRequest request);
 
         Task<List<Worker>> GetWorkersByIds(List<Guid> ids);
 

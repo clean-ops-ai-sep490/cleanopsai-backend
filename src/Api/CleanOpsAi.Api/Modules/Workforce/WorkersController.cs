@@ -148,18 +148,18 @@ namespace CleanOpsAi.Api.Modules.Workforce
             Tags = new[] { "Workers" })]
         public async Task<IActionResult> Filter(
             [FromQuery] string? address,
-            [FromQuery] List<string>? skillCategories,
-            [FromQuery] List<string>? certificateCategories,
-            [FromQuery] DateTime? startAt,
-            [FromQuery] DateTime? endAt)
+            [FromQuery] List<Guid>? skillIds,
+            [FromQuery] List<Guid>? certificateIds,
+            [FromQuery] DateTimeOffset? startAt,
+            [FromQuery] DateTimeOffset? endAt)
         {
             var request = new WorkerFilterRequest
             {
                 Address = address,
-                SkillCategories = skillCategories,
-                CertificateCategories = certificateCategories,
-                StartAt = startAt,
-                EndAt = endAt
+                SkillIds = skillIds,
+                CertificateIds = certificateIds,
+                StartAt = startAt?.UtcDateTime,
+                EndAt = endAt?.UtcDateTime
             };
             var result = await _service.FilterAsync(request);
             return Ok(result);

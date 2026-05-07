@@ -182,14 +182,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			DateTime end,
 			CancellationToken ct = default)
         {
+            var startUtc = NormalizeToUtc(start);
+            var endUtc = NormalizeToUtc(end);
+
             return await _context.TaskAssignments
                 .Where(t =>
                     !t.IsDeleted &&
                     t.WorkAreaId == workAreaId &&   // filter theo khu vực
-                    t.Status != TaskAssignmentStatus.Completed &&
-                    t.Status != TaskAssignmentStatus.Block &&
-                    t.ScheduledStartAt < end &&
-                    t.ScheduledEndAt > start
+                    t.ScheduledStartAt < endUtc &&
+                    t.ScheduledEndAt > startUtc
                 )
                 .Select(t => t.AssigneeId)
                 .Distinct()
@@ -201,20 +202,28 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			DateTime end,
 			CancellationToken ct = default)
         {
-            var startUtc = DateTime.SpecifyKind(start, DateTimeKind.Utc);
-            var endUtc = DateTime.SpecifyKind(end, DateTimeKind.Utc);
+            var startUtc = NormalizeToUtc(start);
+            var endUtc = NormalizeToUtc(end);
 
             return await _context.TaskAssignments
                 .Where(t =>
                     !t.IsDeleted &&
-                    t.Status != TaskAssignmentStatus.Completed &&
-                    t.Status != TaskAssignmentStatus.Block &&
                     t.ScheduledStartAt < endUtc &&
                     t.ScheduledEndAt > startUtc
                 )
                 .Select(t => t.AssigneeId)
                 .Distinct()
                 .ToListAsync(ct);
+        }
+
+        private static DateTime NormalizeToUtc(DateTime value)
+        {
+            return value.Kind switch
+            {
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            };
         }
 
         public async Task<List<TaskAssignment>> GetByIdsAsync(List<Guid> ids, CancellationToken ct = default)
