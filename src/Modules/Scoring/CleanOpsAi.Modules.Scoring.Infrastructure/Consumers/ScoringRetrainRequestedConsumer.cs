@@ -138,7 +138,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			CommandExecutionResult execution;
 			if (remoteTrainerEnabled)
 			{
-				execution = await RunRemoteTrainerAsync(message, config, ct);
+				execution = await RunRemoteTrainerAsync(message, config, run, ct);
 				if (execution.ExitCode == 0 && !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix))
 				{
 					useExternalCandidate = true;
@@ -602,6 +602,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		private async Task<CommandExecutionResult> RunRemoteTrainerAsync(
 			ScoringRetrainRequestedEvent message,
 			ScoringRetrainOptions options,
+			ScoringRetrainRun run,
 			CancellationToken ct)
 		{
 			if (!options.ObjectStorageEnabled)
@@ -722,6 +723,13 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					}
 
 					statusResponse = await httpResponse.Content.ReadFromJsonAsync<RemoteRetrainJobStatusResponse>(cancellationToken: linkedCts.Token);
+					
+					if (statusResponse?.Logs is not null && statusResponse.Logs.Length > 0)
+					{
+						run.Logs = string.Join("\n", statusResponse.Logs);
+						run.LastModified = DateTime.UtcNow;
+						await _repository.SaveChangesAsync(linkedCts.Token);
+					}
 				}
 				catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
 				{
@@ -1197,6 +1205,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		private sealed record RemoteRetrainJobStatusResponse(
 			string JobId,
 			string Status,
-			string? Message);
+			string? Message,
+			string[]? Logs);
 	}
 }

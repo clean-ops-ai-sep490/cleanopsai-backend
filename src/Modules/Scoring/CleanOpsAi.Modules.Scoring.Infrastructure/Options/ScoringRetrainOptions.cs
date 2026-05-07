@@ -49,8 +49,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Options
 
 		public string YoloMapMetricKey { get; set; } = "yolo.map";
 		public string UnetMiouMetricKey { get; set; } = "unet.miou";
-		public double MinimumYoloMapImprovement { get; set; } = 0.0;
-		public double MinimumUnetMiouImprovement { get; set; } = 0.0;
+		public double MinimumYoloMapImprovement { get; set; } = 0.005;
+		public double MinimumUnetMiouImprovement { get; set; } = 0.005;
 		public bool PromoteWhenNoBaseline { get; set; } = false;
 		public string? PromotionCommand { get; set; }
 		public string? RestartServiceCommand { get; set; }

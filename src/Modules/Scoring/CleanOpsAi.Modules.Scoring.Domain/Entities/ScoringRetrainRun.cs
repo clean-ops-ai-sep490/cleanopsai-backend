@@ -21,6 +21,8 @@ namespace CleanOpsAi.Modules.Scoring.Domain.Entities
 
 		public string? Message { get; set; }
 
+		public string? Logs { get; set; }
+
 		public virtual ScoringRetrainBatch Batch { get; set; } = null!;
 	}
 }

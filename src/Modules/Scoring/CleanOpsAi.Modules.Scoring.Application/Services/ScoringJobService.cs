@@ -1291,6 +1291,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 						CompletedAtUtc = x.CompletedAtUtc,
 						ExitCode = x.ExitCode,
 						Message = x.Message,
+						Logs = x.Logs
 					})
 					.ToList(),
 			};
@@ -1316,8 +1317,26 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				Promoted = batch.Promoted,
 				FailureReason = batch.FailureReason,
 				PromotionReason = batch.PromotionReason,
+				MetricKey = batch.MetricKey,
+				CandidateMetric = batch.CandidateMetric,
+				BaselineMetric = batch.BaselineMetric,
+				MinimumImprovement = batch.MinimumImprovement,
 				RunCount = batch.Runs.Count,
 				LatestRunStartedAtUtc = latestRun?.StartedAtUtc,
+				Runs = batch.Runs
+					.OrderByDescending(x => x.StartedAtUtc)
+					.Select(x => new ScoringRetrainRunResponse
+					{
+						RunId = x.Id,
+						Status = x.Status.ToString().ToUpperInvariant(),
+						Mode = x.Mode,
+						StartedAtUtc = x.StartedAtUtc,
+						CompletedAtUtc = x.CompletedAtUtc,
+						ExitCode = x.ExitCode,
+						Message = x.Message,
+						Logs = x.Logs
+					})
+					.ToList()
 			};
 		}
 

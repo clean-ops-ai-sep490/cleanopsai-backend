@@ -89,8 +89,13 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public bool Promoted { get; set; }
 		public string? FailureReason { get; set; }
 		public string? PromotionReason { get; set; }
+		public string? MetricKey { get; set; }
+		public double? CandidateMetric { get; set; }
+		public double? BaselineMetric { get; set; }
+		public double? MinimumImprovement { get; set; }
 		public int RunCount { get; set; }
 		public DateTime? LatestRunStartedAtUtc { get; set; }
+		public List<ScoringRetrainRunResponse> Runs { get; set; } = new();
 	}
 
 	public class ScoringRetrainRunResponse
@@ -102,5 +107,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public DateTime? CompletedAtUtc { get; set; }
 		public int? ExitCode { get; set; }
 		public string? Message { get; set; }
+
+		public string? Logs { get; set; }
 	}
 }
