@@ -13,6 +13,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 
 		public Guid SlaShiftId { get; set; }
 
+		public Guid WorkAreaId { get; set; }
+
 		public Guid? WorkAreaDetailId { get; set; }
 
 		public string Name { get; set; } = null!;
@@ -34,6 +36,8 @@ namespace CleanOpsAi.Modules.ServicePlanning.Application.DTOs.Response
 		public JsonElement RecurrenceConfig { get; set; }
 
 		public bool IsActive { get; set; }
+		public DateOnly ContractStartDate { get; set; }
+		public DateOnly? ContractEndDate { get; set; }
 
 		public DateOnly? LastGeneratedToDate { get; set; }
 
