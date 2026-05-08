@@ -86,13 +86,15 @@ public static class DependencyInjection
 			typeof(PpeCheckCompletedConsumer).Assembly
 		);
 
+		var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"]
+			?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+			?? [];
+
 		builder.Services.AddCors(options =>
 		{
 			options.AddPolicy("AllowFrontend", policy =>
 		{
-			policy.WithOrigins(
-				"http://localhost:3000",
-				"https://localhost:3000")
+			policy.WithOrigins(allowedOrigins)
 			.AllowAnyHeader()
 			.AllowAnyMethod()
 			.AllowCredentials();
