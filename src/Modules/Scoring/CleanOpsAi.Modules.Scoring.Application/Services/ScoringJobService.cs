@@ -22,6 +22,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 		private const string SourceOfTruth = "visualize-link-only";
 		private const string RuntimeServiceName = "scoring-job-service";
 		private const string CodePathVersion = "visualize_single_source_v1";
+		private static readonly SemaphoreSlim RetrainTriggerSemaphore = new(1, 1);
 		private static readonly HashSet<string> AllowedReviewedVerdicts = new(StringComparer.OrdinalIgnoreCase)
 		{
 			"PASS",
@@ -108,7 +109,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 					? "LOBBY_CORRIDOR"
 					: request.EnvironmentKey.Trim().ToUpperInvariant(),
 				Status = ScoringJobStatus.Queued,
-				SubmittedByUserId = _userContext.IsAuthenticated ? _userContext.UserId : null,
+				SubmittedByUserId = ResolveSubmittedByUserId(request.SubmittedByUserId),
 				Created = now,
 				LastModified = now,
 				CreatedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
@@ -418,6 +419,19 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				await _repository.SaveChangesAsync(ct);
 				throw;
 			}
+
+			await _eventBus.PublishAsync(new ScoringAnnotationApprovedEvent
+			{
+				CandidateId = candidate.Id,
+				AnnotationId = candidate.Annotation.Id,
+				ResultId = candidate.ResultId,
+				JobId = candidate.JobId,
+				RequestId = candidate.RequestId,
+				EnvironmentKey = candidate.EnvironmentKey,
+				ApprovedAtUtc = now,
+				ApprovedByUserId = actorId,
+				ApprovedByEmail = string.IsNullOrWhiteSpace(_userContext.Email) ? null : _userContext.Email,
+			}, ct);
 
 			return MapAnnotationCandidateDetail(candidate);
 		}
@@ -806,37 +820,55 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 
 			var now = DateTime.UtcNow;
 			var lookbackDays = Math.Max(1, request.LookbackDays);
-			var minReviewedSamples = Math.Max(1, request.MinReviewedSamples);
-			var maxSamplesPerBatch = Math.Clamp(request.MaxSamplesPerBatch, 1, 5000);
-			var sinceUtc = now.AddDays(-lookbackDays);
+			var minApprovedAnnotations = Math.Max(1, request.MinApprovedAnnotations);
+			var maxSamplesPerBatch = Math.Clamp(Math.Max(request.MaxSamplesPerBatch, minApprovedAnnotations), 1, 5000);
+			var sinceUtc = await ResolveRetrainSourceWindowFromUtcAsync(request, lookbackDays, now, ct);
 
-			var reviewedResults = await _repository.GetReviewedResultsForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
-			var annotatedCandidates = await _repository.GetAnnotatedCandidatesForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
-			var approvedAnnotationCandidates = await _repository.GetApprovedAnnotationCandidatesForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
-			if (reviewedResults.Count < minReviewedSamples)
+			await RetrainTriggerSemaphore.WaitAsync(ct);
+			ScoringRetrainBatch batch;
+			IReadOnlyCollection<ScoringJobResult> reviewedResults;
+			IReadOnlyCollection<ScoringAnnotationCandidate> annotatedCandidates;
+			IReadOnlyCollection<ScoringAnnotationCandidate> approvedAnnotationCandidates;
+
+			try
 			{
-				throw new InvalidOperationException(
-					$"Not enough reviewed scoring samples to trigger retrain. Found {reviewedResults.Count}, required {minReviewedSamples}.");
+				if (await _repository.HasActiveRetrainBatchAsync(ct))
+				{
+					throw new InvalidOperationException("A scoring retrain batch is already queued or running.");
+				}
+
+				reviewedResults = await _repository.GetReviewedResultsForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
+				annotatedCandidates = await _repository.GetAnnotatedCandidatesForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
+				approvedAnnotationCandidates = await _repository.GetApprovedAnnotationCandidatesForRetrainAsync(sinceUtc, maxSamplesPerBatch, ct);
+				if (approvedAnnotationCandidates.Count < minApprovedAnnotations)
+				{
+					throw new InvalidOperationException(
+						$"Not enough approved annotation samples to trigger retrain. Found {approvedAnnotationCandidates.Count}, required {minApprovedAnnotations}.");
+				}
+
+				batch = new ScoringRetrainBatch
+				{
+					Id = Guid.NewGuid(),
+					RequestedAtUtc = now,
+					SourceWindowFromUtc = sinceUtc,
+					ReviewedSampleCount = reviewedResults.Count,
+					AnnotatedSampleCount = annotatedCandidates.Count,
+					ApprovedAnnotationCount = approvedAnnotationCandidates.Count,
+					CalibrationSampleCount = approvedAnnotationCandidates.Count,
+					Status = ScoringRetrainBatchStatus.Queued,
+					Created = now,
+					LastModified = now,
+					CreatedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
+					LastModifiedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
+				};
+
+				await _repository.InsertRetrainBatchAsync(batch, ct);
+				await _repository.SaveChangesAsync(ct);
 			}
-
-			var batch = new ScoringRetrainBatch
+			finally
 			{
-				Id = Guid.NewGuid(),
-				RequestedAtUtc = now,
-				SourceWindowFromUtc = sinceUtc,
-				ReviewedSampleCount = reviewedResults.Count,
-				AnnotatedSampleCount = annotatedCandidates.Count,
-				ApprovedAnnotationCount = approvedAnnotationCandidates.Count,
-				CalibrationSampleCount = reviewedResults.Count,
-				Status = ScoringRetrainBatchStatus.Queued,
-				Created = now,
-				LastModified = now,
-				CreatedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
-				LastModifiedBy = string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email,
-			};
-
-			await _repository.InsertRetrainBatchAsync(batch, ct);
-			await _repository.SaveChangesAsync(ct);
+				RetrainTriggerSemaphore.Release();
+			}
 
 			var retrainRequestedEvent = new ScoringRetrainRequestedEvent
 			{
@@ -844,6 +876,9 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				RequestedAtUtc = batch.RequestedAtUtc,
 				SourceWindowFromUtc = batch.SourceWindowFromUtc,
 				ReviewedSampleCount = batch.ReviewedSampleCount,
+				ApprovedAnnotationCount = batch.ApprovedAnnotationCount,
+				MinApprovedAnnotations = minApprovedAnnotations,
+				MaxSamplesPerBatch = maxSamplesPerBatch,
 				Samples = reviewedResults.Select(MapRetrainSample).ToList(),
 			};
 
@@ -862,6 +897,21 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			}
 
 			return MapRetrainBatch(batch);
+		}
+
+		private async Task<DateTime> ResolveRetrainSourceWindowFromUtcAsync(
+			TriggerScoringRetrainRequest request,
+			int lookbackDays,
+			DateTime now,
+			CancellationToken ct)
+		{
+			if (!request.UseLastBatchTime)
+			{
+				return now.AddDays(-lookbackDays);
+			}
+
+			var latestBatch = await _repository.GetLatestRetrainBatchAsync(ct);
+			return latestBatch?.RequestedAtUtc ?? now.AddDays(-lookbackDays);
 		}
 
 		private async Task<List<ScoringVisualizationLinkResponse>> EvaluateVisualizationResultsAsync(
@@ -1241,6 +1291,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 						CompletedAtUtc = x.CompletedAtUtc,
 						ExitCode = x.ExitCode,
 						Message = x.Message,
+						Logs = x.Logs
 					})
 					.ToList(),
 			};
@@ -1266,8 +1317,26 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				Promoted = batch.Promoted,
 				FailureReason = batch.FailureReason,
 				PromotionReason = batch.PromotionReason,
+				MetricKey = batch.MetricKey,
+				CandidateMetric = batch.CandidateMetric,
+				BaselineMetric = batch.BaselineMetric,
+				MinimumImprovement = batch.MinimumImprovement,
 				RunCount = batch.Runs.Count,
 				LatestRunStartedAtUtc = latestRun?.StartedAtUtc,
+				Runs = batch.Runs
+					.OrderByDescending(x => x.StartedAtUtc)
+					.Select(x => new ScoringRetrainRunResponse
+					{
+						RunId = x.Id,
+						Status = x.Status.ToString().ToUpperInvariant(),
+						Mode = x.Mode,
+						StartedAtUtc = x.StartedAtUtc,
+						CompletedAtUtc = x.CompletedAtUtc,
+						ExitCode = x.ExitCode,
+						Message = x.Message,
+						Logs = x.Logs
+					})
+					.ToList()
 			};
 		}
 
@@ -1431,6 +1500,23 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			}
 
 			return string.IsNullOrWhiteSpace(_userContext.Email) ? "system" : _userContext.Email;
+		}
+
+		private Guid? ResolveSubmittedByUserId(string? submittedByUserId)
+		{
+			if (!string.IsNullOrWhiteSpace(submittedByUserId))
+			{
+				if (Guid.TryParse(submittedByUserId.Trim(), out var parsed) && parsed != Guid.Empty)
+				{
+					return parsed;
+				}
+
+				throw new ArgumentException("SubmittedByUserId must be a valid user id.", nameof(submittedByUserId));
+			}
+
+			return _userContext.IsAuthenticated && _userContext.UserId != Guid.Empty
+				? _userContext.UserId
+				: null;
 		}
 
 		private bool IsAdmin()

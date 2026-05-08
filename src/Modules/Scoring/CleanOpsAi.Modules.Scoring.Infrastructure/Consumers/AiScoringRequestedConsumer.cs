@@ -41,7 +41,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				{
 					RequestId = message.ComplianceCheckId.ToString(),
 					EnvironmentKey = message.EnvironmentKey,
-					ImageUrls = message.ImageUrls
+					ImageUrls = message.ImageUrls,
+					SubmittedByUserId = message.SubmittedByUserId
 				};
 
 				// ── Submit to scoring job service ─────────────────────────────────

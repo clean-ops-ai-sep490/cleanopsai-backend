@@ -138,7 +138,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			CommandExecutionResult execution;
 			if (remoteTrainerEnabled)
 			{
-				execution = await RunRemoteTrainerAsync(message, config, ct);
+				execution = await RunRemoteTrainerAsync(message, config, run, ct);
 				if (execution.ExitCode == 0 && !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix))
 				{
 					useExternalCandidate = true;
@@ -275,6 +275,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				RequestedAtUtc = message.RequestedAtUtc,
 				SourceWindowFromUtc = message.SourceWindowFromUtc,
 				ReviewedSampleCount = message.ReviewedSampleCount,
+				ApprovedAnnotationCount = message.ApprovedAnnotationCount,
+				CalibrationSampleCount = message.ApprovedAnnotationCount,
 				Status = ScoringRetrainBatchStatus.Queued,
 				Created = now,
 				LastModified = now,
@@ -600,6 +602,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		private async Task<CommandExecutionResult> RunRemoteTrainerAsync(
 			ScoringRetrainRequestedEvent message,
 			ScoringRetrainOptions options,
+			ScoringRetrainRun run,
 			CancellationToken ct)
 		{
 			if (!options.ObjectStorageEnabled)
@@ -636,10 +639,15 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				client.DefaultRequestHeaders.Add("X-Retrain-Api-Key", options.RemoteTrainerApiKey);
 			}
 
+			var minApprovedAnnotations = Math.Max(1, message.MinApprovedAnnotations);
+			var maxSamplesPerBatch = Math.Clamp(message.MaxSamplesPerBatch <= 0 ? message.ApprovedAnnotationCount : message.MaxSamplesPerBatch, 1, 5000);
 			var createRequest = new RemoteRetrainJobCreateRequest(
 				message.BatchId,
 				message.SourceWindowFromUtc,
 				message.ReviewedSampleCount,
+				message.ApprovedAnnotationCount,
+				minApprovedAnnotations,
+				maxSamplesPerBatch,
 				message.Samples.Select(s => new RemoteRetrainSampleItem(
 					s.ResultId,
 					s.JobId,
@@ -715,6 +723,13 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					}
 
 					statusResponse = await httpResponse.Content.ReadFromJsonAsync<RemoteRetrainJobStatusResponse>(cancellationToken: linkedCts.Token);
+					
+					if (statusResponse?.Logs is not null && statusResponse.Logs.Length > 0)
+					{
+						run.Logs = string.Join("\n", statusResponse.Logs);
+						run.LastModified = DateTime.UtcNow;
+						await _repository.SaveChangesAsync(linkedCts.Token);
+					}
 				}
 				catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
 				{
@@ -1178,6 +1193,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			Guid BatchId,
 			DateTime SourceWindowFromUtc,
 			int ReviewedSampleCount,
+			int ApprovedAnnotationCount,
+			int MinApprovedAnnotations,
+			int MaxSamplesPerBatch,
 			List<RemoteRetrainSampleItem> Samples);
 
 		private sealed record RemoteRetrainJobCreateResponse(
@@ -1187,6 +1205,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 		private sealed record RemoteRetrainJobStatusResponse(
 			string JobId,
 			string Status,
-			string? Message);
+			string? Message,
+			string[]? Logs);
 	}
 }

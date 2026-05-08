@@ -12,7 +12,10 @@ x-retrain-env: &retrain-env
   ScoringRetrain__TimeZoneId: ${SCORING_RETRAIN_TIME_ZONE:-SE Asia Standard Time}
   ScoringRetrain__LookbackDays: ${SCORING_RETRAIN_LOOKBACK_DAYS:-7}
   ScoringRetrain__MinReviewedSamples: ${SCORING_RETRAIN_MIN_SAMPLES:-25}
+  ScoringRetrain__MinApprovedAnnotations: ${SCORING_RETRAIN_MIN_APPROVED_ANNOTATIONS:-100}
   ScoringRetrain__MaxSamplesPerBatch: ${SCORING_RETRAIN_MAX_SAMPLES:-500}
+  ScoringRetrain__AutoTriggerEnabled: ${SCORING_RETRAIN_AUTO_TRIGGER_ENABLED:-true}
+  ScoringRetrain__AutoBatchThreshold: ${SCORING_RETRAIN_AUTO_BATCH_THRESHOLD:-100}
   ScoringRetrain__TrainerCommand: ${SCORING_RETRAIN_TRAINER_COMMAND:-}
   ScoringRetrain__TrainerWorkingDirectory: ${SCORING_RETRAIN_TRAINER_WORKDIR:-}
   ScoringRetrain__TrainerTimeoutSeconds: ${SCORING_RETRAIN_TRAINER_TIMEOUT_SEC:-7200}

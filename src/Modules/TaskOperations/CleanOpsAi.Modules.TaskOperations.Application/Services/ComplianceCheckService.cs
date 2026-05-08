@@ -39,6 +39,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
         private readonly IIdGenerator _idGenerator;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly ISupervisorQueryService _supervisorQueryService;
+		private readonly IWorkerQueryService _workerQueryService;
 		private readonly IUserContext _userContext;
 
 		private string environmentKey = "LOBBY_CORRIDOR";
@@ -54,6 +55,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             IIdGenerator idGenerator,
             IDateTimeProvider dateTimeProvider,
             ISupervisorQueryService supervisorQueryService,
+			IWorkerQueryService workerQueryService,
 			IUserContext userContext)
         {
             _complianceRepo = complianceRepo;
@@ -65,11 +67,15 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
             _idGenerator = idGenerator;
 			_dateTimeProvider = dateTimeProvider;
             _supervisorQueryService = supervisorQueryService;
+			_workerQueryService = workerQueryService;
 			_userContext = userContext;
 		}
 
 		public async Task<InitiateAiCheckResult> InitiateAiCheckAsync(Guid taskStepExecutionId, CancellationToken ct = default)
 		{
+			var stepExecution = await _stepExecutionRepo.GetByIdDetail(taskStepExecutionId, ct)
+				?? throw new InvalidOperationException($"Step execution {taskStepExecutionId} not found");
+
 			var afterImages = await _imageRepo.GetActiveByExecutionIdAndTypeAsync(
 				taskStepExecutionId, ImageType.After, ct);
 
@@ -98,7 +104,8 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 				ComplianceCheckId = check.Id,
 				TaskStepExecutionId = taskStepExecutionId,
 				EnvironmentKey = environmentKey,
-				ImageUrls = afterImages.Select(img => img.ImageUrl).ToList()
+				ImageUrls = afterImages.Select(img => img.ImageUrl).ToList(),
+				SubmittedByUserId = await ResolveSubmittedByUserIdAsync(stepExecution, ct)
 			}, ct);
 			 
 			check.Status = ComplianceCheckStatus.Processing;
@@ -334,6 +341,31 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.Services
 			ComplianceCheckStatus.Failed => "RetakePhotos",
 			_ => "None"
 		};
+
+		private async Task<string?> ResolveSubmittedByUserIdAsync(
+			TaskStepExecution stepExecution,
+			CancellationToken ct)
+		{
+			var workerId = stepExecution.TaskAssignment?.AssigneeId;
+			if (!workerId.HasValue || workerId.Value == Guid.Empty)
+			{
+				_logger.LogWarning(
+					"TaskStepExecution {ExecutionId} has no assignee worker id. Scoring job will be unscoped.",
+					stepExecution.Id);
+				return null;
+			}
+
+			var workerUserId = await _workerQueryService.GetUserIdByWorkerIdAsync(workerId.Value, ct);
+			if (!workerUserId.HasValue || workerUserId.Value == Guid.Empty)
+			{
+				_logger.LogWarning(
+					"Could not resolve worker user id for Worker {WorkerId}. Scoring job will be unscoped.",
+					workerId.Value);
+				return null;
+			}
+
+			return workerUserId.Value.ToString();
+		}
 
 		public async Task<PaginatedResult<PendingSupervisorCheckDto>> GetPendingSupervisorChecksAsync(
 		PaginationRequest request,
