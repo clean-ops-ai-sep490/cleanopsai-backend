@@ -78,9 +78,7 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 
 			//taskSchedules = query.IsDescending ? taskSchedules.OrderByDescending(x => x.Name) : taskSchedules.OrderBy(x => x.Name);
 
-			taskSchedules = query.IsDescending
-				? taskSchedules.OrderByDescending(x => x.Id)
-				: taskSchedules.OrderBy(x => x.Id);
+			taskSchedules = taskSchedules.OrderByDescending(x => x.Id);
 
 			return await taskSchedules.ToPaginatedResultAsync(request, ct);
 		}
