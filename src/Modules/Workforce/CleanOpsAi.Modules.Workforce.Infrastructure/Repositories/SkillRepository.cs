@@ -93,6 +93,13 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .OrderByDescending(x => x.Created)
                 .ToListAsync();
         }
+        public async Task<List<Skill>> GetByNameAsync(string name)
+        {
+            return await _dbContext.Set<Skill>()
+                .Where(x => x.IsDeleted == false && x.Name.Contains(name))
+                .OrderByDescending(x => x.Created)
+                .ToListAsync();
+        }
 
         public async Task<List<WorkerSkill>> GetSkillsByWorkerIdAsync(Guid workerId)
         {

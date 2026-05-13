@@ -10,7 +10,12 @@ using CleanOpsAi.Modules.Workforce.Application.Interfaces;
 using CleanOpsAi.Modules.Workforce.Domain.Entities;
 using MassTransit;
 using Medo;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CleanOpsAi.Modules.Workforce.Application.Services
 {
@@ -25,8 +30,11 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private readonly IGoongMapService _goongMapService;
         private readonly IRequestClient<GetBusyWorkerIdsRequest> _busyWorkerClient;
         private readonly IGeminiService _geminiService;
+        private readonly ISkillRepository _skillRepository;
+        private readonly ICertificationRepository _certificationRepository;
+        private readonly ILogger<WorkerService> _logger;
 
-        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext, IDateTimeProvider dateTimeProvider, IGoongMapService goongMapService, IRequestClient<GetBusyWorkerIdsRequest> busyWorkerClient, IGeminiService geminiService)
+        public WorkerService(IWorkerRepository workerRepository, IFileStorageService fileStorageService, IUserContext userContext, IDateTimeProvider dateTimeProvider, IGoongMapService goongMapService, IRequestClient<GetBusyWorkerIdsRequest> busyWorkerClient, IGeminiService geminiService, ISkillRepository skillRepository, ICertificationRepository certificationRepository, ILogger<WorkerService> logger)
         {
             _workerRepository = workerRepository;
             _fileStorage = fileStorageService;
@@ -35,6 +43,9 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             _goongMapService = goongMapService;
             _busyWorkerClient = busyWorkerClient;
             _geminiService = geminiService;
+            _skillRepository = skillRepository;
+            _certificationRepository = certificationRepository;
+            _logger = logger;
         }
 
         // get by id
@@ -324,6 +335,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             // =========================
             // 5. FILTER WORKERS
             // =========================
+            Console.WriteLine("========== FINAL FILTER REQUEST ==========");
+            Console.WriteLine(JsonSerializer.Serialize(request,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                }));
             var workers = await _workerRepository.FilterAsync(request);
 
             // =========================
@@ -364,64 +381,91 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         }
 
         // search nlp filter, example query: "Tìm thợ điện ở Hà Nội có chứng chỉ an toàn điện và kỹ năng hàn, không bận từ 1/10 đến 5/10"
-        public async Task<WorkerNlpFilterResponse> NlpFilterAsync(string? query)
+        public async Task<List<WorkerResponse>> NlpFilterAsync(string? query, CancellationToken cancellationToken = default)
         {
-            var traceId = Guid.NewGuid().ToString("N");
+            
+            var correlationId = Guid.NewGuid().ToString("N");
+            _logger.LogInformation("[NLP:{CorrelationId}] Search request received. Query='{Query}'", correlationId, query);
 
-            Console.WriteLine($"\n===== NLP START {traceId} =====");
-
+            //if (string.IsNullOrWhiteSpace(query))
+            //{
+            //    _logger.LogInformation("[NLP:{CorrelationId}] Empty query => returning all workers", correlationId);
+            //    return await GetAllAsync();
+            //}
             if (string.IsNullOrWhiteSpace(query))
             {
-                var all = await _workerRepository.GetAllAsync();
-                return BuildNlpResponse(all, null);
+                _logger.LogWarning("[NLP:{CorrelationId}] Empty query", correlationId);
+
+                return new List<WorkerResponse>();
             }
 
-            WorkerFilterNlpResult parsed;
+            var parsed = WorkerNlpLocalParser.Parse(query);
+            _logger.LogInformation(
+                "[NLP:{CorrelationId}] Local parser result: {Parsed}",
+                correlationId,
+                JsonSerializer.Serialize(parsed, new JsonSerializerOptions { WriteIndented = true }));
 
-            // =========================
-            // 1. GEMINI SAFE CALL (NO BLOCK)
-            // =========================
-            try
+            if (HasParsedFilters(parsed))
             {
-                var task = _geminiService.ParseWorkerFilterAsync(query);
-
-                var completed = await Task.WhenAny(task, Task.Delay(1500));
-
-                if (completed == task)
-                    parsed = await task;
-                else
+                _logger.LogInformation("[NLP:{CorrelationId}] Local parser found filters => skipping Gemini enrichment", correlationId);
+            }
+            else
+            {
+                try
                 {
-                    Console.WriteLine("GEMINI TIMEOUT → LOCAL ONLY");
-                    parsed = new WorkerFilterNlpResult();
+                    using var geminiCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    geminiCts.CancelAfter(TimeSpan.FromSeconds(1.5));
+
+                    _logger.LogInformation("[NLP:{CorrelationId}] Calling Gemini enrichment...", correlationId);
+                    var geminiResult = await _geminiService.ParseWorkerFilterAsync(query, geminiCts.Token);
+                    //_logger.LogInformation(
+                    //    "[NLP:{CorrelationId}] Gemini result: {Gemini}",
+                    //    correlationId,
+                    //    JsonSerializer.Serialize(geminiResult, new JsonSerializerOptions { WriteIndented = true }));
+
+                    parsed = WorkerNlpLocalParser.Merge(geminiResult, parsed);
+                    //_logger.LogInformation(
+                    //    "[NLP:{CorrelationId}] Merged parser result: {Merged}",
+                    //    correlationId,
+                    //    JsonSerializer.Serialize(parsed, new JsonSerializerOptions { WriteIndented = true }));
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning("[NLP:{CorrelationId}] Gemini timeout => fallback to local parser", correlationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[NLP:{CorrelationId}] Gemini enrichment failed => fallback to local parser", correlationId);
                 }
             }
-            catch
-            {
-                parsed = new WorkerFilterNlpResult();
-            }
 
-            // =========================
-            // 2. SAFE FALLBACK (KHÔNG DÙNG QUERY LÀ ADDRESS)
-            // =========================
-            if (IsEmpty(parsed))
+            if (parsed.StartAt.HasValue && parsed.EndAt.HasValue && parsed.StartAt > parsed.EndAt)
             {
-                parsed = LocalParse(query); // 🔥 FIX QUAN TRỌNG
-            }
-
-            // =========================
-            // 3. VALIDATE DATE
-            // =========================
-            if (parsed.StartAt > parsed.EndAt)
-            {
+                _logger.LogWarning("[NLP:{CorrelationId}] Invalid date range detected, resetting StartAt/EndAt", correlationId);
                 parsed.StartAt = null;
                 parsed.EndAt = null;
             }
 
+            _logger.LogInformation(
+                "[NLP:{CorrelationId}] Resolve IDs from categories. Skills={Skills}; Certs={Certs}",
+                correlationId,
+                string.Join(", ", parsed.SkillCategories ?? new List<string>()),
+                string.Join(", ", parsed.CertificateCategories ?? new List<string>()));
+
+            var skillIds = await ResolveSkillIdsAsync(parsed.SkillCategories, query);
+            var certificationIds = await ResolveCertificationIdsAsync(parsed.CertificateCategories, query);
+
+            _logger.LogInformation(
+                "[NLP:{CorrelationId}] Resolved skillIds={SkillIds}; certIds={CertIds}",
+                correlationId,
+                string.Join(", ", skillIds),
+                string.Join(", ", certificationIds));
+
             var request = new WorkerFilterRequest
             {
                 Address = CleanAddress(parsed.Address),
-                //SkillIds = parsed.SkillCategories,
-                //CertificateCategories = parsed.CertificateCategories,
+                SkillIds = skillIds,
+                CertificateIds = certificationIds,
                 StartAt = parsed.StartAt,
                 EndAt = parsed.EndAt
             };
@@ -432,137 +476,85 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             if (request.EndAt.HasValue)
                 request.EndAt = NormalizeToUtc(request.EndAt.Value);
 
-            // =========================
-            // 4. GEOCODE SAFE
-            // =========================
+            _logger.LogInformation(
+                "[NLP:{CorrelationId}] Built filter request: {Request}",
+                correlationId,
+                JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true }));
+
             if (!string.IsNullOrWhiteSpace(request.Address))
             {
                 try
                 {
-                    var coords = await _goongMapService.GetCoordinatesAsync(request.Address);
+                    using var geocodeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    geocodeCts.CancelAfter(TimeSpan.FromSeconds(2));
 
+                    _logger.LogInformation("[NLP:{CorrelationId}] Geocoding address='{Address}'", correlationId, request.Address);
+                    var coords = await _goongMapService.GetCoordinatesAsync(request.Address, geocodeCts.Token);
+                    _logger.LogInformation("[NLP:{CorrelationId}] Geocode result={Coords}", correlationId, coords.HasValue ? $"{coords.Value.lat},{coords.Value.lng}" : "null");
                     if (coords.HasValue)
                     {
                         request.Latitude = coords.Value.lat;
                         request.Longitude = coords.Value.lng;
                     }
                 }
-                catch
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine("GEOCODE FAIL → SKIP");
+                    _logger.LogWarning("[NLP:{CorrelationId}] Geocode timeout", correlationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[NLP:{CorrelationId}] Geocoding failed", correlationId);
                 }
             }
 
-            // =========================
-            // 5. BUSY WORKER SAFE
-            // =========================
-            HashSet<Guid> busyIds = new();
-
+            var busyWorkerIds = new HashSet<Guid>();
             if (request.StartAt.HasValue && request.EndAt.HasValue)
             {
                 try
                 {
-                    var busyTask = _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
+                    using var busyCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    busyCts.CancelAfter(TimeSpan.FromSeconds(1));
+
+                    _logger.LogInformation("[NLP:{CorrelationId}] Checking busy workers", correlationId);
+                    var response = await _busyWorkerClient.GetResponse<GetBusyWorkerIdsResponse>(
                         new GetBusyWorkerIdsRequest
                         {
                             StartAt = request.StartAt.Value,
                             EndAt = request.EndAt.Value
-                        });
+                        },
+                        busyCts.Token);
 
-                    var completed = await Task.WhenAny(busyTask, Task.Delay(1500));
-
-                    if (completed == busyTask)
-                    {
-                        var res = await busyTask;
-                        busyIds = res.Message.BusyWorkerIds.ToHashSet();
-                    }
+                    busyWorkerIds = response.Message.BusyWorkerIds.ToHashSet();
+                    _logger.LogInformation("[NLP:{CorrelationId}] Busy workers count={Count}", correlationId, busyWorkerIds.Count);
                 }
-                catch
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine("BUSY WORKER FAIL → SKIP");
+                    _logger.LogWarning("[NLP:{CorrelationId}] Busy worker lookup timeout", correlationId);
+                }
+                catch (RequestTimeoutException ex)
+                {
+                    _logger.LogWarning(ex, "[NLP:{CorrelationId}] Busy worker lookup request timeout", correlationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[NLP:{CorrelationId}] Busy worker lookup failed", correlationId);
                 }
             }
 
-            // =========================
-            // 6. DB FAST QUERY (IMPORTANT FIX)
-            // =========================
-            var workers = await _workerRepository.FilterAsync(request);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // =========================
-            // 7. REMOVE BUSY
-            // =========================
-            if (busyIds.Count > 0)
-                workers = workers.Where(x => !busyIds.Contains(x.Id)).ToList();
+            _logger.LogInformation("[NLP:{CorrelationId}] Calling FilterStrictAsync...", correlationId);
+            var workers = await _workerRepository.FilterStrictAsync(request);
+            _logger.LogInformation("[NLP:{CorrelationId}] FilterStrictAsync returned {Count} workers", correlationId, workers.Count);
 
-            Console.WriteLine($"FINAL COUNT = {workers.Count}");
-
-            return BuildNlpResponse(workers, workers.Any() ? null : "Không tìm thấy worker phù hợp.");
-        }
-
-        private bool IsEmpty(WorkerFilterNlpResult r)
-        {
-            return r == null ||
-                   (string.IsNullOrWhiteSpace(r.Address)
-                    && (r.SkillCategories == null || !r.SkillCategories.Any())
-                    && (r.CertificateCategories == null || !r.CertificateCategories.Any()));
-        }
-
-        private WorkerFilterNlpResult LocalParse(string query)
-        {
-            var result = new WorkerFilterNlpResult
+            if (busyWorkerIds.Count > 0)
             {
-                Address = null,
-                SkillCategories = new List<string>(),
-                CertificateCategories = new List<string>()
-            };
+                workers = workers.Where(x => !busyWorkerIds.Contains(x.Id)).ToList();
+                _logger.LogInformation("[NLP:{CorrelationId}] After busy filter => {Count} workers", correlationId, workers.Count);
+            }
 
-            if (string.IsNullOrWhiteSpace(query))
-                return result;
-
-            var lower = query.ToLower();
-
-            // skill
-            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
-            if (skill.Success)
-                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
-
-            // cert
-            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
-            if (cert.Success)
-                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
-
-            // address
-            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
-            if (addr.Success)
-                result.Address = addr.Groups[2].Value.Trim();
-
-            return result;
-        }
-
-        private string CleanAddress(string? address)
-        {
-            if (string.IsNullOrWhiteSpace(address))
-                return null;
-
-            address = address.ToLower().Trim();
-
-            if (address.Contains("skill") ||
-                address.Contains("certificate"))
-                return null;
-
-            return address;
-        }
-
-
-        // -------------------------------------------------------
-        // HELPER — map + wrap response
-        // -------------------------------------------------------
-        private WorkerNlpFilterResponse BuildNlpResponse(List<Worker> workers, string? warning)
-        {
-            return new WorkerNlpFilterResponse
-            {
-                Warning = warning,
-                Workers = workers.Select(x => new WorkerResponse
+            var result = workers
+                .Select(x => new WorkerResponse
                 {
                     Id = x.Id,
                     UserId = x.UserId,
@@ -573,10 +565,271 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     AvatarUrl = x.AvatarUrl,
                     TotalSkills = x.WorkerSkills?.Count ?? 0,
                     TotalCertifications = x.WorkerCertifications?.Count ?? 0
-                }).ToList()
-            };
+                })
+                .ToList();
+
+            _logger.LogInformation("[NLP:{CorrelationId}] Final response count={Count}", correlationId, result.Count);
+            return result;
         }
 
+        private async Task<List<Guid>> ResolveSkillIdsAsync(List<string>? categories, string query)
+        {
+            categories ??= new List<string>();
+            var normalizedQuery = WorkerNlpLocalParser.NormalizeSearchText(query);
+            var hasSkillIntent = categories.Any() || ContainsSkillIntent(normalizedQuery);
+            var hasOnlyCertificateIntent = ContainsCertificateIntent(normalizedQuery) && !hasSkillIntent;
+
+            if (hasOnlyCertificateIntent)
+                return new List<Guid>();
+
+            var normalizedTerms = categories
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(WorkerNlpLocalParser.NormalizeSearchText)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var ids = new HashSet<Guid>();
+            var allSkills = await _skillRepository.GetAllAsync();
+
+            foreach (var term in GetTermsForCatalogMatching(normalizedTerms, normalizedQuery))
+            {
+                var scoredSkills = allSkills
+                    .Select(skill =>
+                    {
+                        var normalizedName = WorkerNlpLocalParser.NormalizeSearchText(skill.Name);
+                        var normalizedCategory = WorkerNlpLocalParser.NormalizeSearchText(skill.Category);
+                        var normalizedDescription = WorkerNlpLocalParser.NormalizeSearchText(skill.Description);
+
+                        var score = ScoreCatalogName(term, normalizedName);
+
+                        if (hasSkillIntent)
+                        {
+                            score = Math.Max(score, ScoreCatalogText(term, normalizedCategory));
+                            score = Math.Max(score, ScoreCatalogText(term, normalizedDescription));
+                        }
+
+                        //_logger.LogInformation(
+                        //    "[NLP:ResolveSkill] Term='{Term}' skill='{SkillName}', category='{Category}' => score={Score}",
+                        //    term,
+                        //    skill.Name,
+                        //    skill.Category,
+                        //    score);
+
+                        return new { Skill = skill, Score = score };
+                    })
+                    .Where(x => x.Score > 0)
+                    .ToList();
+
+                if (!scoredSkills.Any())
+                    continue;
+
+                var bestScore = scoredSkills.Max(x => x.Score);
+
+                foreach (var match in scoredSkills.Where(x => x.Score == bestScore))
+                    ids.Add(match.Skill.Id);
+            }
+
+            return ids.ToList();
+        }
+
+        private static bool HasParsedFilters(WorkerFilterNlpResult parsed)
+        {
+            return !string.IsNullOrWhiteSpace(parsed.Address)
+                   || parsed.SkillCategories.Any()
+                   || parsed.CertificateCategories.Any()
+                   || parsed.StartAt.HasValue
+                   || parsed.EndAt.HasValue
+                   || parsed.IsAvailable.HasValue;
+        }
+
+        private async Task<List<Guid>> ResolveCertificationIdsAsync(List<string>? categories, string query)
+        {
+            categories ??= new List<string>();
+            var normalizedQuery = WorkerNlpLocalParser.NormalizeSearchText(query);
+            var hasCertificateIntent = categories.Any() || ContainsCertificateIntent(normalizedQuery);
+
+            if (!hasCertificateIntent)
+                return new List<Guid>();
+
+            var normalizedTerms = categories
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(WorkerNlpLocalParser.NormalizeSearchText)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var ids = new HashSet<Guid>();
+            var allCertifications = await _certificationRepository.GetAllAsync();
+
+            foreach (var term in GetTermsForCatalogMatching(normalizedTerms, normalizedQuery))
+            {
+                var scoredCertifications = allCertifications
+                    .Select(certification =>
+                    {
+                        var normalizedName = WorkerNlpLocalParser.NormalizeSearchText(certification.Name);
+                        var normalizedCategory = WorkerNlpLocalParser.NormalizeSearchText(certification.Category);
+                        var normalizedOrganization = WorkerNlpLocalParser.NormalizeSearchText(certification.IssuingOrganization);
+
+                        var score = ScoreCatalogName(term, normalizedName);
+                        score = Math.Max(score, ScoreCatalogText(term, normalizedCategory));
+                        score = Math.Max(score, ScoreCatalogText(term, normalizedOrganization));
+
+                        //_logger.LogInformation(
+                        //    "[NLP:ResolveCert] Term='{Term}' cert='{CertName}', category='{Category}' => score={Score}",
+                        //    term,
+                        //    certification.Name,
+                        //    certification.Category,
+                        //    score);
+
+                        return new { Certification = certification, Score = score };
+                    })
+                    .Where(x => x.Score > 0)
+                    .ToList();
+
+                if (!scoredCertifications.Any())
+                    continue;
+
+                var bestScore = scoredCertifications.Max(x => x.Score);
+
+                foreach (var match in scoredCertifications.Where(x => x.Score == bestScore))
+                    ids.Add(match.Certification.Id);
+            }
+
+            return ids.ToList();
+        }
+
+        private static List<string> GetTermsForCatalogMatching(List<string> parsedTerms, string normalizedQuery)
+        {
+            return parsedTerms.Any()
+                ? parsedTerms
+                : new List<string> { normalizedQuery };
+        }
+
+        private static bool MatchCatalogName(string input, string catalogName)
+        {
+            if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(catalogName))
+                return false;
+
+            var terms = catalogName
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(x => x.Length > 1)
+                .ToList();
+
+            if (terms.Count == 0)
+                return false;
+
+            if (input.Contains(catalogName, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var looseInput = LooseSearchText(input);
+            var looseCatalogName = LooseSearchText(catalogName);
+
+            if (!string.IsNullOrWhiteSpace(looseInput)
+                && !string.IsNullOrWhiteSpace(looseCatalogName)
+                && looseInput.Contains(looseCatalogName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return terms.Count >= 2
+                   && terms.All(term => input.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static int ScoreCatalogName(string input, string catalogName)
+        {
+            if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(catalogName))
+                return 0;
+
+            if (input.Equals(catalogName, StringComparison.OrdinalIgnoreCase))
+                return 100;
+
+            if (input.Contains(catalogName, StringComparison.OrdinalIgnoreCase))
+                return 90;
+
+            if (catalogName.Contains(input, StringComparison.OrdinalIgnoreCase))
+                return 75;
+
+            var looseInput = LooseSearchText(input);
+            var looseCatalogName = LooseSearchText(catalogName);
+
+            if (!string.IsNullOrWhiteSpace(looseInput) && looseInput.Equals(looseCatalogName, StringComparison.OrdinalIgnoreCase))
+                return 85;
+
+            if (!string.IsNullOrWhiteSpace(looseInput)
+                && !string.IsNullOrWhiteSpace(looseCatalogName)
+                && looseInput.Contains(looseCatalogName, StringComparison.OrdinalIgnoreCase))
+                return 70;
+
+            if (!string.IsNullOrWhiteSpace(looseInput)
+                && !string.IsNullOrWhiteSpace(looseCatalogName)
+                && looseCatalogName.Contains(looseInput, StringComparison.OrdinalIgnoreCase))
+                return 60;
+
+            var terms = catalogName
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(x => x.Length > 1)
+                .ToList();
+
+            return terms.Count >= 2 && terms.All(term => input.Contains(term, StringComparison.OrdinalIgnoreCase))
+                ? 55
+                : 0;
+        }
+
+        private static bool MatchCatalogText(string input, string catalogText)
+        {
+            if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(catalogText))
+                return false;
+
+            if (input.Contains(catalogText, StringComparison.OrdinalIgnoreCase)
+                || catalogText.Contains(input, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var looseInput = LooseSearchText(input);
+            var looseCatalogText = LooseSearchText(catalogText);
+
+            return !string.IsNullOrWhiteSpace(looseInput)
+                   && !string.IsNullOrWhiteSpace(looseCatalogText)
+                   && (looseInput.Contains(looseCatalogText, StringComparison.OrdinalIgnoreCase)
+                       || looseCatalogText.Contains(looseInput, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static int ScoreCatalogText(string input, string catalogText)
+        {
+            return MatchCatalogText(input, catalogText) ? 40 : 0;
+        }
+
+        private static bool ContainsSkillIntent(string normalizedQuery)
+        {
+            return Regex.IsMatch(
+                normalizedQuery,
+                @"\b(skill|skills|ky nang|ki nang|biet|lam|lam duoc|lam tot|su dung)\b",
+                RegexOptions.IgnoreCase);
+        }
+
+        private static bool ContainsCertificateIntent(string normalizedQuery)
+        {
+            return Regex.IsMatch(
+                normalizedQuery,
+                @"\b(certificate|cert|chung chi|chung nhan|bang)\b",
+                RegexOptions.IgnoreCase);
+        }
+
+        private static string LooseSearchText(string value)
+        {
+            var normalized = WorkerNlpLocalParser.NormalizeSearchText(value);
+            normalized = Regex.Replace(normalized, @"[^a-z0-9\s]", " ");
+            normalized = Regex.Replace(normalized, @"[aeiouy]", "");
+            return Regex.Replace(normalized, @"\s+", " ").Trim();
+        }
+
+        private static string? CleanAddress(string? address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return null;
+
+            return address.Trim();
+        }
 
         // Lấy thông tin cơ bản (id, full name) của danh sách worker theo ids, dùng cho hiển thị trong dropdown khi chọn worker cho task assignment
         public async Task<List<WorkerDto>> GetWorkersByIds(List<Guid> ids)

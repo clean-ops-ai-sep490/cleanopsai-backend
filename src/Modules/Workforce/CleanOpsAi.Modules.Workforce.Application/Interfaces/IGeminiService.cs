@@ -10,6 +10,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
     public interface IGeminiService
     {
         Task<string> ChatAsync(string message);
-        Task<WorkerFilterNlpResult> ParseWorkerFilterAsync(string query);
+        Task<WorkerFilterNlpResult> ParseWorkerFilterAsync(string query, CancellationToken ct = default);
     }
 }

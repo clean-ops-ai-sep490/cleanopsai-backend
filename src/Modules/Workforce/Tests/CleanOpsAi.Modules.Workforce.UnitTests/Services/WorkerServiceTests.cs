@@ -27,6 +27,8 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         private readonly IGoongMapService _goongMock;
         private readonly IRequestClient<GetBusyWorkerIdsRequest> _busMock;
         private readonly IGeminiService _geminiMock;
+        private readonly ISkillRepository _skillRepoMock;
+        private readonly ICertificationRepository _certificationRepoMock;
 
         private readonly WorkerService _service;
 
@@ -39,6 +41,8 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
             _goongMock = Substitute.For<IGoongMapService>();
             _busMock = Substitute.For<IRequestClient<GetBusyWorkerIdsRequest>>();
             _geminiMock = Substitute.For<IGeminiService>();
+            _skillRepoMock = Substitute.For<ISkillRepository>();
+            _certificationRepoMock = Substitute.For<ICertificationRepository>();
 
             _service = new WorkerService(
                 _repoMock,
@@ -47,7 +51,9 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
                 _dateTimeMock,
                 _goongMock,
                 _busMock,
-                _geminiMock
+                _geminiMock,
+                _skillRepoMock,
+                _certificationRepoMock
             );
         }
 
@@ -208,27 +214,89 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
         // NLP FILTER
         // ================================
         //[Fact]
-        //public async Task NlpFilterAsync_ShouldCallGemini()
+        //public async Task NlpFilterAsync_ShouldResolveSkillAndCertificationNames()
         //{
-        //    _geminiMock.ParseWorkerFilterAsync("test")
+        //    var skillId = Guid.NewGuid();
+        //    var certificationId = Guid.NewGuid();
+
+        //    _geminiMock.ParseWorkerFilterAsync(Arg.Any<string>())
         //        .Returns(new WorkerFilterNlpResult
         //        {
-        //            Address = "HCM",
-        //            SkillCategories = new List<string>(),
-        //            CertificateCategories = new List<string>(),
-        //            StartAt = null,
-        //            EndAt = null
+        //            Address = "Phường Ba Đình",
+        //            SkillCategories = new List<string> { "chemical" },
+        //            CertificateCategories = new List<string> { "management" }
         //        });
 
-        //    _goongMock.GetCoordinatesAsync("HCM")
-        //        .Returns((10.8231, 106.6297));
+        //    _skillRepoMock.GetAllAsync()
+        //        .Returns(new List<Skill>
+        //        {
+        //            new Skill
+        //            {
+        //                Id = skillId,
+        //                Name = "Chemical Cleaning",
+        //                Category = "Chemical"
+        //            }
+        //        });
 
-        //    _repoMock.FilterStrictAsync(Arg.Any<WorkerFilterRequest>())
+        //    _certificationRepoMock.GetAllAsync()
+        //        .Returns(new List<Certification>
+        //        {
+        //            new Certification
+        //            {
+        //                Id = certificationId,
+        //                Name = "Safety Management",
+        //                Category = "Management",
+        //                IssuingOrganization = "CleanOps"
+        //            }
+        //        });
+
+        //    _goongMock.GetCoordinatesAsync("phường ba đình")
+        //        .Returns((10.0, 20.0));
+
+        //    _repoMock.FilterAsync(Arg.Any<WorkerFilterRequest>())
         //        .Returns(new List<Worker>());
 
-        //    var result = await _service.NlpFilterAsync("test");
+        //    await _service.NlpFilterAsync("Tìm người có skill chemical có chứng chỉ management ở Phường Ba Đình");
 
-        //    Assert.NotNull(result);
+        //    await _repoMock.Received(1).FilterAsync(Arg.Is<WorkerFilterRequest>(request =>
+        //        request.SkillIds != null &&
+        //        request.SkillIds.Contains(skillId) &&
+        //        request.CertificateIds != null &&
+        //        request.CertificateIds.Contains(certificationId) &&
+        //        request.Latitude == 10.0 &&
+        //        request.Longitude == 20.0));
+        //}
+
+        //[Fact]
+        //public async Task NlpFilterAsync_ShouldInferSkillFromNaturalSentenceWithoutSkillKeyword()
+        //{
+        //    var skillId = Guid.NewGuid();
+
+        //    _geminiMock.ParseWorkerFilterAsync(Arg.Any<string>())
+        //        .Returns(new WorkerFilterNlpResult());
+
+        //    _skillRepoMock.GetAllAsync()
+        //        .Returns(new List<Skill>
+        //        {
+        //            new Skill
+        //            {
+        //                Id = skillId,
+        //                Name = "Chemical Cleaning",
+        //                Category = "Chemical"
+        //            }
+        //        });
+
+        //    _certificationRepoMock.GetAllAsync()
+        //        .Returns(new List<Certification>());
+
+        //    _repoMock.FilterAsync(Arg.Any<WorkerFilterRequest>())
+        //        .Returns(new List<Worker>());
+
+        //    await _service.NlpFilterAsync("Ai lam duoc chemical cleaning");
+
+        //    await _repoMock.Received(1).FilterAsync(Arg.Is<WorkerFilterRequest>(request =>
+        //        request.SkillIds != null &&
+        //        request.SkillIds.Contains(skillId)));
         //}
 
         // ================================

@@ -4,7 +4,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 {
 	public interface IGoongMapService
 	{
-		Task<(double lat, double lng)?> GetCoordinatesAsync(string address);
+		Task<(double lat, double lng)?> GetCoordinatesAsync(string address, CancellationToken cancellationToken = default);
 
 		Task<List<GoongPlaceSuggestion>> GetPlaceSuggestionsAsync(string input, CancellationToken cancellationToken = default);
 
