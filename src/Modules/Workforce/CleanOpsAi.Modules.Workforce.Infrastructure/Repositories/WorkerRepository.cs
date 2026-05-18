@@ -220,11 +220,14 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .AsNoTracking()
                 .Where(x => !x.IsDeleted);
 
-            foreach (var skillId in skillIds.Distinct())
+            // For skills: use OR logic (worker has ANY of these skills)
+            if (skillIds.Any())
             {
-                query = query.Where(w => w.WorkerSkills.Any(ws => ws.SkillId == skillId));
+                query = query.Where(w =>
+                    w.WorkerSkills.Any(ws => skillIds.Contains(ws.SkillId)));
             }
 
+            // For certifications: use AND logic (worker has ALL of these certs)
             foreach (var certId in certIds.Distinct())
             {
                 query = query.Where(w =>
@@ -247,12 +250,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                     w.Longitude <= reqLon + lonDelta);
             }
 
-            //var workers = await query
-            //    .Include(x => x.WorkerSkills)
-            //        .ThenInclude(s => s.Skill)
-            //    .Include(x => x.WorkerCertifications)
-            //        .ThenInclude(c => c.Certification)
-            //    .ToListAsync();
             var workers = await query
             .AsSplitQuery()
             .Select(x => new Worker

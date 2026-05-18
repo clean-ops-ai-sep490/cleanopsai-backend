@@ -48,7 +48,6 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             _logger = logger;
         }
 
-        // get by id
         public async Task<List<WorkerResponse>> GetByIdAsync(Guid id)
         {
             var worker = await _workerRepository.GetByIdAsync(id);
@@ -68,7 +67,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     Longitude = worker.Longitude,
                     AvatarUrl = worker.AvatarUrl,
                     TotalSkills = worker.WorkerSkills.Count,
-                    TotalCertifications = worker.WorkerCertifications.Count
+                    TotalCertifications = worker.WorkerCertifications.Count,
+                    Skills = worker.WorkerSkills?.Select(ws => new SkillDto
+                    {
+                        Id = ws.Skill?.Id ?? Guid.Empty,
+                        Name = ws.Skill?.Name ?? string.Empty,
+                        Category = ws.Skill?.Category
+                    }).ToList() ?? new List<SkillDto>(),
+                    Certifications = worker.WorkerCertifications?.Select(wc => new CertificationDto
+                    {
+                        Id = wc.Certification?.Id ?? Guid.Empty,
+                        Name = wc.Certification?.Name ?? string.Empty,
+                        Category = wc.Certification?.Category,
+                        ExpiredAt = wc.ExpiredAt
+                    }).ToList() ?? new List<CertificationDto>()
                 }
             };
         }
@@ -91,7 +103,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Longitude = worker.Longitude,
                 AvatarUrl = worker.AvatarUrl,
                 TotalSkills = worker.WorkerSkills.Count,
-                TotalCertifications = worker.WorkerCertifications.Count
+                TotalCertifications = worker.WorkerCertifications.Count,
+                Skills = worker.WorkerSkills?.Select(ws => new SkillDto
+                {
+                    Id = ws.Skill?.Id ?? Guid.Empty,
+                    Name = ws.Skill?.Name ?? string.Empty,
+                    Category = ws.Skill?.Category
+                }).ToList() ?? new List<SkillDto>(),
+                Certifications = worker.WorkerCertifications?.Select(wc => new CertificationDto
+                {
+                    Id = wc.Certification?.Id ?? Guid.Empty,
+                    Name = wc.Certification?.Name ?? string.Empty,
+                    Category = wc.Certification?.Category,
+                    ExpiredAt = wc.ExpiredAt
+                }).ToList() ?? new List<CertificationDto>()
             };
         }
 
@@ -110,7 +135,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Longitude = x.Longitude,
                 AvatarUrl = x.AvatarUrl,
                 TotalSkills = x.WorkerSkills.Count,
-                TotalCertifications = x.WorkerCertifications.Count
+                TotalCertifications = x.WorkerCertifications.Count,
+                Skills = x.WorkerSkills?.Select(ws => new SkillDto
+                {
+                    Id = ws.Skill?.Id ?? Guid.Empty,
+                    Name = ws.Skill?.Name ?? string.Empty,
+                    Category = ws.Skill?.Category
+                }).ToList() ?? new List<SkillDto>(),
+                Certifications = x.WorkerCertifications?.Select(wc => new CertificationDto
+                {
+                    Id = wc.Certification?.Id ?? Guid.Empty,
+                    Name = wc.Certification?.Name ?? string.Empty,
+                    Category = wc.Certification?.Category,
+                    ExpiredAt = wc.ExpiredAt
+                }).ToList() ?? new List<CertificationDto>()
             }).ToList();
         }
 
@@ -129,7 +167,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Longitude = x.Longitude,
                 AvatarUrl = x.AvatarUrl,
                 TotalSkills = x.WorkerSkills.Count,
-                TotalCertifications = x.WorkerCertifications.Count
+                TotalCertifications = x.WorkerCertifications.Count,
+                Skills = x.WorkerSkills?.Select(ws => new SkillDto
+                {
+                    Id = ws.Skill?.Id ?? Guid.Empty,
+                    Name = ws.Skill?.Name ?? string.Empty,
+                    Category = ws.Skill?.Category
+                }).ToList() ?? new List<SkillDto>(),
+                Certifications = x.WorkerCertifications?.Select(wc => new CertificationDto
+                {
+                    Id = wc.Certification?.Id ?? Guid.Empty,
+                    Name = wc.Certification?.Name ?? string.Empty,
+                    Category = wc.Certification?.Category,
+                    ExpiredAt = wc.ExpiredAt
+                }).ToList() ?? new List<CertificationDto>()
             }).ToList();
 
             return new PagedResponse<WorkerResponse>
@@ -171,7 +222,9 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 Longitude = worker.Longitude,
                 AvatarUrl = worker.AvatarUrl,
                 TotalSkills = 0,
-                TotalCertifications = 0
+                TotalCertifications = 0,
+                Skills = new List<SkillDto>(),
+                Certifications = new List<CertificationDto>()
             };
         }
 
@@ -260,7 +313,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     Longitude = worker.Longitude,
                     AvatarUrl = worker.AvatarUrl,
                     TotalSkills = worker.WorkerSkills.Count,
-                    TotalCertifications = worker.WorkerCertifications.Count
+                    TotalCertifications = worker.WorkerCertifications.Count,
+                    Skills = worker.WorkerSkills?.Select(ws => new SkillDto
+                    {
+                        Id = ws.Skill?.Id ?? Guid.Empty,
+                        Name = ws.Skill?.Name ?? string.Empty,
+                        Category = ws.Skill?.Category
+                    }).ToList() ?? new List<SkillDto>(),
+                    Certifications = worker.WorkerCertifications?.Select(wc => new CertificationDto
+                    {
+                        Id = wc.Certification?.Id ?? Guid.Empty,
+                        Name = wc.Certification?.Name ?? string.Empty,
+                        Category = wc.Certification?.Category,
+                        ExpiredAt = wc.ExpiredAt
+                    }).ToList() ?? new List<CertificationDto>()
                 }
             };
         }
@@ -363,9 +429,21 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     Latitude = x.Latitude,
                     Longitude = x.Longitude,
                     AvatarUrl = x.AvatarUrl,
-
                     TotalSkills = x.WorkerSkills?.Count ?? 0,
-                    TotalCertifications = x.WorkerCertifications?.Count ?? 0
+                    TotalCertifications = x.WorkerCertifications?.Count ?? 0,
+                    Skills = x.WorkerSkills?.Select(ws => new SkillDto
+                    {
+                        Id = ws.Skill?.Id ?? Guid.Empty,
+                        Name = ws.Skill?.Name ?? string.Empty,
+                        Category = ws.Skill?.Category
+                    }).ToList() ?? new List<SkillDto>(),
+                    Certifications = x.WorkerCertifications?.Select(wc => new CertificationDto
+                    {
+                        Id = wc.Certification?.Id ?? Guid.Empty,
+                        Name = wc.Certification?.Name ?? string.Empty,
+                        Category = wc.Certification?.Category,
+                        ExpiredAt = wc.ExpiredAt
+                    }).ToList() ?? new List<CertificationDto>()
                 })
                 .ToList();
         }
@@ -454,6 +532,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
             var skillIds = await ResolveSkillIdsAsync(parsed.SkillCategories, query);
             var certificationIds = await ResolveCertificationIdsAsync(parsed.CertificateCategories, query);
+
+            // For NLP search, if we have too many skills (generic match), keep only the most specific ones
+            if (skillIds.Count > 3)
+            {
+                skillIds = skillIds.Take(3).ToList();
+            }
 
             _logger.LogInformation(
                 "[NLP:{CorrelationId}] Resolved skillIds={SkillIds}; certIds={CertIds}",
@@ -564,7 +648,20 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                     Longitude = x.Longitude,
                     AvatarUrl = x.AvatarUrl,
                     TotalSkills = x.WorkerSkills?.Count ?? 0,
-                    TotalCertifications = x.WorkerCertifications?.Count ?? 0
+                    TotalCertifications = x.WorkerCertifications?.Count ?? 0,
+                    Skills = x.WorkerSkills?.Select(ws => new SkillDto
+                    {
+                        Id = ws.Skill?.Id ?? Guid.Empty,
+                        Name = ws.Skill?.Name ?? string.Empty,
+                        Category = ws.Skill?.Category
+                    }).ToList() ?? new List<SkillDto>(),
+                    Certifications = x.WorkerCertifications?.Select(wc => new CertificationDto
+                    {
+                        Id = wc.Certification?.Id ?? Guid.Empty,
+                        Name = wc.Certification?.Name ?? string.Empty,
+                        Category = wc.Certification?.Category,
+                        ExpiredAt = wc.ExpiredAt
+                    }).ToList() ?? new List<CertificationDto>()
                 })
                 .ToList();
 
@@ -585,9 +682,23 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             var normalizedTerms = categories
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Select(WorkerNlpLocalParser.NormalizeSearchText)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Where(x => !string.IsNullOrWhiteSpace(x) && x.Length > 2 && !IsSkillKeyword(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            // Remove generic category terms if more specific terms exist
+            if (normalizedTerms.Count > 1)
+            {
+                var genericTerms = new[] { "cleaning", "electrical", "plumbing", "welding", "hvac" };
+                var hasSpecificTerm = normalizedTerms.Any(t => !genericTerms.Contains(t.ToLowerInvariant()));
+
+                if (hasSpecificTerm)
+                {
+                    normalizedTerms = normalizedTerms
+                        .Where(t => !genericTerms.Contains(t.ToLowerInvariant()))
+                        .ToList();
+                }
+            }
             var ids = new HashSet<Guid>();
             var allSkills = await _skillRepository.GetAllAsync();
 
@@ -654,9 +765,23 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             var normalizedTerms = categories
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Select(WorkerNlpLocalParser.NormalizeSearchText)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Where(x => !string.IsNullOrWhiteSpace(x) && x.Length > 2 && !IsSkillKeyword(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            // Remove generic category terms if more specific terms exist
+            if (normalizedTerms.Count > 1)
+            {
+                var genericTerms = new[] { "safety", "fire safety" };
+                var hasSpecificTerm = normalizedTerms.Any(t => !genericTerms.Contains(t.ToLowerInvariant()));
+
+                if (hasSpecificTerm)
+                {
+                    normalizedTerms = normalizedTerms
+                        .Where(t => !genericTerms.Contains(t.ToLowerInvariant()))
+                        .ToList();
+                }
+            }
             var ids = new HashSet<Guid>();
             var allCertifications = await _certificationRepository.GetAllAsync();
 
@@ -812,6 +937,14 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
             return Regex.IsMatch(
                 normalizedQuery,
                 @"\b(certificate|cert|chung chi|chung nhan|bang)\b",
+                RegexOptions.IgnoreCase);
+        }
+
+        private static bool IsSkillKeyword(string term)
+        {
+            return Regex.IsMatch(
+                term,
+                @"\b(ky nang|ki nang|skill|skills|co|ban|can|voi|ve|o|tai|tim|nguoi|nhan vien|worker)\b",
                 RegexOptions.IgnoreCase);
         }
 

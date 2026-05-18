@@ -11,7 +11,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         {
             ["cleaning"] =
             [
-                "don dep", "don ve sinh", "ve sinh", "lau don", "tap vu",
+                "don dep", "don ve sinh", "ve sinh", "lau don", "lau don co ban", "tap vu",
                 "cleaning", "cleaner", "janitor", "don dep co ban", "ve sinh co ban"
             ],
             ["electrical"] =
@@ -64,12 +64,12 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
 
         private static readonly string[] SkillLeadWords =
         [
-            "skill", "skills", "ky nang", "ki nang", "biet", "lam duoc", "lam tot", "lam", "su dung"
+            "co skill", "co skills", "co ky nang", "co ki nang", "biet", "lam duoc", "lam tot", "lam", "su dung"
         ];
 
         private static readonly string[] CertificateLeadWords =
         [
-            "certificate", "cert", "chung chi", "chung nhan", "bang"
+            "co certificate", "cert", "co chung chi", "co chung nhan", "co bang"
         ];
 
         public static WorkerFilterNlpResult Parse(string? query)
