@@ -16,10 +16,17 @@ namespace CleanOpsAi.Api.Modules.Workforce
         }
 
         [HttpPost("chat")]
-        public async Task<IActionResult> Chat([FromBody] string message)
+        public async Task<IActionResult> Chat([FromBody] string message, CancellationToken cancellationToken)
         {
-            var result = await _geminiService.ChatAsync(message);
-            return Ok(result);
+            try
+            {
+                var result = await _geminiService.ChatAsync(message);
+                return Ok(result);
+            }
+            catch (CleanOpsAi.BuildingBlocks.Application.Exceptions.BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

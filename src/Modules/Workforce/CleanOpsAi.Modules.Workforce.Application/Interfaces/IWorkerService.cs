@@ -41,7 +41,7 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 			List<Guid> requiredCertificationIds,
 			CancellationToken ct = default);
 
-        Task<WorkerNlpFilterResponse> NlpFilterAsync(string query);
+        Task<List<WorkerResponse>> NlpFilterAsync(string? query, CancellationToken cancellationToken = default);
 
     }
 }

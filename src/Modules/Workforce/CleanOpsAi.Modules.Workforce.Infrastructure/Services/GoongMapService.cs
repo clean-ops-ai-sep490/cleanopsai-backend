@@ -17,10 +17,15 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
 			_apiKey = config["Goong:ApiKey"]!;
 		}
 
-		public async Task<(double lat, double lng)?> GetCoordinatesAsync(string address)
+		public async Task<(double lat, double lng)?> GetCoordinatesAsync(
+			string address,
+			CancellationToken cancellationToken = default)
 		{
+			if (string.IsNullOrWhiteSpace(address) || string.IsNullOrWhiteSpace(_apiKey))
+				return null;
+
 			var url = $"https://rsapi.goong.io/geocode?address={Uri.EscapeDataString(address)}&api_key={_apiKey}";
-			var response = await _httpClient.GetFromJsonAsync<GoongMapDto>(url);
+			var response = await _httpClient.GetFromJsonAsync<GoongMapDto>(url, cancellationToken);
 			var location = response?.Results?.FirstOrDefault()?.Geometry?.Location;
 			return location is not null ? (location.Lat, location.Lng) : null;
 		}
@@ -30,6 +35,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
 			CancellationToken cancellationToken = default)
 		{
 			if (string.IsNullOrWhiteSpace(placeId))
+				return null;
+			if (string.IsNullOrWhiteSpace(_apiKey))
 				return null;
 
 			var url = $"https://rsapi.goong.io/Place/Detail?place_id={Uri.EscapeDataString(placeId)}&api_key={_apiKey}";
@@ -42,6 +49,8 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
 		public async Task<List<GoongPlaceSuggestion>> GetPlaceSuggestionsAsync(string input, CancellationToken cancellationToken = default)
 		{
 			if (string.IsNullOrWhiteSpace(input))
+				return new List<GoongPlaceSuggestion>();
+			if (string.IsNullOrWhiteSpace(_apiKey))
 				return new List<GoongPlaceSuggestion>();
 
 			var url = $"https://rsapi.goong.io/Place/AutoComplete?api_key={_apiKey}&input={Uri.EscapeDataString(input)}";
