@@ -191,7 +191,7 @@ namespace CleanOpsAi.Api.Modules.Workforce
         //    return Ok(result);
         //}
 
-        [HttpGet("workareas/{supervisorId}")]
+        [HttpGet("workareas/{supervisorId:guid}")]
         [SwaggerOperation(
             Summary = "Get work areas by supervisor",
             Description = "Get all work area of supervisor.",
@@ -204,6 +204,34 @@ namespace CleanOpsAi.Api.Modules.Workforce
             var result = await _service
                 .GetWorkAreasBySupervisorPaginationAsync(supervisorId, pageNumber, pageSize);
 
+            return Ok(result);
+        }
+
+        [HttpGet("workareas/assigned")]
+        [SwaggerOperation(
+            Summary = "Get work areas assigned in WorkAreaSupervisor",
+            Description = "Get work areas that already exist in WorkAreaSupervisor.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> GetAssignedWorkAreas(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken ct = default)
+        {
+            var result = await _service.GetAssignedWorkAreasPaginationAsync(pageNumber, pageSize, ct);
+            return Ok(result);
+        }
+
+        [HttpGet("workareas/unassigned")]
+        [SwaggerOperation(
+            Summary = "Get work areas not assigned in WorkAreaSupervisor",
+            Description = "Get work areas that do not exist in WorkAreaSupervisor.",
+            Tags = new[] { "WorkAreaSupervisors" })]
+        public async Task<IActionResult> GetUnassignedWorkAreas(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken ct = default)
+        {
+            var result = await _service.GetUnassignedWorkAreasPaginationAsync(pageNumber, pageSize, ct);
             return Ok(result);
         }
 
@@ -223,7 +251,7 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return Ok(result);
         }
 
-        [HttpGet("workareas/{workAreaId}/workers")]
+        [HttpGet("workareas/{workAreaId:guid}/workers")]
         [SwaggerOperation(
             Summary = "Get worker by workAreaId",
             Description = "Get all worker of workAreaId.",
