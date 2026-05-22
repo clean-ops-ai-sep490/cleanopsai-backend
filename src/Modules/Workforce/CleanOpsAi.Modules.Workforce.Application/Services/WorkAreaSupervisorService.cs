@@ -16,13 +16,23 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
         private readonly IUserContext _userContext;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IRequestClient<GetWorkAreasByIdsRequest> _client;
+        private readonly IRequestClient<GetAssignedWorkAreasRequest> _assignedWorkAreasClient;
+        private readonly IRequestClient<GetUnassignedWorkAreasRequest> _unassignedWorkAreasClient;
 
-        public WorkAreaSupervisorService(IWorkAreaSupervisorRepository repository, IUserContext userContext, IDateTimeProvider dateTimeProvider, IRequestClient<GetWorkAreasByIdsRequest> client)
+        public WorkAreaSupervisorService(
+            IWorkAreaSupervisorRepository repository,
+            IUserContext userContext,
+            IDateTimeProvider dateTimeProvider,
+            IRequestClient<GetWorkAreasByIdsRequest> client,
+            IRequestClient<GetAssignedWorkAreasRequest> assignedWorkAreasClient,
+            IRequestClient<GetUnassignedWorkAreasRequest> unassignedWorkAreasClient)
         {
             _repository = repository;
             _userContext = userContext;
             _dateTimeProvider = dateTimeProvider;
             _client = client;
+            _assignedWorkAreasClient = assignedWorkAreasClient;
+            _unassignedWorkAreasClient = unassignedWorkAreasClient;
         }
 
         public async Task<WorkAreaSupervisorResponse?> GetByIdAsync(Guid id)
@@ -421,6 +431,82 @@ namespace CleanOpsAi.Modules.Workforce.Application.Services
                 TotalElements = totalCount,
                 TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
                 Content = pagedItems
+            };
+        }
+
+        public async Task<PagedResponse<WorkAreaWithLocationResponse>> GetAssignedWorkAreasPaginationAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var assignedIds = await _repository.GetAssignedWorkAreaIdsAsync(ct);
+
+            if (!assignedIds.Any())
+            {
+                return new PagedResponse<WorkAreaWithLocationResponse>
+                {
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalElements = 0,
+                    TotalPages = 0,
+                    Content = new List<WorkAreaWithLocationResponse>()
+                };
+            }
+
+            var response = await _assignedWorkAreasClient.GetResponse<GetWorkAreasByAssignmentStatusResponse>(
+                new GetAssignedWorkAreasRequest
+                {
+                    AssignedWorkAreaIds = assignedIds,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                },
+                ct);
+
+            return MapWorkAreaAssignmentStatusResponse(response.Message);
+        }
+
+        public async Task<PagedResponse<WorkAreaWithLocationResponse>> GetUnassignedWorkAreasPaginationAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var assignedIds = await _repository.GetAssignedWorkAreaIdsAsync(ct);
+
+            var response = await _unassignedWorkAreasClient.GetResponse<GetWorkAreasByAssignmentStatusResponse>(
+                new GetUnassignedWorkAreasRequest
+                {
+                    AssignedWorkAreaIds = assignedIds,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                },
+                ct);
+
+            return MapWorkAreaAssignmentStatusResponse(response.Message);
+        }
+
+        private static PagedResponse<WorkAreaWithLocationResponse> MapWorkAreaAssignmentStatusResponse(
+            GetWorkAreasByAssignmentStatusResponse response)
+        {
+            return new PagedResponse<WorkAreaWithLocationResponse>
+            {
+                PageNumber = response.PageNumber,
+                PageSize = response.PageSize,
+                TotalElements = response.TotalElements,
+                TotalPages = response.TotalPages,
+                Content = response.Items.Select(x => new WorkAreaWithLocationResponse
+                {
+                    WorkAreaId = x.WorkAreaId,
+                    WorkAreaName = x.WorkAreaName,
+                    ZoneName = x.ZoneName,
+                    LocationName = x.LocationName,
+                    DisplayLocation = x.DisplayLocation
+                }).ToList()
             };
         }
 

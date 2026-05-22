@@ -21,6 +21,8 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 		private readonly IUserContext _userContextMock;
 		private readonly IDateTimeProvider _dateTimeMock;
 		private readonly IRequestClient<GetWorkAreasByIdsRequest> _clientMock;
+		private readonly IRequestClient<GetAssignedWorkAreasRequest> _assignedWorkAreasClientMock;
+		private readonly IRequestClient<GetUnassignedWorkAreasRequest> _unassignedWorkAreasClientMock;
 		private readonly WorkAreaSupervisorService _service;
 
 		public WorkAreaSupervisorServiceTests()
@@ -29,12 +31,16 @@ namespace CleanOpsAi.Modules.Workforce.UnitTests.Services
 			_userContextMock = Substitute.For<IUserContext>();
 			_dateTimeMock = Substitute.For<IDateTimeProvider>();
 			_clientMock = Substitute.For<IRequestClient<GetWorkAreasByIdsRequest>>();
+			_assignedWorkAreasClientMock = Substitute.For<IRequestClient<GetAssignedWorkAreasRequest>>();
+			_unassignedWorkAreasClientMock = Substitute.For<IRequestClient<GetUnassignedWorkAreasRequest>>();
 
 			_service = new WorkAreaSupervisorService(
 				_repoMock,
 				_userContextMock,
 				_dateTimeMock,
-				_clientMock
+				_clientMock,
+				_assignedWorkAreasClientMock,
+				_unassignedWorkAreasClientMock
 			);
 		}
 
