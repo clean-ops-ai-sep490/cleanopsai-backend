@@ -37,6 +37,7 @@ if (app.Environment.IsDevelopment() || swaggerEnabled)
 		options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
 	});
 }
+// run wflow
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
