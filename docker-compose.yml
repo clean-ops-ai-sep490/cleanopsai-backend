@@ -48,6 +48,7 @@ x-retrain-env: &retrain-env
   ScoringRetrain__ArchivePrefix: ${SCORING_RETRAIN_ARCHIVE_PREFIX:-scoring/archive}
   ScoringRetrain__YoloMapMetricKey: ${SCORING_RETRAIN_YOLO_MAP_KEY:-yolo.map}
   ScoringRetrain__UnetMiouMetricKey: ${SCORING_RETRAIN_UNET_MIOU_KEY:-unet.miou}
+  ScoringRetrain__UseUnetOnlyPromotionGate: ${SCORING_RETRAIN_UNET_ONLY_GATE:-true}
   ScoringRetrain__MinimumYoloMapImprovement: ${SCORING_RETRAIN_MIN_YOLO_MAP_IMPROVEMENT:-0}
   ScoringRetrain__MinimumUnetMiouImprovement: ${SCORING_RETRAIN_MIN_UNET_MIOU_IMPROVEMENT:-0}
   ScoringRetrain__PromoteWhenNoBaseline: ${SCORING_RETRAIN_PROMOTE_NO_BASELINE:-false}

@@ -415,6 +415,9 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			Assert.Contains("\"quality_score\":82.615", saved.PayloadJson);
 			Assert.Contains("\"visualization_blob_url\":\"https://blob.example.com/a.jpg\"", saved.PayloadJson);
 			Assert.Contains("\"detections_count\":0", saved.PayloadJson);
+			Assert.Contains("\"sam3\":", saved.PayloadJson);
+			Assert.Contains("\"dirty_coverage_source\":\"sam3\"", saved.PayloadJson);
+			Assert.Contains("\"combined_dirty_coverage_pct\":21.25", saved.PayloadJson);
 			Assert.Contains("\"backend_runtime\":", saved.PayloadJson);
 			Assert.Contains("\"source_of_truth\":\"visualize-link-only\"", saved.PayloadJson);
 			Assert.Contains("\"code_path_version\":\"visualize_single_source_v1\"", saved.PayloadJson);
@@ -737,7 +740,14 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					BaseCleanScore = qualityScore,
 					ObjectPenalty = 0,
 					PassThreshold = 90,
-					Reasons = new List<string> { "test reason" }
+					Reasons = new List<string> { "test reason" },
+					AdditionalData = new Dictionary<string, System.Text.Json.JsonElement>
+					{
+						["dirty_coverage_source"] = JsonSerializer.SerializeToElement("sam3"),
+						["unet_dirty_coverage_pct"] = JsonSerializer.SerializeToElement(17.385),
+						["sam3_dirty_coverage_pct"] = JsonSerializer.SerializeToElement(21.25),
+						["combined_dirty_coverage_pct"] = JsonSerializer.SerializeToElement(21.25)
+					}
 				},
 				AdditionalData = new Dictionary<string, System.Text.Json.JsonElement>
 				{
@@ -750,9 +760,16 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					{
 						total_dirty_coverage_pct = 17.385
 					}),
-					["llm_filter"] = JsonSerializer.SerializeToElement(new
+					["sam3"] = JsonSerializer.SerializeToElement(new
 					{
-						route_mode = "visualize_enhanced"
+						enabled = true,
+						loaded = true,
+						status = "ok",
+						summary = new
+						{
+							dirty_coverage_pct = 21.25,
+							predictions_count = 1
+						}
 					})
 				}
 			};
