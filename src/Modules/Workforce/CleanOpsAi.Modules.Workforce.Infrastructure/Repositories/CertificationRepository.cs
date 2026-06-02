@@ -97,6 +97,15 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<Certification>> GetByNameAsync(string name)
+        {
+            return await _dbContext.Set<Certification>()
+                .Include(c => c.WorkerCertifications)
+                .Where(x => !x.IsDeleted && x.Name.Contains(name))
+                .OrderByDescending(x => x.Created)
+                .ToListAsync();
+        }
+
         public async Task<List<WorkerCertification>> GetCertificationsByWorkerIdAsync(Guid workerId)
         {
             return await _dbContext.Set<WorkerCertification>()

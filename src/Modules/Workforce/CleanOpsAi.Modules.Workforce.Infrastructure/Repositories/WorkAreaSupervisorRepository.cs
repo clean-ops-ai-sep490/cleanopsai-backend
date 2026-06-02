@@ -236,5 +236,14 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Repositories
             return await _dbContext.SaveChangesAsync();
         }
 
+        public async Task<List<Guid>> GetAssignedWorkAreaIdsAsync(CancellationToken ct = default)
+        {
+            return await _dbContext.Set<WorkAreaSupervisor>()
+                .Where(x => x.WorkAreaId.HasValue && x.IsDeleted == false)
+                .Select(x => x.WorkAreaId!.Value)
+                .Distinct()
+                .ToListAsync(ct);
+        }
+
     } 
 }

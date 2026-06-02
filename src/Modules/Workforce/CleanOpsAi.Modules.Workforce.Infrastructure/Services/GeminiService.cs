@@ -1,9 +1,12 @@
 ﻿using CleanOpsAi.BuildingBlocks.Application.Exceptions;
 using CleanOpsAi.Modules.Workforce.Application.Dtos.Nlps;
 using CleanOpsAi.Modules.Workforce.Application.Interfaces;
+using CleanOpsAi.Modules.Workforce.Application.Services;
 using Microsoft.Extensions.Configuration;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
 {
@@ -17,8 +20,6 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
             _httpClient = httpClient;
             _apiKey = config["Gemini:ApiKey"]!;
 
-            // timeout ngắn để tránh treo request
-            _httpClient.Timeout = TimeSpan.FromSeconds(2);
         }
 
         private string BuildUrl()
@@ -26,7 +27,9 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
             return $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
         }
 
-        // ========================= CHAT =========================
+        // =====================================================
+        // CHAT
+        // =====================================================
         public async Task<string> ChatAsync(string message)
         {
             var body = new
@@ -36,22 +39,34 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                     new
                     {
                         role = "user",
-                        parts = new[] { new { text = message?.Trim() ?? "" } }
+                        parts = new[]
+                        {
+                            new { text = message?.Trim() ?? "" }
+                        }
                     }
                 }
             };
 
-            var json = await Send(body);
-            return ExtractText(json);
+            try
+            {
+                var json = await Send(body);
+                return ExtractText(json);
+            }
+            catch (TaskCanceledException)
+            {
+                throw new BadRequestException("Gemini request timeout. Vui lòng thử lại sau.");
+            }
         }
 
-        // ========================= NLP =========================
-        public async Task<WorkerFilterNlpResult> ParseWorkerFilterAsync(string query)
+        // =====================================================
+        // NLP
+        // =====================================================
+        public async Task<WorkerFilterNlpResult> ParseWorkerFilterAsync(string query, CancellationToken ct = default)
         {
             query = query?.Trim() ?? "";
 
-            // 🔥 LOCAL FIRST (luôn chạy nhanh)
-            var local = LocalParse(query);
+            if (string.IsNullOrWhiteSpace(_apiKey))
+                return new WorkerFilterNlpResult();
 
             try
             {
@@ -61,15 +76,25 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                 {
                     contents = new[]
                     {
-                new
-                {
-                    role = "user",
-                    parts = new[] { new { text = prompt } }
-                }
-            }
+                        new
+                        {
+                            role = "user",
+                            parts = new[]
+                            {
+                                new { text = prompt }
+                            }
+                        }
+                    },
+                    generationConfig = new
+                    {
+                        temperature = 0.1,
+                        maxOutputTokens = 512,
+                        responseMimeType = "application/json"
+                    }
                 };
 
-                var json = await Send(body);
+                var json = await Send(body, ct);
+
                 var raw = ExtractText(json);
                 var cleaned = CleanJson(raw);
 
@@ -78,140 +103,168 @@ namespace CleanOpsAi.Modules.Workforce.Infrastructure.Services
                     new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
-                    }
-                );
+                    });
 
-                if (result == null)
-                    return local;
-
-                Normalize(result);
-
-                return IsEmpty(result) ? local : result;
+                return result ?? new WorkerFilterNlpResult();
+            }
+            catch (TaskCanceledException)
+            {
+                return new WorkerFilterNlpResult();
             }
             catch (Exception ex)
             {
-                // 🔥 QUAN TRỌNG: FAIL FAST → KHÔNG THROW RA PIPELINE
-                Console.WriteLine($"Gemini fail: {ex.Message}");
-                return local;
+                Console.WriteLine($"Gemini ParseWorkerFilter error: {ex.Message}");
+                return new WorkerFilterNlpResult();
             }
         }
 
-        // ========================= GEMINI HTTP (NO RETRY) =========================
-        private async Task<string> Send(object body)
+        // =====================================================
+        // HTTP
+        // =====================================================
+        private async Task<string> Send(object body, CancellationToken cancellationToken = default)
         {
             var url = BuildUrl();
 
-            var requestContent = new StringContent(
+            var content = new StringContent(
                 JsonSerializer.Serialize(body),
                 Encoding.UTF8,
-                "application/json"
-            );
+                "application/json");
 
-            var response = await _httpClient.PostAsync(url, requestContent);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.PostAsync(url, content, cancellationToken);
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (response.IsSuccessStatusCode)
                 return json;
 
-            // ❌ KHÔNG retry để tránh treo system
             if ((int)response.StatusCode == 429)
-                throw new BadRequestException("Gemini rate limit (429)");
+                throw new BadRequestException("Gemini rate limit");
 
-            throw new BadRequestException($"Gemini error: {(int)response.StatusCode} - {json}");
+            throw new BadRequestException(
+                $"Gemini error {(int)response.StatusCode}: {json}");
         }
 
-        // ========================= LOCAL PARSE =========================
-        private WorkerFilterNlpResult LocalParse(string query)
+        // =====================================================
+        // LOCAL NLP
+        // =====================================================
+
+        private static readonly Dictionary<string, string[]> SkillAliases = new()
         {
-            var result = new WorkerFilterNlpResult
+            ["electrical"] = new[]
             {
-                Address = null,
-                SkillCategories = new List<string>(),
-                CertificateCategories = new List<string>()
-            };
+                "thợ điện",
+                "điện",
+                "dien",
+                "electric",
+                "electrician"
+            },
 
-            if (string.IsNullOrWhiteSpace(query))
-                return result;
-
-            var lower = query.ToLower();
-
-            // skill
-            var skill = System.Text.RegularExpressions.Regex.Match(lower, @"skill\s+(.+)");
-            if (skill.Success)
-                result.SkillCategories.Add(skill.Groups[1].Value.Trim());
-
-            // cert
-            var cert = System.Text.RegularExpressions.Regex.Match(lower, @"(certificate|cert|chứng chỉ)\s+(.+)");
-            if (cert.Success)
-                result.CertificateCategories.Add(cert.Groups[2].Value.Trim());
-
-            // address fix
-            var addr = System.Text.RegularExpressions.Regex.Match(lower, @"(ở|tại|in)\s+(.+)");
-            if (addr.Success)
+            ["plumbing"] = new[]
             {
-                var value = addr.Groups[2].Value.Trim();
+                "ống nước",
+                "thợ nước",
+                "nuoc",
+                "plumber",
+                "plumbing"
+            },
 
-                value = System.Text.RegularExpressions.Regex.Replace(value, @"skill.*", "").Trim();
-                value = System.Text.RegularExpressions.Regex.Replace(value, @"certificate.*", "").Trim();
-                value = System.Text.RegularExpressions.Regex.Replace(value, @"\s+", " ").Trim();
+            ["welding"] = new[]
+            {
+                "hàn",
+                "han",
+                "welder",
+                "welding"
+            },
 
-                if (value.Length > 2)
-                    result.Address = value;
+            ["cleaning"] = new[]
+            {
+                "vệ sinh",
+                "ve sinh",
+                "lau dọn",
+                "cleaner",
+                "janitor"
+            },
+
+            ["hvac"] = new[]
+            {
+                "máy lạnh",
+                "dieu hoa",
+                "điều hòa",
+                "air conditioner",
+                "hvac"
             }
-
-            return result;
-        }
-
-        // ========================= NORMALIZE =========================
-        private void Normalize(WorkerFilterNlpResult r)
-        {
-            r.SkillCategories = r.SkillCategories?
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => x.Trim().ToLower())
-                .Distinct()
-                .ToList() ?? new();
-
-            r.CertificateCategories = r.CertificateCategories?
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => x.Trim().ToLower())
-                .Distinct()
-                .ToList() ?? new();
-
-            if (!string.IsNullOrWhiteSpace(r.Address))
-                r.Address = r.Address.Trim();
-        }
+        };
 
         private bool IsEmpty(WorkerFilterNlpResult r)
         {
             return string.IsNullOrWhiteSpace(r.Address)
-                && !r.SkillCategories.Any()
-                && !r.CertificateCategories.Any();
+                   && !r.SkillCategories.Any()
+                   && !r.CertificateCategories.Any()
+                   && !r.StartAt.HasValue
+                   && !r.EndAt.HasValue
+                   && !r.IsAvailable.HasValue;
         }
 
-        // ========================= PROMPT =========================
+        // =====================================================
+        // PROMPT
+        // =====================================================
+
         private string BuildPrompt(string query)
         {
-            return $@"
-Extract worker search filters.
+            return $$"""
+You are an AI system that extracts worker search filters.
+
+Understand Vietnamese and English.
+
+Infer:
+- worker profession
+- skills
+- certifications
+- locations
+- availability
+- date ranges
+
+Examples:
+
+"Tìm thợ điện ở quận 1"
+=> electrical skill + district 1
+
+"Cần người biết hàn"
+=> welding skill
+
+"Worker có chứng chỉ an toàn lao động"
+=> safety certification
+
+Return ONLY valid JSON.
 
 INPUT:
-{query}
+{{query}}
 
-OUTPUT JSON ONLY:
-{{
-  ""address"": """",
-  ""skillCategories"": [],
-  ""certificateCategories"": []
-}}";
+OUTPUT:
+{
+  "address": "",
+  "skillCategories": [],
+  "certificateCategories": [],
+  "startAt": null,
+  "endAt": null,
+  "isAvailable": true
+}
+""";
         }
 
-        // ========================= EXTRACT =========================
+        // =====================================================
+        // EXTRACT GEMINI TEXT
+        // =====================================================
+
         private string ExtractText(string json)
         {
             using var doc = JsonDocument.Parse(json);
 
-            if (!doc.RootElement.TryGetProperty("candidates", out var c) || c.GetArrayLength() == 0)
+            if (!doc.RootElement.TryGetProperty("candidates", out var c)
+                || c.GetArrayLength() == 0)
+            {
                 throw new Exception("Invalid Gemini response");
+            }
 
             return c[0]
                 .GetProperty("content")
@@ -220,21 +273,62 @@ OUTPUT JSON ONLY:
                 .GetString() ?? "";
         }
 
-        // ========================= CLEAN JSON =========================
+        // =====================================================
+        // CLEAN JSON
+        // =====================================================
+
         private string CleanJson(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw))
                 return "{}";
 
-            var cleaned = raw.Replace("```json", "").Replace("```", "").Trim();
+            var cleaned = raw
+                .Replace("```json", "")
+                .Replace("```", "")
+                .Trim();
 
             var start = cleaned.IndexOf('{');
             var end = cleaned.LastIndexOf('}');
 
             if (start >= 0 && end > start)
-                return cleaned.Substring(start, end - start + 1);
+            {
+                return cleaned.Substring(
+                    start,
+                    end - start + 1);
+            }
 
             return "{}";
+        }
+
+        // =====================================================
+        // TEXT NORMALIZE
+        // =====================================================
+
+        private static string NormalizeSearchText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var formD = value
+                .Trim()
+                .ToLowerInvariant()
+                .Normalize(NormalizationForm.FormD);
+
+            var builder = new StringBuilder(formD.Length);
+
+            foreach (var ch in formD)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(ch);
+
+                if (category != UnicodeCategory.NonSpacingMark)
+                    builder.Append(ch == 'đ' ? 'd' : ch);
+            }
+
+            return Regex.Replace(
+                    builder.ToString().Normalize(NormalizationForm.FormC),
+                    @"\s+",
+                    " ")
+                .Trim();
         }
     }
 }

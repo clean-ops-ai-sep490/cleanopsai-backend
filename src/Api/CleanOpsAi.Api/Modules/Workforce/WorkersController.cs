@@ -165,18 +165,16 @@ namespace CleanOpsAi.Api.Modules.Workforce
             return Ok(result);
         }
 
-        [HttpGet("nlp-filter")]
+        [HttpGet("search")]
         [SwaggerOperation(
-            Summary = "NLP search worker",
-            Description = "Search worker bằng ngôn ngữ tự nhiên. VD: 'Tìm người  có skill chemical co chứng chỉ management ở Phường Ba Đình'. Warning khi có khoảng  thời gian thì phải có thời gian bắt đầu và thời gian kết thúc. Ghi chú: rất hay bị 400 do Gemini bị nghẽn do sử dụng key free ",
+            Summary = "Natural language worker search",
+            Description = "Search worker bằng ngôn ngữ tự nhiên, không cần nhập đúng form filter. Hỗ trợ nhiều cách nói như: 'Tìm người có skill chemical co chứng chỉ management ở Phường Ba Đình', 'Ai làm được chemical cleaning', 'Người rảnh từ 1/10 đến 5/10 ở Ba Đình'. Hệ thống tự match tên worker, địa chỉ, skill, chứng chỉ, category và sắp xếp theo độ liên quan.",
             Tags = new[] { "Workers" })]
         [SwaggerResponse(StatusCodes.Status200OK, "Danh sách worker phù hợp")]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Query không hợp lệ")]
-        public async Task<IActionResult> NlpFilter([FromQuery] string? search)
+        public async Task<IActionResult> Search([FromQuery] string? search, CancellationToken cancellationToken)
         {
-            Console.WriteLine(">>> CONTROLLER HIT");
-            var result = await _service.NlpFilterAsync(search);
-            Console.WriteLine(">>> CONTROLLER DONE");
+            var result = await _service.NlpFilterAsync(search, cancellationToken);
             return Ok(result);
         }
 

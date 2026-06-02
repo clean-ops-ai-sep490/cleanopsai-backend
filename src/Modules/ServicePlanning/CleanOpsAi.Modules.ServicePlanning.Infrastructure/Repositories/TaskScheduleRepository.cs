@@ -99,5 +99,6 @@ namespace CleanOpsAi.Modules.ServicePlanning.Infrastructure.Repositories
 
 			return await query.ToPaginatedResultAsync(request, ct);
 		}
+
 	}
 }

@@ -19,6 +19,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 		//Task<WorkAreaSupervisorResponse?> GetSupervisorByWorkAreaAndWorkerAsync(Guid workAreaId, Guid workerId);
 		Task<(bool Found, Guid? SupervisorUserId)> GetCommonSupervisorAsync(Guid workAreaId, Guid workerId, Guid workerIdTarget, CancellationToken ct = default);
 		Task<PagedResponse<WorkAreaWithLocationResponse>> GetWorkAreasBySupervisorPaginationAsync(Guid supervisorId, int pageNumber, int pageSize);
+		Task<PagedResponse<WorkAreaWithLocationResponse>> GetAssignedWorkAreasPaginationAsync(int pageNumber, int pageSize, CancellationToken ct = default);
+		Task<PagedResponse<WorkAreaWithLocationResponse>> GetUnassignedWorkAreasPaginationAsync(int pageNumber, int pageSize, CancellationToken ct = default);
 		Task<PagedResponse<WorkerGroupResponse>> GetUniqueWorkersBySupervisorPagingAsync(Guid supervisorId, int pageNumber, int pageSize);
 		Task<List<Guid>> GetManagedWorkerUserIdsBySupervisorAsync(Guid supervisorId, CancellationToken ct = default);
 		Task<PagedResponse<WorkAreaSupervisorResponse>> GetWorkersByWorkAreaPagingAsync(Guid workAreaId, int pageNumber, int pageSize);

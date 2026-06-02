@@ -61,12 +61,17 @@ public static class DependencyInjection
 		builder.Services.AddScoped<IWorkAreaSupervisorService, WorkAreaSupervisorService>();
 		builder.Services.AddScoped<IPpeItemService, PpeItemService>();
         builder.Services.AddScoped<IDashboardService, DashboardService>();
-        builder.Services.AddScoped<IGeminiService, GeminiService>();
+        builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(3);
+        });
 
         // Dependency Injection for Azure Blob Storage Service
         builder.Services.AddScoped<IFileStorageService, AzureBlobStorageService>();
-		builder.Services.AddHttpClient<GoongMapService>();
-		builder.Services.AddScoped<IGoongMapService, GoongMapService>();
+		builder.Services.AddHttpClient<IGoongMapService, GoongMapService>(client =>
+		{
+			client.Timeout = TimeSpan.FromSeconds(2);
+		});
 
 
 	}

@@ -25,6 +25,8 @@ namespace CleanOpsAi.Modules.Workforce.Application.Interfaces
 
         Task<List<Skill>> GetByCategoryAsync(string category);
 
+        Task<List<Skill>> GetByNameAsync(string name);
+
         Task<List<WorkerSkill>> GetSkillsByWorkerIdAsync(Guid workerId);
 
         Task<List<Skill>> GetByIdsAsync(List<Guid> ids);
