@@ -62,7 +62,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 		public double Confidence { get; set; }
 
 		[JsonPropertyName("imageIndex")]
-		public int ImageIndex { get; set; }
+		public int? ImageIndex { get; set; }
 	}
 
 	public class TaskStepExecutionPpeFailedImageResponse
@@ -71,7 +71,7 @@ namespace CleanOpsAi.Modules.TaskOperations.Application.DTOs.Response
 		public string ImageUrl { get; set; } = string.Empty;
 
 		[JsonPropertyName("imageIndex")]
-		public int ImageIndex { get; set; }
+		public int? ImageIndex { get; set; }
 
 		[JsonPropertyName("error")]
 		public string Error { get; set; } = string.Empty;

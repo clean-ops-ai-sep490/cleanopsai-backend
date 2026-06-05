@@ -29,7 +29,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public double Confidence { get; set; }
 
 		[JsonPropertyName("image_index")]
-		public int ImageIndex { get; set; }
+		public int? ImageIndex { get; set; }
 	}
 
 	public class PpeFailedImageResponse
@@ -38,7 +38,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 		public string? ImageUrl { get; set; }
 
 		[JsonPropertyName("image_index")]
-		public int ImageIndex { get; set; }
+		public int? ImageIndex { get; set; }
 
 		[JsonPropertyName("error")]
 		public string? Error { get; set; }
