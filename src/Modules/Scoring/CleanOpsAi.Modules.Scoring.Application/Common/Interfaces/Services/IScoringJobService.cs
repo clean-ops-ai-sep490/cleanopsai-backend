@@ -17,6 +17,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Common.Interfaces.Services
 		Task<ScoringAnnotationCandidateDetailResponse?> RejectAnnotationCandidateAsync(Guid candidateId, RejectScoringAnnotationCandidateRequest? request, CancellationToken ct = default);
 		Task<IReadOnlyCollection<ScoringRetrainBatchListItemResponse>> GetRetrainBatchesAsync(string? status = null, int take = 50, CancellationToken ct = default);
 		Task<ScoringRetrainBatchDetailResponse?> GetRetrainBatchByIdAsync(Guid batchId, CancellationToken ct = default);
+		Task<ScoringRetrainTrainingSamplesPreviewResponse> GetRetrainTrainingSamplesPreviewAsync(ScoringRetrainTrainingSamplesPreviewRequest request, CancellationToken ct = default);
 		Task<ScoringRetrainBatchDetailResponse> TriggerRetrainAsync(TriggerScoringRetrainRequest request, CancellationToken ct = default);
 		Task<ScoringResultReviewResponse?> ReviewPendingResultAsync(Guid resultId, ReviewScoringResultRequest request, CancellationToken ct = default);
 		Task ProcessQueuedJobAsync(Guid jobId, string environmentKey, IReadOnlyCollection<string> imageUrls, CancellationToken ct = default);

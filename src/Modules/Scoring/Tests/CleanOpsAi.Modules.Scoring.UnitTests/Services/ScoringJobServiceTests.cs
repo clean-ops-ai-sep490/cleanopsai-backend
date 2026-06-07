@@ -415,6 +415,9 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 			Assert.Contains("\"quality_score\":82.615", saved.PayloadJson);
 			Assert.Contains("\"visualization_blob_url\":\"https://blob.example.com/a.jpg\"", saved.PayloadJson);
 			Assert.Contains("\"detections_count\":0", saved.PayloadJson);
+			Assert.Contains("\"sam3\":", saved.PayloadJson);
+			Assert.Contains("\"dirty_coverage_source\":\"sam3\"", saved.PayloadJson);
+			Assert.Contains("\"combined_dirty_coverage_pct\":21.25", saved.PayloadJson);
 			Assert.Contains("\"backend_runtime\":", saved.PayloadJson);
 			Assert.Contains("\"source_of_truth\":\"visualize-link-only\"", saved.PayloadJson);
 			Assert.Contains("\"code_path_version\":\"visualize_single_source_v1\"", saved.PayloadJson);
@@ -629,6 +632,43 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 		}
 
 		[Fact]
+		public async Task GetRetrainTrainingSamplesPreviewAsync_ShouldReturnEligibleSamplesWithoutCreatingBatch()
+		{
+			var approvedAtUtc = DateTime.UtcNow.AddHours(-2);
+			var approvedCandidate = BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Approved);
+			approvedCandidate.ApprovedAtUtc = approvedAtUtc;
+			approvedCandidate.SnapshotBlobKey = "snapshots/sample.json";
+			approvedCandidate.MetadataBlobKey = "metadata/sample.json";
+			var reviewedResult = BuildReviewedResult("FAIL");
+
+			_repository.GetApprovedAnnotationCandidatesForRetrainAsync(Arg.Any<DateTime>(), 25, Arg.Any<CancellationToken>())
+				.Returns(new[] { approvedCandidate });
+			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 25, Arg.Any<CancellationToken>())
+				.Returns(new[] { reviewedResult });
+
+			var response = await _service.GetRetrainTrainingSamplesPreviewAsync(new ScoringRetrainTrainingSamplesPreviewRequest
+			{
+				LookbackDays = 7,
+				MaxSamples = 25,
+			});
+
+			Assert.Equal(1, response.ApprovedAnnotationCount);
+			Assert.Equal(1, response.ReviewedSampleCount);
+			Assert.Equal(25, response.MaxSamples);
+			Assert.Equal(approvedCandidate.Id, response.TrainingSamples.Single().CandidateId);
+			Assert.Equal("snapshots/sample.json", response.TrainingSamples.Single().SnapshotBlobKey);
+			Assert.Equal(approvedAtUtc, response.TrainingSamples.Single().ApprovedAtUtc);
+			Assert.Equal(reviewedResult.Id, response.CalibrationSamples.Single().ResultId);
+			Assert.Equal("FAIL", response.CalibrationSamples.Single().ReviewedVerdict);
+			await _repository.DidNotReceive().InsertRetrainBatchAsync(
+				Arg.Any<ScoringRetrainBatch>(),
+				Arg.Any<CancellationToken>());
+			await _eventBus.DidNotReceive().PublishAsync(
+				Arg.Any<ScoringRetrainRequestedEvent>(),
+				Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
 		public async Task TriggerRetrainAsync_ShouldRequireApprovedAnnotations()
 		{
 			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())
@@ -737,7 +777,14 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					BaseCleanScore = qualityScore,
 					ObjectPenalty = 0,
 					PassThreshold = 90,
-					Reasons = new List<string> { "test reason" }
+					Reasons = new List<string> { "test reason" },
+					AdditionalData = new Dictionary<string, System.Text.Json.JsonElement>
+					{
+						["dirty_coverage_source"] = JsonSerializer.SerializeToElement("sam3"),
+						["unet_dirty_coverage_pct"] = JsonSerializer.SerializeToElement(17.385),
+						["sam3_dirty_coverage_pct"] = JsonSerializer.SerializeToElement(21.25),
+						["combined_dirty_coverage_pct"] = JsonSerializer.SerializeToElement(21.25)
+					}
 				},
 				AdditionalData = new Dictionary<string, System.Text.Json.JsonElement>
 				{
@@ -750,9 +797,16 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 					{
 						total_dirty_coverage_pct = 17.385
 					}),
-					["llm_filter"] = JsonSerializer.SerializeToElement(new
+					["sam3"] = JsonSerializer.SerializeToElement(new
 					{
-						route_mode = "visualize_enhanced"
+						enabled = true,
+						loaded = true,
+						status = "ok",
+						summary = new
+						{
+							dirty_coverage_pct = 21.25,
+							predictions_count = 1
+						}
 					})
 				}
 			};

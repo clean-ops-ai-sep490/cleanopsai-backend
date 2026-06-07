@@ -239,7 +239,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			{
 				BatchId = message.BatchId,
 				EvaluatedAtUtc = finalCompletedAt,
-				MetricKey = $"{config.YoloMapMetricKey}+{config.UnetMiouMetricKey}",
+				MetricKey = gateResult.MetricKey,
 				CandidateMetric = gateResult.CandidateCompositeMetric,
 				BaselineMetric = gateResult.BaselineCompositeMetric,
 				MinimumImprovement = gateResult.MinimumImprovement,
@@ -506,17 +506,20 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 
 			var candidateYoloMap = ReadMetricFromNode(candidateMetrics, options.YoloMapMetricKey);
 			var candidateUnetMiou = ReadMetricFromNode(candidateMetrics, options.UnetMiouMetricKey);
-			if (candidateYoloMap is null || candidateUnetMiou is null)
+			if (candidateUnetMiou is null || (!options.UseUnetOnlyPromotionGate && candidateYoloMap is null))
 			{
+				var missingMessage = options.UseUnetOnlyPromotionGate
+					? $"Candidate metrics missing key '{options.UnetMiouMetricKey}'."
+					: $"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.";
 				return new PromotionGateResult(
 					false,
 					0,
 					null,
 					candidateYoloMap,
 					candidateUnetMiou,
-					$"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.",
-					$"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}",
-					options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
+					missingMessage,
+					options.UseUnetOnlyPromotionGate ? options.UnetMiouMetricKey : $"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}",
+					options.UseUnetOnlyPromotionGate ? options.MinimumUnetMiouImprovement : options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
 			}
 
 			var baselineMetricsNode = await DownloadJsonNodeAsync(modelsContainer, options.ActiveMetricsObjectKey, ct);
@@ -524,7 +527,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			var baselineUnetMiou = ReadMetricFromNode(baselineMetricsNode, options.UnetMiouMetricKey);
 
 			var gateResult = EvaluateDualGate(
-				candidateYoloMap.Value,
+				candidateYoloMap ?? 0,
 				candidateUnetMiou.Value,
 				baselineYoloMap,
 				baselineUnetMiou,
@@ -539,10 +542,10 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["candidate_yolo_key"] = candidateYoloKey,
 				["candidate_unet_key"] = candidateUnetKey,
 				["candidate_metrics_key"] = candidateMetricsKey,
-				["candidate_yolo_map"] = candidateYoloMap.Value,
+				["candidate_yolo_map"] = candidateYoloMap.HasValue ? JsonValue.Create(candidateYoloMap.Value) : null,
 				["candidate_unet_miou"] = candidateUnetMiou.Value,
-				["baseline_yolo_map"] = baselineYoloMap,
-				["baseline_unet_miou"] = baselineUnetMiou,
+				["baseline_yolo_map"] = baselineYoloMap.HasValue ? JsonValue.Create(baselineYoloMap.Value) : null,
+				["baseline_unet_miou"] = baselineUnetMiou.HasValue ? JsonValue.Create(baselineUnetMiou.Value) : null,
 				["promoted"] = gateResult.Promoted,
 				["reason"] = gateResult.Reason,
 			};
@@ -582,10 +585,10 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["candidate_unet_key"] = candidateUnetKey,
 				["candidate_metrics_key"] = candidateMetricsKey,
 				["archive_prefix"] = archivePrefix,
-				["candidate_yolo_map"] = candidateYoloMap.Value,
+				["candidate_yolo_map"] = candidateYoloMap.HasValue ? JsonValue.Create(candidateYoloMap.Value) : null,
 				["candidate_unet_miou"] = candidateUnetMiou.Value,
-				["baseline_yolo_map"] = baselineYoloMap,
-				["baseline_unet_miou"] = baselineUnetMiou,
+				["baseline_yolo_map"] = baselineYoloMap.HasValue ? JsonValue.Create(baselineYoloMap.Value) : null,
+				["baseline_unet_miou"] = baselineUnetMiou.HasValue ? JsonValue.Create(baselineUnetMiou.Value) : null,
 				["reason"] = gateResult.Reason,
 			};
 
@@ -869,20 +872,23 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 
 			var candidateYoloMap = ReadMetricFromNode(candidateNode, options.YoloMapMetricKey);
 			var candidateUnetMiou = ReadMetricFromNode(candidateNode, options.UnetMiouMetricKey);
-			if (candidateYoloMap is null || candidateUnetMiou is null)
+			if (candidateUnetMiou is null || (!options.UseUnetOnlyPromotionGate && candidateYoloMap is null))
 			{
+				var missingMessage = options.UseUnetOnlyPromotionGate
+					? $"Candidate metrics missing key '{options.UnetMiouMetricKey}'."
+					: $"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.";
 				return new PromotionGateResult(
 					false,
 					0,
 					null,
 					candidateYoloMap,
 					candidateUnetMiou,
-					$"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.",
-					$"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}",
-					options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
+					missingMessage,
+					options.UseUnetOnlyPromotionGate ? options.UnetMiouMetricKey : $"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}",
+					options.UseUnetOnlyPromotionGate ? options.MinimumUnetMiouImprovement : options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
 			}
 
-			return EvaluateDualGate(candidateYoloMap.Value, candidateUnetMiou.Value, null, null, options);
+			return EvaluateDualGate(candidateYoloMap ?? 0, candidateUnetMiou.Value, null, null, options);
 		}
 
 		private static PromotionGateResult EvaluateDualGate(
@@ -892,16 +898,20 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			double? baselineUnetMiou,
 			ScoringRetrainOptions options)
 		{
-			var metricKey = $"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}";
-			var minimumImprovement = options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement;
+			var metricKey = options.UseUnetOnlyPromotionGate
+				? options.UnetMiouMetricKey
+				: $"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}";
+			var minimumImprovement = options.UseUnetOnlyPromotionGate
+				? options.MinimumUnetMiouImprovement
+				: options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement;
 
-			if (baselineYoloMap is null || baselineUnetMiou is null)
+			if (baselineUnetMiou is null || (!options.UseUnetOnlyPromotionGate && baselineYoloMap is null))
 			{
 				if (options.PromoteWhenNoBaseline)
 				{
 					return new PromotionGateResult(
 						true,
-						(candidateYoloMap + candidateUnetMiou) / 2.0,
+						options.UseUnetOnlyPromotionGate ? candidateUnetMiou : (candidateYoloMap + candidateUnetMiou) / 2.0,
 						null,
 						candidateYoloMap,
 						candidateUnetMiou,
@@ -912,11 +922,30 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 
 				return new PromotionGateResult(
 					false,
-					(candidateYoloMap + candidateUnetMiou) / 2.0,
+					options.UseUnetOnlyPromotionGate ? candidateUnetMiou : (candidateYoloMap + candidateUnetMiou) / 2.0,
 					null,
 					candidateYoloMap,
 					candidateUnetMiou,
 					"No complete baseline metrics found. Promotion skipped by policy.",
+					metricKey,
+					minimumImprovement);
+			}
+
+			if (options.UseUnetOnlyPromotionGate)
+			{
+				var requiredUnetOnly = baselineUnetMiou.Value + options.MinimumUnetMiouImprovement;
+				var promotedUnetOnly = candidateUnetMiou >= requiredUnetOnly;
+				var reasonUnetOnly = promotedUnetOnly
+					? $"Promoted: unet_miou {candidateUnetMiou:F4} >= {requiredUnetOnly:F4}. YOLO frozen."
+					: $"Rejected: unet_miou {candidateUnetMiou:F4}/{requiredUnetOnly:F4}. YOLO frozen.";
+
+				return new PromotionGateResult(
+					promotedUnetOnly,
+					candidateUnetMiou,
+					baselineUnetMiou.Value,
+					candidateYoloMap,
+					candidateUnetMiou,
+					reasonUnetOnly,
 					metricKey,
 					minimumImprovement);
 			}

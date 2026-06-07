@@ -12,4 +12,13 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Request
 
 		public bool UseLastBatchTime { get; set; }
 	}
+
+	public class ScoringRetrainTrainingSamplesPreviewRequest
+	{
+		public int LookbackDays { get; set; } = 7;
+
+		public int MaxSamples { get; set; } = 500;
+
+		public bool UseLastBatchTime { get; set; }
+	}
 }

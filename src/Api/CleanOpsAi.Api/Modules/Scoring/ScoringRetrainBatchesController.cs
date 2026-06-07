@@ -40,6 +40,32 @@ namespace CleanOpsAi.Api.Modules.Scoring
 			}
 		}
 
+		[HttpGet("training-samples/preview")]
+		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
+		[SwaggerOperation(
+			Summary = "Preview scoring retrain training samples",
+			Description = "Returns approved annotation samples and reviewed calibration samples that are currently eligible for model training.",
+			Tags = new[] { "Scoring" }
+		)]
+		[ProducesResponseType(typeof(ScoringRetrainTrainingSamplesPreviewResponse), StatusCodes.Status200OK)]
+		public async Task<IActionResult> GetTrainingSamplesPreview(
+			[FromQuery] int lookbackDays = 7,
+			[FromQuery] int maxSamples = 500,
+			[FromQuery] bool useLastBatchTime = false,
+			CancellationToken ct = default)
+		{
+			var preview = await _scoringJobService.GetRetrainTrainingSamplesPreviewAsync(
+				new ScoringRetrainTrainingSamplesPreviewRequest
+				{
+					LookbackDays = lookbackDays,
+					MaxSamples = maxSamples,
+					UseLastBatchTime = useLastBatchTime,
+				},
+				ct);
+
+			return Ok(preview);
+		}
+
 		[HttpGet("{batchId:guid}")]
 		[Authorize(Roles = "Supervisor,Manager,Admin,4,3,2")]
 		[SwaggerOperation(
