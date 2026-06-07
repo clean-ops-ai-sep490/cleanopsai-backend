@@ -506,29 +506,42 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 
 			var candidateYoloMap = ReadMetricFromNode(candidateMetrics, options.YoloMapMetricKey);
 			var candidateUnetMiou = ReadMetricFromNode(candidateMetrics, options.UnetMiouMetricKey);
-			if (candidateUnetMiou is null || (!options.UseUnetOnlyPromotionGate && candidateYoloMap is null))
+
+			// Prefer benchmark gate when enabled and benchmark data is available in candidate_metrics.json
+			var benchmarkGateResult = options.UseBenchmarkPromotionGate
+				? TryEvaluateBenchmarkGate(candidateMetrics, options)
+				: null;
+
+			double? baselineYoloMap = null;
+			double? baselineUnetMiou = null;
+
+			if (benchmarkGateResult is null)
 			{
-				var missingMessage = options.UseUnetOnlyPromotionGate
-					? $"Candidate metrics missing key '{options.UnetMiouMetricKey}'."
-					: $"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.";
-				return new PromotionGateResult(
-					false,
-					0,
-					null,
-					candidateYoloMap,
-					candidateUnetMiou,
-					missingMessage,
-					options.UseUnetOnlyPromotionGate ? options.UnetMiouMetricKey : $"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}",
-					options.UseUnetOnlyPromotionGate ? options.MinimumUnetMiouImprovement : options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
+				// Fall back to training metrics gate
+				if (candidateUnetMiou is null || (!options.UseUnetOnlyPromotionGate && candidateYoloMap is null))
+				{
+					var missingMessage = options.UseUnetOnlyPromotionGate
+						? $"Candidate metrics missing key '{options.UnetMiouMetricKey}'."
+						: $"Candidate metrics missing keys '{options.YoloMapMetricKey}' or '{options.UnetMiouMetricKey}'.";
+					return new PromotionGateResult(
+						false,
+						0,
+						null,
+						candidateYoloMap,
+						candidateUnetMiou,
+						missingMessage,
+						options.UseUnetOnlyPromotionGate ? options.UnetMiouMetricKey : $"{options.YoloMapMetricKey}+{options.UnetMiouMetricKey}",
+						options.UseUnetOnlyPromotionGate ? options.MinimumUnetMiouImprovement : options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
+				}
+
+				var baselineMetricsNode = await DownloadJsonNodeAsync(modelsContainer, options.ActiveMetricsObjectKey, ct);
+				baselineYoloMap = ReadMetricFromNode(baselineMetricsNode, options.YoloMapMetricKey);
+				baselineUnetMiou = ReadMetricFromNode(baselineMetricsNode, options.UnetMiouMetricKey);
 			}
 
-			var baselineMetricsNode = await DownloadJsonNodeAsync(modelsContainer, options.ActiveMetricsObjectKey, ct);
-			var baselineYoloMap = ReadMetricFromNode(baselineMetricsNode, options.YoloMapMetricKey);
-			var baselineUnetMiou = ReadMetricFromNode(baselineMetricsNode, options.UnetMiouMetricKey);
-
-			var gateResult = EvaluateDualGate(
+			var gateResult = benchmarkGateResult ?? EvaluateDualGate(
 				candidateYoloMap ?? 0,
-				candidateUnetMiou.Value,
+				candidateUnetMiou!.Value,
 				baselineYoloMap,
 				baselineUnetMiou,
 				options);
@@ -543,7 +556,7 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["candidate_unet_key"] = candidateUnetKey,
 				["candidate_metrics_key"] = candidateMetricsKey,
 				["candidate_yolo_map"] = candidateYoloMap.HasValue ? JsonValue.Create(candidateYoloMap.Value) : null,
-				["candidate_unet_miou"] = candidateUnetMiou.Value,
+				["candidate_unet_miou"] = candidateUnetMiou.HasValue ? JsonValue.Create(candidateUnetMiou.Value) : null,
 				["baseline_yolo_map"] = baselineYoloMap.HasValue ? JsonValue.Create(baselineYoloMap.Value) : null,
 				["baseline_unet_miou"] = baselineUnetMiou.HasValue ? JsonValue.Create(baselineUnetMiou.Value) : null,
 				["promoted"] = gateResult.Promoted,
@@ -870,6 +883,14 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
 			}
 
+			// Prefer benchmark gate when enabled and benchmark data is available
+			if (options.UseBenchmarkPromotionGate)
+			{
+				var bmResult = TryEvaluateBenchmarkGate(candidateNode, options);
+				if (bmResult is not null)
+					return bmResult;
+			}
+
 			var candidateYoloMap = ReadMetricFromNode(candidateNode, options.YoloMapMetricKey);
 			var candidateUnetMiou = ReadMetricFromNode(candidateNode, options.UnetMiouMetricKey);
 			if (candidateUnetMiou is null || (!options.UseUnetOnlyPromotionGate && candidateYoloMap is null))
@@ -889,6 +910,42 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			}
 
 			return EvaluateDualGate(candidateYoloMap ?? 0, candidateUnetMiou.Value, null, null, options);
+		}
+
+		private static PromotionGateResult? TryEvaluateBenchmarkGate(JsonNode? candidateMetrics, ScoringRetrainOptions options)
+		{
+			var candidateMiou = ReadMetricFromNode(candidateMetrics, options.BenchmarkCandidateMiouKey);
+			if (candidateMiou is null)
+				return null;
+
+			var baselineMiou = ReadMetricFromNode(candidateMetrics, options.BenchmarkBaselineMiouKey);
+			return EvaluateBenchmarkGate(candidateMiou.Value, baselineMiou, options);
+		}
+
+		private static PromotionGateResult EvaluateBenchmarkGate(
+			double candidateMiou,
+			double? baselineMiou,
+			ScoringRetrainOptions options)
+		{
+			const string metricKey = "benchmark.unet_mean_iou";
+			var minimumImprovement = options.MinimumBenchmarkMiouImprovement;
+
+			if (baselineMiou is null)
+			{
+				return options.PromoteWhenNoBaseline
+					? new PromotionGateResult(true, candidateMiou, null, null, candidateMiou,
+						"No baseline benchmark metrics found. Promoted by policy.", metricKey, minimumImprovement)
+					: new PromotionGateResult(false, candidateMiou, null, null, candidateMiou,
+						"No baseline benchmark metrics found. Promotion skipped by policy.", metricKey, minimumImprovement);
+			}
+
+			var required = baselineMiou.Value + minimumImprovement;
+			var promoted = candidateMiou >= required;
+			var reason = promoted
+				? $"Promoted: benchmark mIoU {candidateMiou:F4} >= {required:F4} (baseline {baselineMiou.Value:F4} + {minimumImprovement:F4})."
+				: $"Rejected: benchmark mIoU {candidateMiou:F4} < {required:F4} (baseline {baselineMiou.Value:F4} + {minimumImprovement:F4}).";
+
+			return new PromotionGateResult(promoted, candidateMiou, baselineMiou.Value, null, candidateMiou, reason, metricKey, minimumImprovement);
 		}
 
 		private static PromotionGateResult EvaluateDualGate(

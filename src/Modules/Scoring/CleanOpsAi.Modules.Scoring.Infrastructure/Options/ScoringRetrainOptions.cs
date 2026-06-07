@@ -53,6 +53,10 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Options
 		public double MinimumYoloMapImprovement { get; set; } = 0.005;
 		public double MinimumUnetMiouImprovement { get; set; } = 0.005;
 		public bool PromoteWhenNoBaseline { get; set; } = false;
+		public bool UseBenchmarkPromotionGate { get; set; } = false;
+		public double MinimumBenchmarkMiouImprovement { get; set; } = 0.005;
+		public string BenchmarkCandidateMiouKey { get; set; } = "benchmark.candidate.mean_iou";
+		public string BenchmarkBaselineMiouKey { get; set; } = "benchmark.baseline.mean_iou";
 		public string? PromotionCommand { get; set; }
 		public string? RestartServiceCommand { get; set; }
 	}
