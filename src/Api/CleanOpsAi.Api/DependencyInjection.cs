@@ -90,6 +90,17 @@ public static class DependencyInjection
 			?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 			?? [];
 
+		if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+		{
+			allowedOrigins =
+			[
+				"http://localhost:3000",
+				"http://127.0.0.1:3000",
+				"https://localhost:3000",
+				"https://127.0.0.1:3000",
+			];
+		}
+
 		builder.Services.AddCors(options =>
 		{
 			options.AddPolicy("AllowFrontend", policy =>

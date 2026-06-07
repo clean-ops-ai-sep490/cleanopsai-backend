@@ -110,4 +110,41 @@ namespace CleanOpsAi.Modules.Scoring.Application.DTOs.Response
 
 		public string? Logs { get; set; }
 	}
+
+	public class ScoringRetrainTrainingSamplesPreviewResponse
+	{
+		public DateTime SourceWindowFromUtc { get; set; }
+		public int ApprovedAnnotationCount { get; set; }
+		public int ReviewedSampleCount { get; set; }
+		public int MaxSamples { get; set; }
+		public List<ScoringRetrainTrainingSamplePreviewItemResponse> TrainingSamples { get; set; } = new();
+		public List<ScoringRetrainCalibrationSamplePreviewItemResponse> CalibrationSamples { get; set; } = new();
+	}
+
+	public class ScoringRetrainTrainingSamplePreviewItemResponse
+	{
+		public Guid CandidateId { get; set; }
+		public Guid ResultId { get; set; }
+		public Guid JobId { get; set; }
+		public string RequestId { get; set; } = null!;
+		public string EnvironmentKey { get; set; } = null!;
+		public string ImageUrl { get; set; } = null!;
+		public string? VisualizationBlobUrl { get; set; }
+		public DateTime? ApprovedAtUtc { get; set; }
+		public int? AnnotationVersion { get; set; }
+		public string? SnapshotBlobKey { get; set; }
+		public string? MetadataBlobKey { get; set; }
+	}
+
+	public class ScoringRetrainCalibrationSamplePreviewItemResponse
+	{
+		public Guid ResultId { get; set; }
+		public Guid JobId { get; set; }
+		public string RequestId { get; set; } = null!;
+		public string EnvironmentKey { get; set; } = null!;
+		public string Source { get; set; } = null!;
+		public string ReviewedVerdict { get; set; } = null!;
+		public DateTime ReviewedAtUtc { get; set; }
+		public string? ReviewedByEmail { get; set; }
+	}
 }

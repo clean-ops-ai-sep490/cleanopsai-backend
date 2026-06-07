@@ -632,6 +632,43 @@ namespace CleanOpsAi.Modules.Scoring.UnitTests.Services
 		}
 
 		[Fact]
+		public async Task GetRetrainTrainingSamplesPreviewAsync_ShouldReturnEligibleSamplesWithoutCreatingBatch()
+		{
+			var approvedAtUtc = DateTime.UtcNow.AddHours(-2);
+			var approvedCandidate = BuildAnnotatedCandidate(ScoringAnnotationCandidateStatus.Approved);
+			approvedCandidate.ApprovedAtUtc = approvedAtUtc;
+			approvedCandidate.SnapshotBlobKey = "snapshots/sample.json";
+			approvedCandidate.MetadataBlobKey = "metadata/sample.json";
+			var reviewedResult = BuildReviewedResult("FAIL");
+
+			_repository.GetApprovedAnnotationCandidatesForRetrainAsync(Arg.Any<DateTime>(), 25, Arg.Any<CancellationToken>())
+				.Returns(new[] { approvedCandidate });
+			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 25, Arg.Any<CancellationToken>())
+				.Returns(new[] { reviewedResult });
+
+			var response = await _service.GetRetrainTrainingSamplesPreviewAsync(new ScoringRetrainTrainingSamplesPreviewRequest
+			{
+				LookbackDays = 7,
+				MaxSamples = 25,
+			});
+
+			Assert.Equal(1, response.ApprovedAnnotationCount);
+			Assert.Equal(1, response.ReviewedSampleCount);
+			Assert.Equal(25, response.MaxSamples);
+			Assert.Equal(approvedCandidate.Id, response.TrainingSamples.Single().CandidateId);
+			Assert.Equal("snapshots/sample.json", response.TrainingSamples.Single().SnapshotBlobKey);
+			Assert.Equal(approvedAtUtc, response.TrainingSamples.Single().ApprovedAtUtc);
+			Assert.Equal(reviewedResult.Id, response.CalibrationSamples.Single().ResultId);
+			Assert.Equal("FAIL", response.CalibrationSamples.Single().ReviewedVerdict);
+			await _repository.DidNotReceive().InsertRetrainBatchAsync(
+				Arg.Any<ScoringRetrainBatch>(),
+				Arg.Any<CancellationToken>());
+			await _eventBus.DidNotReceive().PublishAsync(
+				Arg.Any<ScoringRetrainRequestedEvent>(),
+				Arg.Any<CancellationToken>());
+		}
+
+		[Fact]
 		public async Task TriggerRetrainAsync_ShouldRequireApprovedAnnotations()
 		{
 			_repository.GetReviewedResultsForRetrainAsync(Arg.Any<DateTime>(), 500, Arg.Any<CancellationToken>())

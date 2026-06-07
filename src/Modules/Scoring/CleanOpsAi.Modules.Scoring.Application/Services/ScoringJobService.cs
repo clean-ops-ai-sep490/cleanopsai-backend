@@ -487,6 +487,34 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			return batches.Select(MapRetrainBatchListItem).ToList();
 		}
 
+		public async Task<ScoringRetrainTrainingSamplesPreviewResponse> GetRetrainTrainingSamplesPreviewAsync(
+			ScoringRetrainTrainingSamplesPreviewRequest request,
+			CancellationToken ct = default)
+		{
+			request ??= new ScoringRetrainTrainingSamplesPreviewRequest();
+
+			var now = DateTime.UtcNow;
+			var lookbackDays = Math.Max(1, request.LookbackDays);
+			var maxSamples = Math.Clamp(Math.Max(request.MaxSamples, 1), 1, 5000);
+			var sinceUtc = await ResolveRetrainSourceWindowFromUtcAsync(request.UseLastBatchTime, lookbackDays, now, ct);
+			var approvedAnnotationCandidates = await _repository.GetApprovedAnnotationCandidatesForRetrainAsync(sinceUtc, maxSamples, ct);
+			var reviewedResults = await _repository.GetReviewedResultsForRetrainAsync(sinceUtc, maxSamples, ct);
+
+			return new ScoringRetrainTrainingSamplesPreviewResponse
+			{
+				SourceWindowFromUtc = sinceUtc,
+				ApprovedAnnotationCount = approvedAnnotationCandidates.Count,
+				ReviewedSampleCount = reviewedResults.Count,
+				MaxSamples = maxSamples,
+				TrainingSamples = approvedAnnotationCandidates
+					.Select(MapRetrainTrainingSamplePreview)
+					.ToList(),
+				CalibrationSamples = reviewedResults
+					.Select(MapRetrainCalibrationSamplePreview)
+					.ToList(),
+			};
+		}
+
 		public async Task<ScoringResultReviewResponse?> ReviewPendingResultAsync(Guid resultId, ReviewScoringResultRequest request, CancellationToken ct = default)
 		{
 			if (resultId == Guid.Empty)
@@ -822,7 +850,7 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 			var lookbackDays = Math.Max(1, request.LookbackDays);
 			var minApprovedAnnotations = Math.Max(1, request.MinApprovedAnnotations);
 			var maxSamplesPerBatch = Math.Clamp(Math.Max(request.MaxSamplesPerBatch, minApprovedAnnotations), 1, 5000);
-			var sinceUtc = await ResolveRetrainSourceWindowFromUtcAsync(request, lookbackDays, now, ct);
+			var sinceUtc = await ResolveRetrainSourceWindowFromUtcAsync(request.UseLastBatchTime, lookbackDays, now, ct);
 
 			await RetrainTriggerSemaphore.WaitAsync(ct);
 			ScoringRetrainBatch batch;
@@ -900,12 +928,12 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 		}
 
 		private async Task<DateTime> ResolveRetrainSourceWindowFromUtcAsync(
-			TriggerScoringRetrainRequest request,
+			bool useLastBatchTime,
 			int lookbackDays,
 			DateTime now,
 			CancellationToken ct)
 		{
-			if (!request.UseLastBatchTime)
+			if (!useLastBatchTime)
 			{
 				return now.AddDays(-lookbackDays);
 			}
@@ -1197,6 +1225,44 @@ namespace CleanOpsAi.Modules.Scoring.Application.Services
 				ReviewedVerdict = result.Verdict,
 				ReviewedAtUtc = reviewedAtUtc,
 				ReviewedByEmail = reviewedByEmail,
+			};
+		}
+
+		private static ScoringRetrainTrainingSamplePreviewItemResponse MapRetrainTrainingSamplePreview(
+			ScoringAnnotationCandidate candidate)
+		{
+			return new ScoringRetrainTrainingSamplePreviewItemResponse
+			{
+				CandidateId = candidate.Id,
+				ResultId = candidate.ResultId,
+				JobId = candidate.JobId,
+				RequestId = candidate.RequestId,
+				EnvironmentKey = candidate.EnvironmentKey,
+				ImageUrl = candidate.ImageUrl,
+				VisualizationBlobUrl = !string.IsNullOrWhiteSpace(candidate.VisualizationBlobUrl)
+					? candidate.VisualizationBlobUrl
+					: ExtractVisualizationBlobUrl(candidate.Result?.PayloadJson ?? "{}"),
+				ApprovedAtUtc = candidate.ApprovedAtUtc,
+				AnnotationVersion = candidate.Annotation?.Version,
+				SnapshotBlobKey = candidate.SnapshotBlobKey,
+				MetadataBlobKey = candidate.MetadataBlobKey,
+			};
+		}
+
+		private static ScoringRetrainCalibrationSamplePreviewItemResponse MapRetrainCalibrationSamplePreview(
+			ScoringJobResult result)
+		{
+			var sample = MapRetrainSample(result);
+			return new ScoringRetrainCalibrationSamplePreviewItemResponse
+			{
+				ResultId = sample.ResultId,
+				JobId = sample.JobId,
+				RequestId = sample.RequestId,
+				EnvironmentKey = sample.EnvironmentKey,
+				Source = sample.Source,
+				ReviewedVerdict = sample.ReviewedVerdict,
+				ReviewedAtUtc = sample.ReviewedAtUtc,
+				ReviewedByEmail = sample.ReviewedByEmail,
 			};
 		}
 
