@@ -24,13 +24,13 @@
 	{
 		public string? Name { get; set; }
 		public double Confidence { get; set; }
-		public int ImageIndex { get; set; }
+		public int? ImageIndex { get; set; }
 	}
 
 	public class PpeFailedImage
 	{
 		public string? ImageUrl { get; set; }
-		public int ImageIndex { get; set; }
+		public int? ImageIndex { get; set; }
 		public string? Error { get; set; }
 	}
 }
