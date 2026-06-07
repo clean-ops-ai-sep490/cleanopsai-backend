@@ -217,7 +217,9 @@ namespace CleanOpsAi.Modules.TaskOperations.Infrastructure.Repositories
 			if (filter.IsAdhocTask.HasValue)
 				query = query.Where(x => x.IsAdhocTask == filter.IsAdhocTask.Value);
 
-			return await query.ToPaginatedResultAsync(request, ct);
+			return await query
+				.OrderBy(x => x.ScheduledStartAt)
+				.ToPaginatedResultAsync(request, ct);
 		}
 
         public async Task<TaskAssignment?> GetOverlappingTask(
