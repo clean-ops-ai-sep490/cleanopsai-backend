@@ -8,8 +8,8 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY . .
-RUN dotnet restore "./src/Api/CleanOpsAi.Api/CleanOpsAi.Api.csproj"
-WORKDIR "/src/src/Api/CleanOpsAi.Api"
+RUN dotnet restore "./Api/CleanOpsAi.Api/CleanOpsAi.Api.csproj"
+WORKDIR "/src/Api/CleanOpsAi.Api"
 RUN dotnet build "./CleanOpsAi.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

@@ -199,6 +199,40 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				gateResult = await EvaluatePromotionGateAsync(config, ct);
 			}
 
+			if (config.UseBenchmarkPromotionGate)
+			{
+				var evaluatedCandidatePrefix = useExternalCandidate && !string.IsNullOrWhiteSpace(config.ExternalCandidatePrefix)
+					? config.ExternalCandidatePrefix
+					: BuildObjectKey(config.CandidatePrefix, message.BatchId.ToString("N"));
+				var evaluatedCandidateMetricsKey = BuildObjectKey(evaluatedCandidatePrefix ?? string.Empty, "metrics/metrics.json");
+
+				_logger.LogInformation(
+					"Scoring benchmark gate inputs for batch {BatchId}. MetricsKey={MetricsKey}. RemoteCandidate={RemoteCandidate}. RemoteBaseline={RemoteBaseline}. RemoteRequired={RemoteRequired}. RemotePassed={RemotePassed}. BlobCandidate={BlobCandidate}. BlobBaseline={BlobBaseline}. MinimumImprovement={MinimumImprovement}.",
+					message.BatchId,
+					evaluatedCandidateMetricsKey,
+					execution.RemoteBenchmarkCandidateMiou,
+					execution.RemoteBenchmarkBaselineMiou,
+					execution.RemoteBenchmarkRequiredMiou,
+					execution.RemoteBenchmarkGatePassed,
+					gateResult.CandidateCompositeMetric,
+					gateResult.BaselineCompositeMetric,
+					gateResult.MinimumImprovement);
+			}
+
+			// Detect artifact sync mismatch: remote trainer reported benchmark metrics but blob artifact was missing them
+			if (remoteTrainerEnabled
+				&& !gateResult.Promoted
+				&& gateResult.Reason.Contains("Benchmark metrics missing key", StringComparison.OrdinalIgnoreCase)
+				&& execution.RemoteBenchmarkCandidateMiou.HasValue)
+			{
+				gateResult = gateResult with
+				{
+					Reason = $"Artifact sync mismatch: remote trainer reported benchmark mIoU {execution.RemoteBenchmarkCandidateMiou.Value:F4}"
+						+ (execution.RemoteBenchmarkBaselineMiou.HasValue ? $" against baseline {execution.RemoteBenchmarkBaselineMiou.Value:F4}" : string.Empty)
+						+ $" but blob artifact is missing key '{config.BenchmarkCandidateMiouKey}'. Promotion skipped.",
+				};
+			}
+
 			if (gateResult.Promoted && !string.IsNullOrWhiteSpace(config.PromotionCommand))
 			{
 				var promotionExecution = await RunCommandAsync(
@@ -504,20 +538,21 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
 			}
 
-			var candidateYoloMap = ReadMetricFromNode(candidateMetrics, options.YoloMapMetricKey);
-			var candidateUnetMiou = ReadMetricFromNode(candidateMetrics, options.UnetMiouMetricKey);
-
-			// Prefer benchmark gate when enabled and benchmark data is available in candidate_metrics.json
-			var benchmarkGateResult = options.UseBenchmarkPromotionGate
-				? TryEvaluateBenchmarkGate(candidateMetrics, options)
-				: null;
-
 			double? baselineYoloMap = null;
 			double? baselineUnetMiou = null;
+			PromotionGateResult gateResult;
 
-			if (benchmarkGateResult is null)
+			var candidateYoloMap = ReadMetricFromNode(candidateMetrics, options.YoloMapMetricKey);
+			var candidateUnetMiou = ReadMetricFromNode(candidateMetrics, options.UnetMiouMetricKey);
+			var candidateBenchmarkMiou = ReadMetricFromNode(candidateMetrics, options.BenchmarkCandidateMiouKey);
+			var baselineBenchmarkMiou = ReadMetricFromNode(candidateMetrics, options.BenchmarkBaselineMiouKey);
+
+			if (options.UseBenchmarkPromotionGate)
 			{
-				// Fall back to training metrics gate
+				gateResult = EvaluateBenchmarkGateFromMetrics(candidateMetrics, options);
+			}
+			else
+			{
 				if (candidateUnetMiou is null || (!options.UseUnetOnlyPromotionGate && candidateYoloMap is null))
 				{
 					var missingMessage = options.UseUnetOnlyPromotionGate
@@ -537,14 +572,14 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				var baselineMetricsNode = await DownloadJsonNodeAsync(modelsContainer, options.ActiveMetricsObjectKey, ct);
 				baselineYoloMap = ReadMetricFromNode(baselineMetricsNode, options.YoloMapMetricKey);
 				baselineUnetMiou = ReadMetricFromNode(baselineMetricsNode, options.UnetMiouMetricKey);
-			}
 
-			var gateResult = benchmarkGateResult ?? EvaluateDualGate(
-				candidateYoloMap ?? 0,
-				candidateUnetMiou!.Value,
-				baselineYoloMap,
-				baselineUnetMiou,
-				options);
+				gateResult = EvaluateDualGate(
+					candidateYoloMap ?? 0,
+					candidateUnetMiou!.Value,
+					baselineYoloMap,
+					baselineUnetMiou,
+					options);
+			}
 
 			var candidateManifest = new JsonObject
 			{
@@ -557,8 +592,10 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["candidate_metrics_key"] = candidateMetricsKey,
 				["candidate_yolo_map"] = candidateYoloMap.HasValue ? JsonValue.Create(candidateYoloMap.Value) : null,
 				["candidate_unet_miou"] = candidateUnetMiou.HasValue ? JsonValue.Create(candidateUnetMiou.Value) : null,
+				["candidate_benchmark_miou"] = candidateBenchmarkMiou.HasValue ? JsonValue.Create(candidateBenchmarkMiou.Value) : null,
 				["baseline_yolo_map"] = baselineYoloMap.HasValue ? JsonValue.Create(baselineYoloMap.Value) : null,
 				["baseline_unet_miou"] = baselineUnetMiou.HasValue ? JsonValue.Create(baselineUnetMiou.Value) : null,
+				["baseline_benchmark_miou"] = baselineBenchmarkMiou.HasValue ? JsonValue.Create(baselineBenchmarkMiou.Value) : null,
 				["promoted"] = gateResult.Promoted,
 				["reason"] = gateResult.Reason,
 			};
@@ -599,9 +636,11 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 				["candidate_metrics_key"] = candidateMetricsKey,
 				["archive_prefix"] = archivePrefix,
 				["candidate_yolo_map"] = candidateYoloMap.HasValue ? JsonValue.Create(candidateYoloMap.Value) : null,
-				["candidate_unet_miou"] = candidateUnetMiou.Value,
+				["candidate_unet_miou"] = candidateUnetMiou.HasValue ? JsonValue.Create(candidateUnetMiou.Value) : null,
+				["candidate_benchmark_miou"] = candidateBenchmarkMiou.HasValue ? JsonValue.Create(candidateBenchmarkMiou.Value) : null,
 				["baseline_yolo_map"] = baselineYoloMap.HasValue ? JsonValue.Create(baselineYoloMap.Value) : null,
 				["baseline_unet_miou"] = baselineUnetMiou.HasValue ? JsonValue.Create(baselineUnetMiou.Value) : null,
+				["baseline_benchmark_miou"] = baselineBenchmarkMiou.HasValue ? JsonValue.Create(baselineBenchmarkMiou.Value) : null,
 				["reason"] = gateResult.Reason,
 			};
 
@@ -765,7 +804,13 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					return new CommandExecutionResult(
 						0,
 						$"Remote trainer job {createResponse.JobId} completed.",
-						statusResponse?.Message ?? string.Empty);
+						statusResponse?.Message ?? string.Empty)
+					{
+						RemoteBenchmarkCandidateMiou = statusResponse?.BenchmarkCandidateMiou,
+						RemoteBenchmarkBaselineMiou = statusResponse?.BenchmarkBaselineMiou,
+						RemoteBenchmarkRequiredMiou = statusResponse?.BenchmarkRequiredMiou,
+						RemoteBenchmarkGatePassed = statusResponse?.BenchmarkGatePassed,
+					};
 				}
 
 				if (status is "failed" or "error" or "cancelled" or "canceled")
@@ -883,12 +928,9 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					options.MinimumYoloMapImprovement + options.MinimumUnetMiouImprovement);
 			}
 
-			// Prefer benchmark gate when enabled and benchmark data is available
 			if (options.UseBenchmarkPromotionGate)
 			{
-				var bmResult = TryEvaluateBenchmarkGate(candidateNode, options);
-				if (bmResult is not null)
-					return bmResult;
+				return EvaluateBenchmarkGateFromMetrics(candidateNode, options);
 			}
 
 			var candidateYoloMap = ReadMetricFromNode(candidateNode, options.YoloMapMetricKey);
@@ -912,11 +954,26 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			return EvaluateDualGate(candidateYoloMap ?? 0, candidateUnetMiou.Value, null, null, options);
 		}
 
-		private static PromotionGateResult? TryEvaluateBenchmarkGate(JsonNode? candidateMetrics, ScoringRetrainOptions options)
+		private static PromotionGateResult EvaluateBenchmarkGateFromMetrics(JsonNode? candidateMetrics, ScoringRetrainOptions options)
 		{
 			var candidateMiou = ReadMetricFromNode(candidateMetrics, options.BenchmarkCandidateMiouKey);
 			if (candidateMiou is null)
-				return null;
+			{
+				var benchmarkReason = ReadStringFromNode(candidateMetrics, "benchmark.reason");
+				var reason = string.IsNullOrWhiteSpace(benchmarkReason)
+					? $"Benchmark metrics missing key '{options.BenchmarkCandidateMiouKey}'. Promotion skipped."
+					: $"Benchmark evaluation did not complete ({benchmarkReason}). Promotion skipped.";
+
+				return new PromotionGateResult(
+					false,
+					0,
+					null,
+					null,
+					null,
+					reason,
+					"benchmark.unet_mean_iou",
+					options.MinimumBenchmarkMiouImprovement);
+			}
 
 			var baselineMiou = ReadMetricFromNode(candidateMetrics, options.BenchmarkBaselineMiouKey);
 			return EvaluateBenchmarkGate(candidateMiou.Value, baselineMiou, options);
@@ -1007,8 +1064,8 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 					minimumImprovement);
 			}
 
-			var requiredYolo = baselineYoloMap.Value + options.MinimumYoloMapImprovement;
-			var requiredUnet = baselineUnetMiou.Value + options.MinimumUnetMiouImprovement;
+			var requiredYolo = baselineYoloMap!.Value + options.MinimumYoloMapImprovement;
+			var requiredUnet = baselineUnetMiou!.Value + options.MinimumUnetMiouImprovement;
 			var yoloPass = candidateYoloMap >= requiredYolo;
 			var unetPass = candidateUnetMiou >= requiredUnet;
 
@@ -1073,6 +1130,28 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			}
 
 			return null;
+		}
+
+		private static string? ReadStringFromNode(JsonNode? node, string path)
+		{
+			if (node is null || string.IsNullOrWhiteSpace(path))
+			{
+				return null;
+			}
+
+			JsonNode? current = node;
+			foreach (var segment in path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+			{
+				current = current?[segment];
+				if (current is null)
+				{
+					return null;
+				}
+			}
+
+			return current is JsonValue value && value.TryGetValue<string>(out var text)
+				? text
+				: null;
 		}
 
 		private static BlobServiceClient CreateBlobServiceClient(ScoringRetrainOptions options)
@@ -1252,7 +1331,13 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			return value[..maxLength];
 		}
 
-		private sealed record CommandExecutionResult(int ExitCode, string StandardOutput, string StandardError);
+		private sealed record CommandExecutionResult(int ExitCode, string StandardOutput, string StandardError)
+		{
+			public double? RemoteBenchmarkCandidateMiou { get; init; }
+			public double? RemoteBenchmarkBaselineMiou { get; init; }
+			public double? RemoteBenchmarkRequiredMiou { get; init; }
+			public bool? RemoteBenchmarkGatePassed { get; init; }
+		}
 
 		private sealed record PromotionGateResult(
 			bool Promoted,
@@ -1288,10 +1373,14 @@ namespace CleanOpsAi.Modules.Scoring.Infrastructure.Consumers
 			string JobId,
 			string? Status);
 
-		private sealed record RemoteRetrainJobStatusResponse(
+			private sealed record RemoteRetrainJobStatusResponse(
 			string JobId,
 			string Status,
 			string? Message,
-			string[]? Logs);
+			string[]? Logs,
+			double? BenchmarkCandidateMiou,
+			double? BenchmarkBaselineMiou,
+			double? BenchmarkRequiredMiou,
+			bool? BenchmarkGatePassed);
 	}
 }

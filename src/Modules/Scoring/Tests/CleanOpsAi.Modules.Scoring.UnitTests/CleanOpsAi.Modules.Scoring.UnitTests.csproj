@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Tests\CleanOpsAi.BuildingBlocks.IntegrationTests\CleanOpsAi.BuildingBlocks.IntegrationTests.csproj" />
     <ProjectReference Include="..\..\CleanOpsAi.Modules.Scoring.Application\CleanOpsAi.Modules.Scoring.Application.csproj" />
+    <ProjectReference Include="..\..\CleanOpsAi.Modules.Scoring.Infrastructure\CleanOpsAi.Modules.Scoring.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

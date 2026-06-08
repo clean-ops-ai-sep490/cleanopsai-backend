@@ -51,6 +51,10 @@ x-retrain-env: &retrain-env
   ScoringRetrain__UseUnetOnlyPromotionGate: ${SCORING_RETRAIN_UNET_ONLY_GATE:-true}
   ScoringRetrain__MinimumYoloMapImprovement: ${SCORING_RETRAIN_MIN_YOLO_MAP_IMPROVEMENT:-0}
   ScoringRetrain__MinimumUnetMiouImprovement: ${SCORING_RETRAIN_MIN_UNET_MIOU_IMPROVEMENT:-0}
+  ScoringRetrain__UseBenchmarkPromotionGate: ${SCORING_RETRAIN_BENCHMARK_GATE:-true}
+  ScoringRetrain__MinimumBenchmarkMiouImprovement: ${SCORING_RETRAIN_MIN_BENCHMARK_MIOU_IMPROVEMENT:-0.005}
+  ScoringRetrain__BenchmarkCandidateMiouKey: ${SCORING_RETRAIN_BENCHMARK_CANDIDATE_MIOU_KEY:-benchmark.candidate.mean_iou}
+  ScoringRetrain__BenchmarkBaselineMiouKey: ${SCORING_RETRAIN_BENCHMARK_BASELINE_MIOU_KEY:-benchmark.baseline.mean_iou}
   ScoringRetrain__PromoteWhenNoBaseline: ${SCORING_RETRAIN_PROMOTE_NO_BASELINE:-false}
   ScoringRetrain__PromotionCommand: ${SCORING_RETRAIN_PROMOTION_COMMAND:-}
   ScoringRetrain__RestartServiceCommand: ${SCORING_RETRAIN_RESTART_COMMAND:-}
