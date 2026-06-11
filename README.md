@@ -20,7 +20,7 @@
 
 ---
 
-## 📐 Architecture
+## Architecture
 
 CleanOpsAi Backend follows a **Modular Monolith** pattern with Clean Architecture principles. Each module is self-contained with its own Domain, Application, and Infrastructure layers, while sharing common building blocks.
 
@@ -62,7 +62,7 @@ src/
 
 ---
 
-## 🧩 Modules Overview
+## Modules Overview
 
 | Module | Responsibility |
 |---|---|
@@ -77,7 +77,7 @@ src/
 
 ---
 
-## 🐳 Docker Strategy
+## Docker Strategy
 
 A single `docker-compose.yml` manages the entire stack:
 
@@ -88,7 +88,7 @@ External dependencies (database, broker, scoring service) are supplied via envir
 
 ---
 
-## ✅ Prerequisites
+## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [Git](https://git-scm.com/)
@@ -96,7 +96,7 @@ External dependencies (database, broker, scoring service) are supplied via envir
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Configure environment
 
@@ -137,7 +137,7 @@ docker compose down
 
 ---
 
-## 🔬 Test the Scoring Flow
+## Test the Scoring Flow
 
 Submit a scoring job via `POST /api/scoring/jobs`:
 
@@ -156,7 +156,7 @@ Each result includes a `visualizationBlobUrl` for direct image preview on fronte
 
 ---
 
-## ⚙️ Environment Variables Reference
+## Environment Variables Reference
 
 ### Core (Required)
 
@@ -196,7 +196,7 @@ Enable the worker to trigger model retraining via the scoring API instead of run
 
 ---
 
-## 🔒 Security Checklist
+## Security Checklist
 
 - **Never commit real secrets** to `.env`, compose files, or source code.
 - Use a local `.env` (git-ignored) or a secret store (Azure Key Vault, CI/CD secrets) to inject environment variables.
@@ -206,7 +206,7 @@ Enable the worker to trigger model retraining via the scoring API instead of run
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 | Symptom | Check |
 |---|---|
@@ -217,7 +217,7 @@ Enable the worker to trigger model retraining via the scoring API instead of run
 
 ---
 
-## 📁 Project Files
+## Project Files
 
 | File / Folder | Purpose |
 |---|---|
